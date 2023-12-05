@@ -50,6 +50,11 @@ def parse_timedelta(time_str):
     return timedelta(days=units["days"], hours=units["hours"], minutes=units["minutes"], seconds=units["seconds"])
 
 
+def has_event_type(type_str: str) -> pl.Expr:
+    event_types = pl.col("event_type").cast(pl.Utf8).str.split("&")
+    return event_types.arr.contains(type_str)
+
+
 def build_tree_from_config(cfg):
     nodes = {}
     windows = [x for x, y in cfg.windows.items()]
@@ -101,10 +106,10 @@ def build_tree_from_config(cfg):
 
 def generate_predicate_columns(cfg, ESD):
     for predicate_name, predicate_info in cfg.predicates.items():
-        if 'values' in predicate_info:
-            ESD = ESD.with_columns(
-                pl.col(predicate_info.column).map_elements(lambda value: 1 if value in predicate_info['values'] else 0).fill_null(0).alias(f"is_{predicate_name}")
-            )
+        if 'value' in predicate_info:
+                ESD = ESD.with_columns(
+                    has_event_type(predicate_info['value']).alias(f"is_{predicate_name}")
+                )
         elif 'type' in predicate_info:
             if predicate_info.type == 'ANY':
                 any_expr = pl.col(f"is_{predicate_info.predicates[0]}")
@@ -119,20 +124,15 @@ def generate_predicate_columns(cfg, ESD):
             else:
                 raise ValueError(f"Invalid predicate type {predicate_info.type}.")
 
-
     ESD = ESD.with_columns(pl.when(pl.col('event_type').is_not_null()).then(1).otherwise(0).alias('is_any'))
     return ESD
-
-def has_event_type(type_str: str) -> pl.Expr:
-    event_types = pl.col("event_type").cast(pl.Utf8).str.split("&")
-    return event_types.arr.contains(type_str)
 
 
 """## Base Functions"""
 
 def summarize_temporal_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
-    predicate_cols: list[str],
+    predicate_cols: "list[str]",
     endpoint_expr: Any
 ) -> pl.LazyFrame | pl.DataFrame:
     st_inclusive, window_size, end_inclusive = endpoint_expr
@@ -170,7 +170,7 @@ def summarize_temporal_window(
 
 def summarize_event_bound_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
-    predicate_cols: list[str],
+    predicate_cols: "list[str]",
     endpoint_expr: Any,
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
 ) -> pl.Expr:
