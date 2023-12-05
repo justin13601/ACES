@@ -1,19 +1,16 @@
 predicates:
   admission:
     column: event_type
-    values: [ADMISSION]
+    value: ADMISSION
   discharge:
     column: event_type
-    values: [DISCHARGE]
+    value: DISCHARGE
   death:
     column: event_type
-    values: [DEATH]
+    value: DEATH
   covid:
     column: dx
-    values: [COVID]
-  any:
-    column: event_type
-    values: [ADMISSION, DISCHARGE, DEATH, DIAGNOSIS, LAB]
+    value: COVID
   discharge_or_death:
     type: ANY
     predicates: [discharge, death]
