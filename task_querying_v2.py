@@ -119,12 +119,25 @@ def build_tree_from_config(cfg):
 def generate_predicate_columns(cfg, ESD):
     for predicate_name, predicate_info in cfg.predicates.items():
         if "value" in predicate_info:
-            ESD = ESD.with_columns(
-                has_event_type(predicate_info["value"])
-                .alias(f"is_{predicate_name}")
-                .cast(pl.Int32)
-            )
-            print(f"Added predicate column is_{predicate_name}.")
+            if isinstance(predicate_info["value"], list):
+                ESD = ESD.with_columns(
+                    pl.when(
+                        (pl.col(predicate_info.column) >= predicate_info["value"][0]['min'])
+                        & (pl.col(predicate_info.column) <= predicate_info["value"][0]['max'])
+                    )
+                    .then(1)
+                    .otherwise(0)
+                    .alias(f"is_{predicate_name}")
+                    .cast(pl.Int32)
+                )
+                print(f"Added predicate column is_{predicate_name}.")
+            else:
+                ESD = ESD.with_columns(
+                    has_event_type(predicate_info["value"])
+                    .alias(f"is_{predicate_name}")
+                    .cast(pl.Int32)
+                )
+                print(f"Added predicate column is_{predicate_name}.")
         elif "type" in predicate_info:
             if predicate_info.type == "ANY":
                 any_expr = pl.col(f"is_{predicate_info.predicates[0]}")
