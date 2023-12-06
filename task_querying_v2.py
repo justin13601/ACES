@@ -668,8 +668,8 @@ def query_task(cfg_path, ESD):
 
     result = result.select(
         "timestamp",
-        *[f"{c.name}/timestamp" for c in tree.children],
-        *[f"{c.name}/window_summary" for c in tree.children],
+        *[f"{c.name}/timestamp" for c in preorder_iter(tree)[1:]],
+        *[f"{c.name}/window_summary" for c in preorder_iter(tree)[1:]],
     ).rename({"timestamp": f"{tree.name}/timestamp"})
 
     return result
