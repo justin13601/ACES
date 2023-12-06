@@ -648,6 +648,13 @@ def query_subtree(
 
 
 def query_task(cfg_path, ESD):
+    if ESD.shape[0] == 0:
+        raise ValueError("Empty ESD!")
+    if "timestamp" not in ESD.columns:
+        raise ValueError("ESD does not have timestamp column!")
+    if "subject_id" not in ESD.columns:
+        raise ValueError("ESD does not have subject_id column!")
+
     print("Loading config...\n")
     cfg = load_config(cfg_path)
 
