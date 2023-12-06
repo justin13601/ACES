@@ -37,7 +37,7 @@ windows:
     st_inclusive: False
     end_inclusive: True
   target:
-    start: trigger.end
+    start: gap.end
     duration: 
     offset:
     end: discharge_or_death
@@ -46,5 +46,18 @@ windows:
       - predicate: discharge_or_death
         min: 1
         max: 1
+    st_inclusive: False
+    end_inclusive: True
+    label: death
+  input:
+    start:
+    duration: 7 days
+    offset:
+    end: trigger.start + offset
+    excludes: [diagnosis]
+    includes: 
+      - predicate: any
+        min: 10
+        max:
     st_inclusive: False
     end_inclusive: True
