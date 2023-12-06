@@ -51,8 +51,9 @@ def parse_timedelta(time_str):
 
 
 def has_event_type(type_str: str) -> pl.Expr:
-    event_types = pl.col("event_type").cast(pl.Utf8).str.split("&")
-    return event_types.arr.contains(type_str)
+    has_event_type = pl.col("event_type").cast(pl.Utf8).str.contains(type_str)
+    # has_event_type = event_types.str.contains(type_str)
+    return has_event_type
 
 
 def build_tree_from_config(cfg):
@@ -107,22 +108,25 @@ def build_tree_from_config(cfg):
 def generate_predicate_columns(cfg, ESD):
     for predicate_name, predicate_info in cfg.predicates.items():
         if 'value' in predicate_info:
-                ESD = ESD.with_columns(
-                    has_event_type(predicate_info['value']).alias(f"is_{predicate_name}")
-                )
+            ESD = ESD.with_columns(
+                has_event_type(predicate_info['value']).alias(f"is_{predicate_name}").cast(pl.Int32)
+            )
+            print(f"Added predicate column is_{predicate_name}.")
         elif 'type' in predicate_info:
             if predicate_info.type == 'ANY':
                 any_expr = pl.col(f"is_{predicate_info.predicates[0]}")
                 for predicate in predicate_info.predicates[1:]:
                     any_expr = any_expr | pl.col(f"is_{predicate}")
-                ESD = ESD.with_columns(any_expr.alias(f"is_{'_or_'.join(predicate_info.predicates)}"))
+                ESD = ESD.with_columns(any_expr.alias(f"is_{'_or_'.join(predicate_info.predicates)}"))      
+                print(f"Added predicate column is_{'_or_'.join(predicate_info.predicates)}.")
             elif predicate_info.type == 'ALL':
                 all_expr = pl.col(predicate_info.predicates[0])
                 for predicate in predicate_info.predicates[1:]:
                     all_expr = all_expr & pl.col(predicate)
                 ESD = ESD.with_column(all_expr.alias(f"is_{'_and_'.join(predicate_info.predicates)}"))
+                print(f"Added predicate column is_{'_and_'.join(predicate_info.predicates)}.")
             else:
-                raise ValueError(f"Invalid predicate type {predicate_info.type}.")
+                raise ValueError(f"Invalid predicate type {predicate_info.type}.")#
 
     ESD = ESD.with_columns(pl.when(pl.col('event_type').is_not_null()).then(1).otherwise(0).alias('is_any'))
     return ESD
@@ -425,7 +429,7 @@ def query_subtree(
     recursive_results = []
 
     for child in subtree.children:
-        # print(child.name)
+        print(child.name)
 
         anchor_offset = timedelta(hours=0)
 
@@ -433,6 +437,8 @@ def query_subtree(
         subtree_root_to_child_summary_by_child_anchor = summarize_window(
             child, anchor_to_subtree_root_by_subtree_anchor, predicates_df, predicate_cols
         )
+
+        print(subtree_root_to_child_summary_by_child_anchor)
         # subtree_root_to_child_summary_by_child_anchor... has a row for every possible realization
         # of the anchor of the subtree rooted by _child_ (not the input subtree)
         # with the counts occurring between subtree_root and the child
@@ -523,9 +529,10 @@ def query_task(cfg_path, ESD):
     cfg = load_config(cfg_path)
 
     print('Generating predicate columns...\n')
+    # ESD = ESD.with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
     ESD = generate_predicate_columns(cfg, ESD)
 
-    print('Building tree...')
+    print('\nBuilding tree...')
     tree = build_tree_from_config(cfg)
     print_tree(tree, style="const_bold")
     print('\n')
