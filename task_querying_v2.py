@@ -666,10 +666,12 @@ def query_task(cfg_path, ESD):
     )
     print("Done.\n")
 
+    output_order = [node for node in preorder_iter(tree)]
+
     result = result.select(
         "timestamp",
-        *[f"{c.name}/timestamp" for c in preorder_iter(tree)[1:]],
-        *[f"{c.name}/window_summary" for c in preorder_iter(tree)[1:]],
+        *[f"{c.name}/timestamp" for c in output_order[1:]],
+        *[f"{c.name}/window_summary" for c in output_order[1:]],
     ).rename({"timestamp": f"{tree.name}/timestamp"})
 
     return result
