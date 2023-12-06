@@ -57,7 +57,6 @@ windows:
         max: 1
     st_inclusive: False
     end_inclusive: True
-    label: binary death or not, value ranges for lab
   input:
     start:
     duration: 30 days
