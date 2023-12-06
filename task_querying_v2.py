@@ -429,7 +429,7 @@ def query_subtree(
     recursive_results = []
 
     for child in subtree.children:
-        print(child.name)
+        print(f"Querying subtree rooted at {child.name}...")
 
         anchor_offset = timedelta(hours=0)
 
@@ -438,7 +438,6 @@ def query_subtree(
             child, anchor_to_subtree_root_by_subtree_anchor, predicates_df, predicate_cols
         )
 
-        print(subtree_root_to_child_summary_by_child_anchor)
         # subtree_root_to_child_summary_by_child_anchor... has a row for every possible realization
         # of the anchor of the subtree rooted by _child_ (not the input subtree)
         # with the counts occurring between subtree_root and the child
