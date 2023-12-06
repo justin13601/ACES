@@ -60,8 +60,5 @@ windows:
       - predicate: any
         min: 5
         max:
-      - predicate: 
-        min:
-        max:
     st_inclusive: False
     end_inclusive: True
