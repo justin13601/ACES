@@ -660,7 +660,10 @@ def query_task(cfg_path, ESD):
 
     print("Generating predicate columns...\n")
     # ESD = ESD.with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
-    ESD = generate_predicate_columns(cfg, ESD)
+    try:
+        ESD = generate_predicate_columns(cfg, ESD)
+    except Exception as e:
+        raise ValueError("Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid.") from e
 
     print("\nBuilding tree...")
     tree = build_tree_from_config(cfg)
