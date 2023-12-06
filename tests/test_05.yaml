@@ -41,7 +41,8 @@ windows:
     duration: 
     offset:
     end: discharge_or_death
-    excludes: discharge_or_death
+    excludes:
+      - predicate: discharge_or_death
     includes: 
     st_inclusive: False
     end_inclusive: False
