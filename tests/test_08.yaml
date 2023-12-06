@@ -8,9 +8,13 @@ predicates:
   death:
     column: event_type
     value: DEATH
-  covid:
-    column: dx
-    value: COVID  
+  lab:
+    column: event_type
+    value: LAB
+  abnormal_lab_proxy:
+    column: valuenum
+    value: 
+      - min: 70
   discharge_or_death:
     type: ANY
     predicates: [discharge, death]
@@ -30,7 +34,7 @@ windows:
     end_inclusive: True
   gap:
     start: trigger.end
-    duration: 48 hours
+    duration: 7 days
     offset:
     end: gap.start + gap.duration
     excludes: 
@@ -42,26 +46,14 @@ windows:
     end_inclusive: True
   target:
     start: gap.end
-    duration: 
+    duration: 3 days
     offset:
-    end: discharge_or_death
+    end: target.start + target.duration
     excludes:
     includes: 
-      - predicate: discharge_or_death
+      - predicate: lab
         min: 1
-        max: 1
+        max: 
     st_inclusive: False
     end_inclusive: True
-  input:
-    start:
-    duration: 30 days
-    offset: 24 hours
-    end: trigger.start + offset
-    excludes:  
-      - predicate: covid
-    includes: 
-      - predicate: any
-        min: 5
-        max:
-    st_inclusive: False
-    end_inclusive: True
+    label: abnormal_lab_proxy

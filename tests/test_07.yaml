@@ -52,6 +52,7 @@ windows:
         max: 1
     st_inclusive: False
     end_inclusive: True
+    label: death
   input:
     start:
     duration: 30 days
