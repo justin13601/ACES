@@ -11,8 +11,10 @@ from bigtree import preorder_iter
 from datetime import timedelta
 
 import polars as pl
+
 pl.Config.set_tbl_cols(100)
 pl.Config.set_tbl_rows(100)
+
 
 class DotAccessibleDict(dict):
     def __init__(self, *args, **kwargs):
@@ -25,29 +27,31 @@ class DotAccessibleDict(dict):
         if attr in self:
             return self[attr]
         else:
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr}'")
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{attr}'"
+            )
 
 
 def load_config(config_path: str) -> DotAccessibleDict:
     yaml = ruamel.yaml.YAML()
-    with open(config_path, 'r') as file:
+    with open(config_path, "r") as file:
         config_dict = yaml.load(file)
     return DotAccessibleDict(config_dict)
 
 
 def parse_timedelta(time_str):
-    units = {
-        "days": 0,
-        "hours": 0,
-        "minutes": 0,
-        "seconds": 0
-    }
-    pattern = r'(\d+)\s*(seconds|minutes|hours|days)'
+    units = {"days": 0, "hours": 0, "minutes": 0, "seconds": 0}
+    pattern = r"(\d+)\s*(seconds|minutes|hours|days)"
     matches = re.findall(pattern, time_str.lower())
     for value, unit in matches:
         units[unit] = int(value)
 
-    return timedelta(days=units["days"], hours=units["hours"], minutes=units["minutes"], seconds=units["seconds"])
+    return timedelta(
+        days=units["days"],
+        hours=units["hours"],
+        minutes=units["minutes"],
+        seconds=units["seconds"],
+    )
 
 
 def has_event_type(type_str: str) -> pl.Expr:
@@ -84,17 +88,23 @@ def build_tree_from_config(cfg):
 
         if window_info.includes:
             for each_inclusion in window_info.includes:
-                if each_inclusion['predicate']:
+                if each_inclusion["predicate"]:
                     constraints[f"is_{each_inclusion['predicate']}"] = (
-                        int(each_inclusion['min']) if each_inclusion['min'] else None,
-                        int(each_inclusion['max']) if each_inclusion['max'] else None
+                        int(each_inclusion["min"]) if each_inclusion["min"] else None,
+                        int(each_inclusion["max"]) if each_inclusion["max"] else None,
                     )
         node.constraints = constraints
 
         if window_info.start:
-            node_root = next((substring for substring in windows if substring in window_info.start), None)
+            node_root = next(
+                (substring for substring in windows if substring in window_info.start),
+                None,
+            )
         elif window_info.end:
-            node_root = next((substring for substring in windows if substring in window_info.end), None)
+            node_root = next(
+                (substring for substring in windows if substring in window_info.end),
+                None,
+            )
 
         if not node_root:
             nodes[window_name] = node
@@ -105,39 +115,53 @@ def build_tree_from_config(cfg):
             nodes[window_name] = node
     return next(iter(nodes.values())).root
 
+
 def generate_predicate_columns(cfg, ESD):
     for predicate_name, predicate_info in cfg.predicates.items():
-        if 'value' in predicate_info:
+        if "value" in predicate_info:
             ESD = ESD.with_columns(
-                has_event_type(predicate_info['value']).alias(f"is_{predicate_name}").cast(pl.Int32)
+                has_event_type(predicate_info["value"])
+                .alias(f"is_{predicate_name}")
+                .cast(pl.Int32)
             )
             print(f"Added predicate column is_{predicate_name}.")
-        elif 'type' in predicate_info:
-            if predicate_info.type == 'ANY':
+        elif "type" in predicate_info:
+            if predicate_info.type == "ANY":
                 any_expr = pl.col(f"is_{predicate_info.predicates[0]}")
                 for predicate in predicate_info.predicates[1:]:
                     any_expr = any_expr | pl.col(f"is_{predicate}")
-                ESD = ESD.with_columns(any_expr.alias(f"is_{'_or_'.join(predicate_info.predicates)}"))      
-                print(f"Added predicate column is_{'_or_'.join(predicate_info.predicates)}.")
-            elif predicate_info.type == 'ALL':
+                ESD = ESD.with_columns(
+                    any_expr.alias(f"is_{'_or_'.join(predicate_info.predicates)}")
+                )
+                print(
+                    f"Added predicate column is_{'_or_'.join(predicate_info.predicates)}."
+                )
+            elif predicate_info.type == "ALL":
                 all_expr = pl.col(predicate_info.predicates[0])
                 for predicate in predicate_info.predicates[1:]:
                     all_expr = all_expr & pl.col(predicate)
-                ESD = ESD.with_column(all_expr.alias(f"is_{'_and_'.join(predicate_info.predicates)}"))
-                print(f"Added predicate column is_{'_and_'.join(predicate_info.predicates)}.")
+                ESD = ESD.with_column(
+                    all_expr.alias(f"is_{'_and_'.join(predicate_info.predicates)}")
+                )
+                print(
+                    f"Added predicate column is_{'_and_'.join(predicate_info.predicates)}."
+                )
             else:
-                raise ValueError(f"Invalid predicate type {predicate_info.type}.")#
+                raise ValueError(f"Invalid predicate type {predicate_info.type}.")  #
 
-    ESD = ESD.with_columns(pl.when(pl.col('event_type').is_not_null()).then(1).otherwise(0).alias('is_any'))
+    ESD = ESD.with_columns(
+        pl.when(pl.col("event_type").is_not_null()).then(1).otherwise(0).alias("is_any")
+    )
     return ESD
 
 
 """## Base Functions"""
 
+
 def summarize_temporal_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
     predicate_cols: "list[str]",
-    endpoint_expr: Any
+    endpoint_expr: Any,
 ) -> pl.LazyFrame | pl.DataFrame:
     st_inclusive, window_size, end_inclusive = endpoint_expr
 
@@ -163,7 +187,7 @@ def summarize_temporal_window(
             by="subject_id",
             closed=closed,
             period=period,
-            offset=offset
+            offset=offset,
         )
         .agg([pl.col(c).sum().alias(c) for c in predicate_cols])
         .sort(by=["subject_id", "timestamp"])
@@ -182,72 +206,92 @@ def summarize_event_bound_window(
 
     cumsum_predicates_df = predicates_df.with_columns(
         *[
-              pl.col(c).cum_sum().over(pl.col('subject_id')).alias(f"{c}_cumsum")
-              for c in predicate_cols
+            pl.col(c).cum_sum().over(pl.col("subject_id")).alias(f"{c}_cumsum")
+            for c in predicate_cols
         ],
     )
 
     cnts_at_anchor = (
         anchor_to_subtree_root_by_subtree_anchor.select("subject_id", "timestamp")
-        .join(cumsum_predicates_df, on=["subject_id", "timestamp"], how='left')
+        .join(cumsum_predicates_df, on=["subject_id", "timestamp"], how="left")
         .select(
-            "subject_id", "timestamp",
-            pl.col('timestamp').alias("timestamp_at_anchor"),
+            "subject_id",
+            "timestamp",
+            pl.col("timestamp").alias("timestamp_at_anchor"),
             *[pl.col(c).alias(f"{c}_at_anchor") for c in predicate_cols],
-            *[pl.col(f"{c}_cumsum").alias(f"{c}_cumsum_at_anchor") for c in predicate_cols],
-        )
-    )
-
-    cumsum_predicates_df = (
-        cumsum_predicates_df
-        .join(cnts_at_anchor, on=["subject_id", "timestamp"], how='left')
-        .with_columns(pl.col("timestamp_at_anchor").forward_fill().over("subject_id"),
             *[
-                pl.col(f"{c}_at_anchor").forward_fill().over("subject_id")
-                for c in predicate_cols
-            ],
-            *[
-                pl.col(f"{c}_cumsum_at_anchor").forward_fill().over("subject_id")
+                pl.col(f"{c}_cumsum").alias(f"{c}_cumsum_at_anchor")
                 for c in predicate_cols
             ],
         )
     )
 
-    cumsum_anchor_child = (
-        cumsum_predicates_df.with_columns('subject_id', 'timestamp', *[(pl.col(f"{c}_cumsum") - pl.col(f"{c}_cumsum_at_anchor")).alias(f"{c}_final") for c in predicate_cols])
+    cumsum_predicates_df = cumsum_predicates_df.join(
+        cnts_at_anchor, on=["subject_id", "timestamp"], how="left"
+    ).with_columns(
+        pl.col("timestamp_at_anchor").forward_fill().over("subject_id"),
+        *[
+            pl.col(f"{c}_at_anchor").forward_fill().over("subject_id")
+            for c in predicate_cols
+        ],
+        *[
+            pl.col(f"{c}_cumsum_at_anchor").forward_fill().over("subject_id")
+            for c in predicate_cols
+        ],
+    )
+
+    cumsum_anchor_child = cumsum_predicates_df.with_columns(
+        "subject_id",
+        "timestamp",
+        *[
+            (pl.col(f"{c}_cumsum") - pl.col(f"{c}_cumsum_at_anchor")).alias(
+                f"{c}_final"
+            )
+            for c in predicate_cols
+        ],
     )
 
     if not st_inclusive:
-        cumsum_anchor_child = (
-            cumsum_anchor_child.with_columns('subject_id', 'timestamp', *[(pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor")) for c in predicate_cols])
+        cumsum_anchor_child = cumsum_anchor_child.with_columns(
+            "subject_id",
+            "timestamp",
+            *[
+                (pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor"))
+                for c in predicate_cols
+            ],
         )
     if not end_inclusive:
-        cumsum_anchor_child = (
-            cumsum_anchor_child.with_columns('subject_id', 'timestamp', *[(pl.col(f"{c}_final") - pl.col(f"{c}")) for c in predicate_cols])
+        cumsum_anchor_child = cumsum_anchor_child.with_columns(
+            "subject_id",
+            "timestamp",
+            *[(pl.col(f"{c}_final") - pl.col(f"{c}")) for c in predicate_cols],
         )
 
-    at_child_anchor = (
-            cumsum_anchor_child.select('subject_id', 'timestamp', 'timestamp_at_anchor', *[pl.col(f"{c}_final").alias(c) for c in predicate_cols])
-        )
-
-    at_child_anchor = at_child_anchor.filter(
-        (pl.col(end_event) > 0)
+    at_child_anchor = cumsum_anchor_child.select(
+        "subject_id",
+        "timestamp",
+        "timestamp_at_anchor",
+        *[pl.col(f"{c}_final").alias(c) for c in predicate_cols],
     )
 
+    at_child_anchor = at_child_anchor.filter((pl.col(end_event) > 0))
+
     df_temp = predicates_df.filter(pl.col(endpoint_expr[1]) >= 1)
-    df_result = (
-        df_temp.join(
-            at_child_anchor, on=["subject_id", "timestamp"], how='inner'
-            )
-        .select(
-            "subject_id", "timestamp", "timestamp_at_anchor",
-            *[pl.col(f"{c}_right").alias(c) for c in predicate_cols],
-            )
-        )
+    df_result = df_temp.join(
+        at_child_anchor, on=["subject_id", "timestamp"], how="inner"
+    ).select(
+        "subject_id",
+        "timestamp",
+        "timestamp_at_anchor",
+        *[pl.col(f"{c}_right").alias(c) for c in predicate_cols],
+    )
 
     return df_result
 
-def summarize_window(child, anchor_to_subtree_root_by_subtree_anchor, predicates_df, predicate_cols):
+
+def summarize_window(
+    child, anchor_to_subtree_root_by_subtree_anchor, predicates_df, predicate_cols
+):
     """
     Args:
         predicates_df:
@@ -275,13 +319,31 @@ def summarize_window(child, anchor_to_subtree_root_by_subtree_anchor, predicates
 
     match child.endpoint_expr[1]:
         case timedelta():
-            df_temp = summarize_temporal_window(predicates_df, predicate_cols, endpoint_expr)
-            joined = df_temp.join(anchor_to_subtree_root_by_subtree_anchor, on=['subject_id','timestamp'], suffix='_summary')
-            subtree_root_to_child_summary_by_child_anchor = joined.select('subject_id', 'timestamp', *[pl.col(c) - pl.col(f"{c}_summary") for c in predicate_cols])
+            df_temp = summarize_temporal_window(
+                predicates_df, predicate_cols, endpoint_expr
+            )
+            joined = df_temp.join(
+                anchor_to_subtree_root_by_subtree_anchor,
+                on=["subject_id", "timestamp"],
+                suffix="_summary",
+            )
+            subtree_root_to_child_summary_by_child_anchor = joined.select(
+                "subject_id",
+                "timestamp",
+                *[pl.col(c) - pl.col(f"{c}_summary") for c in predicate_cols],
+            )
             return subtree_root_to_child_summary_by_child_anchor
         case str():
-            subtree_root_to_child_summary_by_child_anchor = summarize_event_bound_window(predicates_df, predicate_cols, endpoint_expr, anchor_to_subtree_root_by_subtree_anchor)
+            subtree_root_to_child_summary_by_child_anchor = (
+                summarize_event_bound_window(
+                    predicates_df,
+                    predicate_cols,
+                    endpoint_expr,
+                    anchor_to_subtree_root_by_subtree_anchor,
+                )
+            )
             return subtree_root_to_child_summary_by_child_anchor
+
 
 def check_constraints(window_constraints, summary_df):
     """
@@ -331,7 +393,9 @@ def check_constraints(window_constraints, summary_df):
 
     return pl.all_horizontal(valid_exprs)
 
+
 """## Recursive Loop"""
+
 
 def query_subtree(
     subtree,
@@ -424,7 +488,7 @@ def query_subtree(
       1,       89,  ts,            ts,
       1,       122, ts,            ts,
     """
-    predicate_cols = [col for col in predicates_df.columns if col.startswith('is_')]
+    predicate_cols = [col for col in predicates_df.columns if col.startswith("is_")]
 
     recursive_results = []
 
@@ -435,7 +499,10 @@ def query_subtree(
 
         # Step 1: Summarize the window from the subtree.root to child.
         subtree_root_to_child_summary_by_child_anchor = summarize_window(
-            child, anchor_to_subtree_root_by_subtree_anchor, predicates_df, predicate_cols
+            child,
+            anchor_to_subtree_root_by_subtree_anchor,
+            predicates_df,
+            predicate_cols,
         )
 
         # subtree_root_to_child_summary_by_child_anchor... has a row for every possible realization
@@ -443,79 +510,122 @@ def query_subtree(
         # with the counts occurring between subtree_root and the child
 
         # Step 2: Filter to where constraints are valid
-        valid_windows = check_constraints(child.constraints, subtree_root_to_child_summary_by_child_anchor)
+        valid_windows = check_constraints(
+            child.constraints, subtree_root_to_child_summary_by_child_anchor
+        )
 
         # Step 3: Update parameters for recursive step:
         match child.endpoint_expr[1]:
-          case timedelta():
-            anchor_offset += child.endpoint_expr[1]
-            joined = anchor_to_subtree_root_by_subtree_anchor.join(subtree_root_to_child_summary_by_child_anchor, on=['subject_id','timestamp'], suffix='_summary')
-            anchor_to_subtree_root_by_subtree_anchor = joined.select('subject_id', 'timestamp', *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols])
-            anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(valid_windows)
-          case str():
-            anchor_offset = timedelta(hours=0)
-            joined = anchor_to_subtree_root_by_subtree_anchor.join(subtree_root_to_child_summary_by_child_anchor, left_on=['subject_id','timestamp'], right_on=['subject_id','timestamp_at_anchor'], suffix='_summary')
-            anchor_to_subtree_root_by_subtree_anchor = joined.select('subject_id', 'timestamp_summary', *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols]).rename({'timestamp_summary': 'timestamp'})
-            anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(valid_windows)
-            anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.with_columns('subject_id', 'timestamp', *[pl.lit(0).alias(c) for c in predicate_cols])
+            case timedelta():
+                anchor_offset += child.endpoint_expr[1]
+                joined = anchor_to_subtree_root_by_subtree_anchor.join(
+                    subtree_root_to_child_summary_by_child_anchor,
+                    on=["subject_id", "timestamp"],
+                    suffix="_summary",
+                )
+                anchor_to_subtree_root_by_subtree_anchor = joined.select(
+                    "subject_id",
+                    "timestamp",
+                    *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
+                )
+                anchor_to_subtree_root_by_subtree_anchor = (
+                    anchor_to_subtree_root_by_subtree_anchor.filter(valid_windows)
+                )
+            case str():
+                anchor_offset = timedelta(hours=0)
+                joined = anchor_to_subtree_root_by_subtree_anchor.join(
+                    subtree_root_to_child_summary_by_child_anchor,
+                    left_on=["subject_id", "timestamp"],
+                    right_on=["subject_id", "timestamp_at_anchor"],
+                    suffix="_summary",
+                )
+                anchor_to_subtree_root_by_subtree_anchor = joined.select(
+                    "subject_id",
+                    "timestamp_summary",
+                    *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
+                ).rename({"timestamp_summary": "timestamp"})
+                anchor_to_subtree_root_by_subtree_anchor = (
+                    anchor_to_subtree_root_by_subtree_anchor.filter(valid_windows)
+                )
+                anchor_to_subtree_root_by_subtree_anchor = (
+                    anchor_to_subtree_root_by_subtree_anchor.with_columns(
+                        "subject_id",
+                        "timestamp",
+                        *[pl.lit(0).alias(c) for c in predicate_cols],
+                    )
+                )
 
         # Step 4: Recurse
-        recursive_result = query_subtree(child, anchor_to_subtree_root_by_subtree_anchor, predicates_df, anchor_offset)
+        recursive_result = query_subtree(
+            child,
+            anchor_to_subtree_root_by_subtree_anchor,
+            predicates_df,
+            anchor_offset,
+        )
 
         match child.endpoint_expr[1]:
-          case timedelta():
-            recursive_result = recursive_result.with_columns(
-                (pl.col("timestamp") + anchor_offset).alias(f"{child.name}/timestamp")
-            )
-          case str():
-            recursive_result = recursive_result.with_columns(
-                pl.col("timestamp").alias(f"{child.name}/timestamp")
-            )
+            case timedelta():
+                recursive_result = recursive_result.with_columns(
+                    (pl.col("timestamp") + anchor_offset).alias(
+                        f"{child.name}/timestamp"
+                    )
+                )
+            case str():
+                recursive_result = recursive_result.with_columns(
+                    pl.col("timestamp").alias(f"{child.name}/timestamp")
+                )
 
         # Step 5: Push results back to subtree anchor.
         subtree_root_to_child_summary_by_child_anchor = (
-            subtree_root_to_child_summary_by_child_anchor
-            .with_columns(
-              pl.struct([
-                  pl.col(c).alias(c) for c in predicate_cols
-              ]).alias(f"{child.name}/window_summary")
+            subtree_root_to_child_summary_by_child_anchor.with_columns(
+                pl.struct([pl.col(c).alias(c) for c in predicate_cols]).alias(
+                    f"{child.name}/window_summary"
+                )
             )
         )
 
         match child.endpoint_expr[1]:
-          case timedelta():
-            final_recursive_result = recursive_result.join(
-                    subtree_root_to_child_summary_by_child_anchor.select('subject_id', 'timestamp', f"{child.name}/window_summary"),
-                    on=["subject_id", "timestamp"]
-                    )
-          case str():
-            # Need a dataframe with one col with a "True" in the possible realizations of
-            # subtree anchor and another col with a "True" in the possible valid corresponding realizations
-            # of the child node.
-            # Make this with anchor_to_subtree_root_by_subtree_anchor
-            #   (contains rows corresponding to possible start events).
-            # and recursive_result (contains rows corresponding to possible end events).
-            final_recursive_result = (
-                recursive_result.join(
-                    subtree_root_to_child_summary_by_child_anchor.select('subject_id', 'timestamp', 'timestamp_at_anchor', f"{child.name}/window_summary"),
+            case timedelta():
+                final_recursive_result = recursive_result.join(
+                    subtree_root_to_child_summary_by_child_anchor.select(
+                        "subject_id", "timestamp", f"{child.name}/window_summary"
+                    ),
                     on=["subject_id", "timestamp"],
-                ).drop('timestamp')
-                .rename({
-                    'timestamp_at_anchor': 'timestamp'
-                })
-            )
+                )
+            case str():
+                # Need a dataframe with one col with a "True" in the possible realizations of
+                # subtree anchor and another col with a "True" in the possible valid corresponding realizations
+                # of the child node.
+                # Make this with anchor_to_subtree_root_by_subtree_anchor
+                #   (contains rows corresponding to possible start events).
+                # and recursive_result (contains rows corresponding to possible end events).
+                final_recursive_result = (
+                    recursive_result.join(
+                        subtree_root_to_child_summary_by_child_anchor.select(
+                            "subject_id",
+                            "timestamp",
+                            "timestamp_at_anchor",
+                            f"{child.name}/window_summary",
+                        ),
+                        on=["subject_id", "timestamp"],
+                    )
+                    .drop("timestamp")
+                    .rename({"timestamp_at_anchor": "timestamp"})
+                )
 
         recursive_results.append(final_recursive_result)
 
     # Step 6: Join children recursive results where all children find a valid realization
     if not recursive_results:
         all_children = anchor_to_subtree_root_by_subtree_anchor.select(
-            'subject_id', 'timestamp'
+            "subject_id", "timestamp"
         )
     else:
         all_children = recursive_results[0]
         for df in recursive_results[1:]:
-            all_children = all_children.join(df, on=['subject_id', 'timestamp'], how='inner')
+            all_children = all_children.join(
+                df, on=["subject_id", "timestamp"], how="inner"
+            )
 
     # Step 7: return
     return all_children
@@ -523,43 +633,47 @@ def query_subtree(
 
 """# End-to-end Run"""
 
+
 def query_task(cfg_path, ESD):
-    print('Loading config...\n')
+    print("Loading config...\n")
     cfg = load_config(cfg_path)
 
-    print('Generating predicate columns...\n')
+    print("Generating predicate columns...\n")
     # ESD = ESD.with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
     ESD = generate_predicate_columns(cfg, ESD)
 
-    print('\nBuilding tree...')
+    print("\nBuilding tree...")
     tree = build_tree_from_config(cfg)
     print_tree(tree, style="const_bold")
-    print('\n')
+    print("\n")
 
-    predicate_cols = [col for col in ESD.columns if col.startswith('is_')]
+    predicate_cols = [col for col in ESD.columns if col.startswith("is_")]
 
     anchor_to_subtree_root_by_subtree_anchor = (
-        ESD.filter(ESD['is_admission'] == 1)
-            .select('subject_id', 'timestamp', *[pl.col(c) for c in predicate_cols])
-            .with_columns('subject_id', 'timestamp', *[pl.lit(0).alias(c) for c in predicate_cols])
+        ESD.filter(ESD["is_admission"] == 1)
+        .select("subject_id", "timestamp", *[pl.col(c) for c in predicate_cols])
+        .with_columns(
+            "subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols]
+        )
     )
 
-    print('Querying...')
+    print("Querying...")
     result = query_subtree(
         subtree=tree,
         anchor_to_subtree_root_by_subtree_anchor=anchor_to_subtree_root_by_subtree_anchor,
         predicates_df=ESD,
-        anchor_offset=timedelta(hours=0)
+        anchor_offset=timedelta(hours=0),
     )
-    print('Done.\n')
+    print("Done.\n")
 
-    result = (
-        result.select('timestamp', *[f"{c.name}/timestamp" for c in tree.children], *[f"{c.name}/window_summary" for c in tree.children])
-              .rename({'timestamp': f"{tree.name}/timestamp"})
-              )
-
+    result = result.select(
+        "timestamp",
+        *[f"{c.name}/timestamp" for c in tree.children],
+        *[f"{c.name}/window_summary" for c in tree.children],
+    ).rename({"timestamp": f"{tree.name}/timestamp"})
 
     return result
+
 
 # config_path = '/content/drive/MyDrive/Colab Notebooks/SickKids/ESGPT/config.yaml'
 # data_path = '/content/drive/MyDrive/Colab Notebooks/SickKids/ESGPT/data.csv'
