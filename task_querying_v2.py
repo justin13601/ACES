@@ -90,9 +90,10 @@ def build_tree_from_config(cfg):
             for each_inclusion in window_info.includes:
                 if each_inclusion["predicate"]:
                     constraints[f"is_{each_inclusion['predicate']}"] = (
-                        int(each_inclusion["min"]) if each_inclusion["min"] else None,
-                        int(each_inclusion["max"]) if each_inclusion["max"] else None,
+                        int(each_inclusion["min"]) if "min" in each_inclusion and each_inclusion['min'] is not None else None,
+                        int(each_inclusion["max"]) if "max" in each_inclusion and each_inclusion['max'] is not None else None,
                     )
+        print(constraints)
         node.constraints = constraints
 
         if window_info.start:
@@ -122,8 +123,8 @@ def generate_predicate_columns(cfg, ESD):
             if isinstance(predicate_info["value"], list):
                 ESD = ESD.with_columns(
                     pl.when(
-                        (pl.col(predicate_info.column) >= float(predicate_info["value"][0]['min'] or -np.inf))
-                        & (pl.col(predicate_info.column) <= float(predicate_info["value"][0]['max'] or np.inf))
+                        (pl.col(predicate_info.column) >= (float(predicate_info["value"][0]['min'] or -np.inf) if 'min' in predicate_info["value"][0] else float(-np.inf)))
+                        & (pl.col(predicate_info.column) <= (float(predicate_info["value"][0]['max'] or np.inf) if 'max' in predicate_info["value"][0] else float(np.inf)))
                     )
                     .then(1)
                     .otherwise(0)
@@ -403,7 +404,7 @@ def check_constraints(window_constraints, summary_df):
             valid_exprs.append(pl.col(col) >= cnt_ge)
         if cnt_le is not None:
             valid_exprs.append(pl.col(col) <= cnt_le)
-
+    print(valid_exprs)
     return pl.all_horizontal(valid_exprs)
 
 
@@ -693,6 +694,7 @@ def query_task(cfg_path, ESD):
     output_order = [node for node in preorder_iter(tree)]
 
     result = result.select(
+        "subject_id",
         "timestamp",
         *[f"{c.name}/timestamp" for c in output_order[1:]],
         *[f"{c.name}/window_summary" for c in output_order[1:]],
