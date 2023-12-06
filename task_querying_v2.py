@@ -553,6 +553,12 @@ def query_task(cfg_path, ESD):
     )
     print('Done.\n')
 
+    result = (
+        result.select('timestamp', *[f"{c.name}/timestamp" for c in tree.children], *[f"{c.name}/window_summary" for c in tree.children])
+              .rename({'timestamp': f"{tree.name}/timestamp"})
+              )
+
+
     return result
 
 # config_path = '/content/drive/MyDrive/Colab Notebooks/SickKids/ESGPT/config.yaml'
