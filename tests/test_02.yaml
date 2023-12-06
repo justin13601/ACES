@@ -31,6 +31,9 @@ windows:
       - predicate: admission
         min: 1
         max: 1
+      - predicate: age_above_70
+        min: 1
+        max: 1
     st_inclusive: False
     end_inclusive: True
   gap:
@@ -64,9 +67,6 @@ windows:
     includes: 
       - predicate: any
         min: 5
-        max:
-      - predicate: 
-        min:
         max:
     st_inclusive: False
     end_inclusive: True
