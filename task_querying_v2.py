@@ -122,8 +122,8 @@ def generate_predicate_columns(cfg, ESD):
             if isinstance(predicate_info["value"], list):
                 ESD = ESD.with_columns(
                     pl.when(
-                        (pl.col(predicate_info.column) >= predicate_info["value"][0]['min'])
-                        & (pl.col(predicate_info.column) <= predicate_info["value"][0]['max'])
+                        (pl.col(predicate_info.column) >= float(predicate_info["value"][0]['min'] or -np.inf))
+                        & (pl.col(predicate_info.column) <= float(predicate_info["value"][0]['max'] or np.inf))
                     )
                     .then(1)
                     .otherwise(0)
@@ -654,7 +654,7 @@ def query_task(cfg_path, ESD):
     print("Generating predicate columns...\n")
     # ESD = ESD.with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
     ESD = generate_predicate_columns(cfg, ESD)
-
+    print(ESD)
     print("\nBuilding tree...")
     tree = build_tree_from_config(cfg)
     print_tree(tree, style="const_bold")
