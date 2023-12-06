@@ -654,7 +654,7 @@ def query_task(cfg_path, ESD):
     print("Generating predicate columns...\n")
     # ESD = ESD.with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
     ESD = generate_predicate_columns(cfg, ESD)
-    print(ESD)
+
     print("\nBuilding tree...")
     tree = build_tree_from_config(cfg)
     print_tree(tree, style="const_bold")
@@ -662,8 +662,9 @@ def query_task(cfg_path, ESD):
 
     predicate_cols = [col for col in ESD.columns if col.startswith("is_")]
 
+    valid_trigger_exprs = [(ESD[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes]
     anchor_to_subtree_root_by_subtree_anchor = (
-        ESD.filter(ESD["is_admission"] == 1)
+        ESD.filter(pl.all_horizontal(valid_trigger_exprs))
         .select("subject_id", "timestamp", *[pl.col(c) for c in predicate_cols])
         .with_columns(
             "subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols]
