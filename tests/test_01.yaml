@@ -10,7 +10,7 @@ predicates:
     value: DEATH
   covid:
     column: dx
-    value: COVID
+    value: COVID  
   discharge_or_death:
     type: ANY
     predicates: [discharge, death]
