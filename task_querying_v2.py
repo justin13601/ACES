@@ -93,7 +93,6 @@ def build_tree_from_config(cfg):
                         int(each_inclusion["min"]) if "min" in each_inclusion and each_inclusion['min'] is not None else None,
                         int(each_inclusion["max"]) if "max" in each_inclusion and each_inclusion['max'] is not None else None,
                     )
-        print(constraints)
         node.constraints = constraints
 
         if window_info.start:
@@ -404,7 +403,10 @@ def check_constraints(window_constraints, summary_df):
             valid_exprs.append(pl.col(col) >= cnt_ge)
         if cnt_le is not None:
             valid_exprs.append(pl.col(col) <= cnt_le)
-    print(valid_exprs)
+    
+    if not valid_exprs:
+        valid_exprs.append(pl.lit(True))
+        
     return pl.all_horizontal(valid_exprs)
 
 
