@@ -75,16 +75,17 @@ def build_tree_from_config(cfg):
 
         st_inclusive = False
         end_inclusive = True
-        if window_info.st_inclusive:
+        if 'st_inclusive' in window_info:
             st_inclusive = window_info.st_inclusive
-        if window_info.end_inclusive:
+        if 'end_inclusive' in window_info:
             end_inclusive = window_info.end_inclusive
         node.endpoint_expr = (st_inclusive, end_event, end_inclusive)
 
         constraints = {}
         if window_info.excludes:
             for each_exclusion in window_info.excludes:
-                constraints[f"is_{each_exclusion}"] = (None, 0)
+                if each_exclusion["predicate"]:
+                    constraints[f"is_{each_exclusion['predicate']}"] = (None, 0)
 
         if window_info.includes:
             for each_inclusion in window_info.includes:
@@ -160,7 +161,7 @@ def generate_predicate_columns(cfg, ESD):
                     f"Added predicate column is_{'_and_'.join(predicate_info.predicates)}."
                 )
             else:
-                raise ValueError(f"Invalid predicate type {predicate_info.type}.")  #
+                raise ValueError(f"Invalid predicate type {predicate_info.type}.")
 
     ESD = ESD.with_columns(
         pl.when(pl.col("event_type").is_not_null()).then(1).otherwise(0).alias("is_any")
@@ -406,7 +407,7 @@ def check_constraints(window_constraints, summary_df):
     
     if not valid_exprs:
         valid_exprs.append(pl.lit(True))
-        
+
     return pl.all_horizontal(valid_exprs)
 
 
@@ -662,7 +663,6 @@ def query_task(cfg_path, ESD):
     cfg = load_config(cfg_path)
 
     print("Generating predicate columns...\n")
-    # ESD = ESD.with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
     try:
         ESD = generate_predicate_columns(cfg, ESD)
     except Exception as e:
@@ -702,6 +702,17 @@ def query_task(cfg_path, ESD):
         *[f"{c.name}/window_summary" for c in output_order[1:]],
     ).rename({"timestamp": f"{tree.name}/timestamp"})
 
+    label_window = None
+    for window in cfg.windows:
+        if 'label' in cfg.windows[window]:
+            label_window = window
+            break
+    
+    if label_window:
+        label = cfg.windows[label_window].label
+        result = result.with_columns(
+            pl.col(f"{label_window}/window_summary").apply(lambda x: x[f"is_{label}"]).alias("label")
+        )
     return result
 
 
