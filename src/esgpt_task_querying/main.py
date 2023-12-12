@@ -5,9 +5,9 @@ from datetime import timedelta
 import polars as pl
 from bigtree import preorder_iter, print_tree
 
-from .config import load_config
+from .config import load_config, build_tree_from_config
 from .event_predicates import generate_predicate_columns
-from .query import build_tree_from_config, query_subtree
+from .query import query_subtree
 
 
 def query_task(cfg_path, ESD):
