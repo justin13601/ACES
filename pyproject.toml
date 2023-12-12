@@ -20,7 +20,7 @@ classifiers = [
 dependencies = ["esgpt", "polars"]
 
 [project.optional-dependencies]
-dev = ["pre-commit"]
+dev = ["pre-commit", "pytest"]
 
 [project.urls]
 Homepage = "TODO(justin): Fix: https://github.com/Event-Stream-Data-Standard/ESDS_transformations"
