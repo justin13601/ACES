@@ -32,7 +32,7 @@ windows:
     start: trigger.end
     duration: 48 hours
     offset:
-    end:
+    end: gap.start + gap.duration
     excludes: 
       - predicate: admission
       - predicate: discharge
@@ -54,11 +54,14 @@ windows:
     end_inclusive: True
   input:
     start:
-    duration: -730 days
+    duration: 30 days
     offset: 24 hours
     end: trigger.start + offset
     excludes:  
+      - predicate: covid
     includes: 
+      - predicate: any
+        min: 5
+        max:
     st_inclusive: False
     end_inclusive: True
-
