@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ESGPTTaskQuerying"
+version = "0.0.1"
+authors = [
+  { name="Justin Xu", email="justin13601@hotmail.com" },
+  { name="Matthew McDermott", email="mattmcdermott8@gmail.com" },
+]
+description = "Automatic task extraction for ESGPT data"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = ["esgpt", "polars"]
+
+[project.optional-dependencies]
+dev = ["pre-commit"]
+
+[project.urls]
+Homepage = "TODO(justin): Fix: https://github.com/Event-Stream-Data-Standard/ESDS_transformations"
+Issues = "https://github.com/Event-Stream-Data-Standard/ESDS_transformations/issues"
