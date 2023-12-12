@@ -5,7 +5,7 @@ from datetime import timedelta
 import polars as pl
 from bigtree import preorder_iter, print_tree
 
-from .config import load_config, build_tree_from_config
+from .config import build_tree_from_config, load_config
 from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
