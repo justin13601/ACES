@@ -50,6 +50,7 @@ Windows can be of two types. It can be a temporally-bound window defined by a `d
 - `excludes`: Listed `predicate` fields matching a predicate name. Used to exclude a predicate in the window.
 - `includes`: Listed `predicate` fields matching a predicate name. Used to include a predicate in the window, with `min` and `max` specifying the constraints for occurrences (`None` is set where `min`/`max` is left blank).
 - `st_inclusive`, `end_inclusive`: Boolean flags to indicate if events at the start and end of the window timestamps are included in the defined window.
+- `label`: Must be a string matching a predicate name.
 
 Each window uses these fields to define specific time frames and criteria within the dataset.
 
