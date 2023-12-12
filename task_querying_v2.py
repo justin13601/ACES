@@ -40,6 +40,9 @@ def load_config(config_path: str) -> DotAccessibleDict:
 
 
 def parse_timedelta(time_str):
+    if not time_str:
+        return timedelta(days=0)
+
     units = {"days": 0, "hours": 0, "minutes": 0, "seconds": 0}
     pattern = r"(\d+)\s*(seconds|minutes|hours|days)"
     matches = re.findall(pattern, time_str.lower())
@@ -82,7 +85,9 @@ def build_tree_from_config(cfg):
             st_inclusive = window_info.st_inclusive
         if "end_inclusive" in window_info:
             end_inclusive = window_info.end_inclusive
-        node.endpoint_expr = (st_inclusive, end_event, end_inclusive)
+
+        offset = parse_timedelta(window_info.offset)
+        node.endpoint_expr = (st_inclusive, end_event, end_inclusive, offset)
 
         constraints = {}
         if window_info.excludes:
@@ -127,7 +132,7 @@ def build_tree_from_config(cfg):
     # if event_bound window follows temporal window, the st_inclusive parameter is set to True
     for each_node in preorder_iter(root):
         if each_node.parent and isinstance(each_node.parent.endpoint_expr[1], timedelta) and isinstance(each_node.endpoint_expr[1], str):
-            each_node.endpoint_expr = (True, each_node.endpoint_expr[1], each_node.endpoint_expr[2])
+            each_node.endpoint_expr = (True, each_node.endpoint_expr[1], each_node.endpoint_expr[2], each_node.endpoint_expr[3])
     return root
 
 
@@ -217,7 +222,9 @@ def summarize_temporal_window(
     endpoint_expr: Any,
     anchor_to_subtree_root_by_subtree_anchor:  pl.LazyFrame | pl.DataFrame,
 ) -> pl.LazyFrame | pl.DataFrame:
-    st_inclusive, window_size, end_inclusive = endpoint_expr
+    st_inclusive, window_size, end_inclusive, offset = endpoint_expr
+    if not offset:
+        offset = timedelta(days=0)
 
     if st_inclusive and end_inclusive:
         closed = "both"
@@ -230,10 +237,10 @@ def summarize_temporal_window(
 
     if window_size < timedelta(days=0):
         period = -window_size
-        offset = -period
+        offset = -period + offset
     else:
         period = window_size
-        offset = timedelta(days=0)
+        offset = timedelta(days=0) + offset
 
     result = (
         predicates_df.rolling(
@@ -271,7 +278,9 @@ def summarize_event_bound_window(
     endpoint_expr: Any,
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
 ) -> pl.Expr:
-    st_inclusive, end_event, end_inclusive = endpoint_expr
+    st_inclusive, end_event, end_inclusive, offset = endpoint_expr
+    if not offset:
+        offset = timedelta(days=0)
 
     cumsum_predicates_df = predicates_df.with_columns(
         *[
@@ -400,15 +409,13 @@ def summarize_window(
         with counts of predicates that have occurred since the subtree root,
         already having handled subtracting the anchor to subtree root component.
     """
-    st_inclusive, end_event, end_inclusive = child.endpoint_expr
-
     match child.endpoint_expr[1]:
         case timedelta():
             subtree_anchor_to_child_root_by_child_anchor = summarize_temporal_window(
                 predicates_df, 
                 predicate_cols, 
                 child.endpoint_expr,
-                anchor_to_subtree_root_by_subtree_anchor
+                anchor_to_subtree_root_by_subtree_anchor,
             )
 
         case str():
@@ -588,7 +595,6 @@ def query_subtree(
 
         if isinstance(child.parent.endpoint_expr[1], str):
             anchor_offset = timedelta(hours=0)
-        
         print(anchor_offset)
 
         # Step 1: Summarize the window from the subtree.root to child.
@@ -613,7 +619,7 @@ def query_subtree(
         # Step 3: Update parameters for recursive step:
         match child.endpoint_expr[1]:
             case timedelta():
-                anchor_offset += child.endpoint_expr[1]
+                anchor_offset += child.endpoint_expr[1] + child.endpoint_expr[3]
                 joined = anchor_to_subtree_root_by_subtree_anchor.join(
                     subtree_root_to_child_root_by_child_anchor,
                     on=["subject_id", "timestamp"],
@@ -628,7 +634,7 @@ def query_subtree(
                     anchor_to_subtree_root_by_subtree_anchor.filter(valid_windows)
                 )
             case str():
-                anchor_offset = timedelta(hours=0)
+                anchor_offset = timedelta(days=0) + child.endpoint_expr[3]
                 joined = anchor_to_subtree_root_by_subtree_anchor.join(
                     subtree_root_to_child_root_by_child_anchor,
                     left_on=["subject_id", "timestamp"],
