@@ -25,7 +25,7 @@ def simple_test_runner(
             print(f"Want:\n{C['want']}")
             print(f"Got: {got}")
         else:
-            print("Passed")
+            print(f"{C['message']} Passed!")
     except Exception as e:
       print(f"{C['message']} Error!")
       print(f"Want:\n{C['want']}")
