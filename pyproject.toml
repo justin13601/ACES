@@ -17,7 +17,7 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["esgpt", "polars"]
+dependencies = ["esgpt", "polars", "bigtree", "ruamel.yaml"]
 
 [project.optional-dependencies]
 dev = ["pre-commit", "pytest"]
