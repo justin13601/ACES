@@ -21,14 +21,14 @@ def simple_test_runner(
     try:
         got = fn(*C['args'])
         if not equal_fn(C['want'], got):
-            print(f"Failed {C['message']}")
+            print(f"Failed. {C['message']}")
             print(f"Want:\n{C['want']}")
             print(f"Got: {got}")
             raise ValueError("Failed")
         else:
             print("Passed")
     except Exception as e:
-      print(f"Failed {C['message']}")
+      print(f"Failed. {C['message']}")
       print(f"Want:\n{C['want']}")
       print(f"Got error {e}")
 
