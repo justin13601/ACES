@@ -418,6 +418,8 @@ def summarize_window(
                 child.endpoint_expr,
                 anchor_to_subtree_root_by_subtree_anchor,
             )
+    
+    print(subtree_anchor_to_child_root_by_child_anchor)
 
     subtree_root_to_child_root_by_child_anchor = subtree_anchor_to_child_root_by_child_anchor.select(
         "subject_id",
