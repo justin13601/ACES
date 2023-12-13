@@ -347,10 +347,6 @@ def query_subtree(
     for child in subtree.children:
         print(f"Querying subtree rooted at {child.name}...")
 
-        if isinstance(child.parent.endpoint_expr[1], str):
-            anchor_offset = timedelta(hours=0)
-        print(anchor_offset)
-
         # Step 1: Summarize the window from the subtree.root to child
         subtree_root_to_child_root_by_child_anchor = summarize_window(
             child,
