@@ -17,11 +17,11 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
 ]
-dependencies = ["esgpt", "polars", "bigtree", "ruamel.yaml"]
+dependencies = ["polars", "bigtree", "ruamel.yaml"]
 
 [project.optional-dependencies]
 dev = ["pre-commit", "pytest"]
 
 [project.urls]
-Homepage = "TODO(justin): Fix: https://github.com/Event-Stream-Data-Standard/ESDS_transformations"
-Issues = "https://github.com/Event-Stream-Data-Standard/ESDS_transformations/issues"
+Homepage = "https://github.com/justin13601/ESGPTTaskQueryingPublic"
+Issues = "https://github.com/justin13601/ESGPTTaskQueryingPublic/issues"
