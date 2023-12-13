@@ -75,6 +75,6 @@ A function is called recursively to query each subtree in the tree structure. Th
 
 ## Acknowledgement
 
-Appeared at NeurIPS 2023 on the Event Stream GPT Poster: ???
+Appeared at NeurIPS 2023 on the Event Stream GPT Poster: ??? <add the title or something>
 
 For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding Event Stream GPT, please refer to the ESGPT repository. Contributions to the codebase are also welcome via pull requests.
