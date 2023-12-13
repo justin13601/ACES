@@ -352,8 +352,8 @@ def query_subtree(
             anchor_offset = timedelta(hours=0)
             anchor_to_subtree_root_by_subtree_anchor = (
                 predicates_df.filter(predicates_df[child.parent.endpoint_expr[1]] == 1)
-                    .select('subject_id', 'timestamp', *[pl.col(c) for c in predicate_cols])
-                    .with_columns('subject_id', 'timestamp', *[pl.lit(0).alias(c) for c in predicate_cols])
+                .select("subject_id", "timestamp", *[pl.col(c) for c in predicate_cols])
+                .with_columns("subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols])
             )
 
         # Step 1: Summarize the window from the subtree.root to child
