@@ -1,16 +1,50 @@
-"""TODO(justin): Add a module docstring."""
+"""This module contains functions for generating predicate columns for event sequences."""
 
 
 import polars as pl
 
 
 def has_event_type(type_str: str) -> pl.Expr:
+    """Check if the event type contains the specified string.
+
+    Args:
+        type_str (str): The string to search for in the event type.
+
+    Returns:
+        pl.Expr: A Polars expression representing the check for the event type.
+
+    Example:
+        >>> has_event_type("admission")
+        col("event_type").cast(pl.Utf8).str.contains("admission")
+    """
     has_event_type = pl.col("event_type").cast(pl.Utf8).str.contains(type_str)
-    # has_event_type = event_types.str.contains(type_str)
     return has_event_type
 
 
-def generate_predicate_columns(cfg, ESD):
+def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
+    """Generate predicate columns based on the configuration.
+
+    Args:
+        cfg: The configuration object containing the predicate information.
+        ESD: The Polars DataFrame to add the predicate columns to.
+
+    Returns:
+        ESD: The Polars DataFrame with the added predicate columns.
+
+    Raises:
+        ValueError: If an invalid predicate type is specified in the configuration.
+
+    Example:
+        >>> cfg = ...
+        >>> ESD = ...
+        >>> generate_predicate_columns(cfg, ESD)
+        Added predicate column is_predicate1.
+        Added predicate column is_predicate2.
+        ...
+        Added predicate column is_any.
+        <Polars DataFrame>
+        ...
+    """
     for predicate_name, predicate_info in cfg.predicates.items():
         if "value" in predicate_info:
             if isinstance(predicate_info["value"], list):

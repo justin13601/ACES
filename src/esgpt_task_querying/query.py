@@ -1,4 +1,4 @@
-"""TODO(justin): Add a module docstring."""
+"""This module contains the functions for querying the ESGPT task."""
 
 from datetime import timedelta
 from typing import Any
@@ -8,10 +8,21 @@ import polars as pl
 
 def summarize_temporal_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
-    predicate_cols: "list[str]",
-    endpoint_expr: Any,
+    predicate_cols: list[str],
+    endpoint_expr: tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta],
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
 ) -> pl.LazyFrame | pl.DataFrame:
+    """Summarizes the temporal window based on the given predicates and anchor-to-subtree-root mapping.
+
+    Args:
+        predicates_df: The dataframe containing the predicates.
+        predicate_cols: The list of predicate columns.
+        endpoint_expr: The expression defining the temporal window endpoints.
+        anchor_to_subtree_root_by_subtree_anchor: The mapping of anchor to subtree root.
+
+    Returns:
+        The summarized dataframe.
+    """
     st_inclusive, window_size, end_inclusive, offset = endpoint_expr
     if not offset:
         offset = timedelta(days=0)
@@ -66,10 +77,21 @@ def summarize_temporal_window(
 
 def summarize_event_bound_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
-    predicate_cols: "list[str]",
-    endpoint_expr: Any,
+    predicate_cols: list[str],
+    endpoint_expr: tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta],
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
-) -> pl.Expr:
+) -> pl.LazyFrame | pl.DataFrame:
+    """Summarizes the event-bound window based on the given predicates and anchor-to-subtree-root mapping.
+
+    Args:
+        predicates_df: The dataframe containing the predicates.
+        predicate_cols: The list of predicate columns.
+        endpoint_expr: The expression defining the event-bound window endpoints.
+        anchor_to_subtree_root_by_subtree_anchor: The mapping of anchor to subtree root.
+
+    Returns:
+        The summarized dataframe.
+    """
     st_inclusive, end_event, end_inclusive, offset = endpoint_expr
     if not offset:
         offset = timedelta(days=0)
@@ -159,30 +181,27 @@ def summarize_event_bound_window(
     return filtered_result
 
 
-def summarize_window(child, anchor_to_subtree_root_by_subtree_anchor, predicates_df, predicate_cols):
-    """
+def summarize_window(
+    child: Any,
+    anchor_to_subtree_root_by_subtree_anchor: pl.DataFrame,
+    predicates_df: pl.DataFrame | pl.LazyFrame,
+    predicate_cols: list[str],
+) -> pl.DataFrame | pl.LazyFrame:
+    """Summarizes the window based on the given child, anchor-to-subtree-root mapping, predicates, and
+    predicate columns. At end of this process, we have rows corresponding to possible end events (anchors for
+    child) with counts of predicates that have occurred since the subtree root, already having handled
+    subtracting the anchor to subtree root component.
+
     Args:
-        predicates_df:
-        anchor_to_subtree_root_by_subtree_anchor: pl.DataFrame,
+        child: The child node.
+        anchor_to_subtree_root_by_subtree_anchor: The mapping of anchor to subtree root.
+        predicates_df: The dataframe containing the predicates.
+        predicate_cols: The list of predicate columns.
 
     Returns:
-            # subtree_root_to_child_summary_by_child_anchor has a row for every possible realization
-            # of the anchor of the subtree rooted by _child_ (not the input subtree)
-            # with the counts occurring between subtree_root and the child
-
-        case event bound:
-        1. Do our global cumulative sum
-        2. Join anchor_to_subtree_root_by_subtree_anchor into global sum dataframe as "since start" columns
-            (will be null wherever the anchor_to_subtree col is not present and otherwise have the
-            anchor_to_subtree values)
-        3. Forward fill "since start" columns per subject.
-        4. On possible end events, subtract global cumulative sums from "since start" columns.
-        5. Filter to rows corresponding to possible end events that were preceded by a possible start event
-            (e.g., didn't have a null in the subtract in step 4)
-
-        At end of this process, we have rows corresponding to possible end events (anchors for child)
-        with counts of predicates that have occurred since the subtree root,
-        already having handled subtracting the anchor to subtree root component.
+        subtree_root_to_child_root_by_child_anchor: Dataframe with a row for every possible realization
+            of the anchor of the subtree rooted by _child_ (not the input subtree)
+            with the counts occurring between subtree_root and the child
     """
     match child.endpoint_expr[1]:
         case timedelta():
@@ -212,42 +231,19 @@ def summarize_window(child, anchor_to_subtree_root_by_subtree_anchor, predicates
 
 
 def check_constraints(window_constraints, summary_df):
-    """
+    """Checks the constraints on the counts of predicates in the summary dataframe.
 
     Args:
         window_constraints: constraints on counts of predicates that must
-            be satsified.
+            be satisfied.
         summary_df: contains counts of times predicates are satisfied in windows
             anchored at the rows in question of the dataframe.
 
     Return: A column or expression that evaluates to True or False for each row
         depending on whether or not the constraints therein are met.
 
-    # Temporal constraint
-    # subj_id, ts, pred_A, pred_B
-    # Means that in the temporal window starting at ts = 23, pred_A occurred 15 times, pred_B 32 times, etc.
-    # 1,       23, 15,     32,
-    # ...
-
-    # Event bound window:
-    # subj_id, ts, pred_A, pred_B
-    # Means that in the event bound window that starts as of node_col_offset after ts and ends at some
-    # unspecified next event, A occurs 15 times, etc.
-    # 1,       23, 15,     32
-    # ...
-
-    # OR:
-
-    ########## if ts == 24?
-
-    # Event bound window:
-    # subj_id, ts, pred_A, pred_B
-    # 1,       23, None,   None
-    # ...
-    # Means that in the event bound window ending at real event that occurs at ts = 47, A occurs 15 times,
-    # etc. (same event as in line 31)
-    # 1,       47, 15,     32
-    # ...
+    Raises:
+        ValueError: If the constraint for a column is empty.
     """
     valid_exprs = []
     for col, (cnt_ge, cnt_le) in window_constraints.items():
@@ -275,90 +271,74 @@ def query_subtree(
     anchor_offset: float,
 ):
     """
+
+    Args:
+        subtree: The subtree object.
+        anchor_to_subtree_root_by_subtree_anchor: The mapping of anchor to subtree root.
+        predicates_df: The dataframe containing the predicates.
+        anchor_offset: The anchor offset.
+
+    Returns:
+        The queried dataframe.
+
+    Raises:
+        None.
+    """
+    """Queries the subtree based on the given subtree, anchor-to-subtree-root mapping, predicates, and anchor
+    offset.
+
     Args:
         subtree:
-          Subtree object.
+            Subtree object.
 
-        ########
         anchor_to_subtree_root_by_subtree_anchor: A dataframe with a row for each possible
-          realization of the anchoring node for this subtree containing the
-          counts of predicates that have occurred from the anchoring node to
-          the subtree root for that realization of `subtree.root`.
+            realization of the anchoring node for this subtree containing the
+            counts of predicates that have occurred from the anchoring node to
+            the subtree root for that realization of `subtree.root`.
 
-          # First iteration:
-          subj_id, ts,  is_admission, is_discharge, pred_C
-          1,       1,   0,            0,            0
-          1,       10,  0,            0,            0
-          1,       26,  0,            0,            0
-          1,       33,  0,            0,            0
-          1,       81,  0,            0,            0
-          1,       88,  0,            0,            0
-          1,       89,  0,            0,            0
-          1,       122, 0,            0,            0
+            # First iteration:
+            subj_id, ts,  is_admission, is_discharge, pred_C
+            1,       1,   0,            0,            0
+            1,       10,  0,            0,            0
+            1,       26,  0,            0,            0
+            1,       33,  0,            0,            0
+            1,       81,  0,            0,            0
+            1,       88,  0,            0,            0
+            1,       89,  0,            0,            0
+            1,       122, 0,            0,            0
 
-          # Example:
-          (admission_event)
-          |
-          24h
-          |
-          (node_A)
-          |
-          to_discharge
-          |
-          (node_B)
-          |
-          36h
-          |
-          (node_C)
+            # Example:
+            (admission_event)
+            |
+            24h
+            |
+            (node_A)
+            |
+            to_discharge
+            |
+            (node_B)
+            |
+            36h
+            |
+            (node_C)
 
-          predicates_df: A dataframe containing a row for every event for every
-          subject with the following columns:
+            predicates_df: A dataframe containing a row for every event for every
+            subject with the following columns:
 
-          - A column ``subject_id`` which contains the subject ID.
-          - A column ``timestamp`` which contains the timestamp at which the
-            event contained in any given row occurred.
-          - A set of "predicate" columns that contain counts of the
-            number of times a given predicate is satisfied in the
-            event contained in any given row.
-
-          `predicates_df` (can be all bools or all counts ; this is bools but swap T for 1 and F for 0 and it
-          is in counts format)
-          subj_id, ts,  is_admission, is_discharge, pred_C
-          1,       1,   1,            0,            1
-          1,       10,  0,            0,            1
-          1,       26,  0,            0,            0
-          1,       33,  0,            1,            1
-          1,       81,  1,            0,            0
-          1,       88,  0,            0,            1
-          1,       89,  0,            0,            0
-          1,       122, 0,            1,            1
-
-          On the subtree rooted at (node_A), the anchor node is (admission_event), and
-          `anchor_to_subtree_root_by_subtree_anchor` would be:
-
-          subj_id, ts, is_admission, is_discharge, pred_C
-          1,       1,  1,            0,            2
-          1,       81, 1,            0,            1
+            - A column ``subject_id`` which contains the subject ID.
+            - A column ``timestamp`` which contains the timestamp at which the
+                event contained in any given row occurred.
+            - A set of "predicate" columns that contain counts of the
+                number of times a given predicate is satisfied in the
+                event contained in any given row.
 
         anchor_offset: The sum of all timedelta edges between subtree_root and
-          the anchor node for this subtree.
+            the anchor node for this subtree. It is 0 for the first iteration.
 
-        0 for first iteration.
-
-      Returns: A dataframe with a row corresponding to the anchor event for each
-        possible valid realization of this subtree (and all its children)
-        containing the timestamp values realizing the nodes in this subtree in
-        that realization.
-
-      subj_id, ts,  valid_start, valid_end
-      1,       1,   ts,            ts,
-      1,       10,  ts,            ts,
-      1,       26,  ts,            ts,
-      1,       33,  ts,            ts,
-      1,       81,  ts,            ts,
-      1,       88,  ts,            ts,
-      1,       89,  ts,            ts,
-      1,       122, ts,            ts,
+        Returns: A dataframe with a row corresponding to the anchor event for each
+            possible valid realization of this subtree (and all its children)
+            containing the timestamp values realizing the nodes in this subtree in
+            that realization.
     """
     predicate_cols = [col for col in predicates_df.columns if col.startswith("is_")]
 
@@ -371,7 +351,7 @@ def query_subtree(
             anchor_offset = timedelta(hours=0)
         print(anchor_offset)
 
-        # Step 1: Summarize the window from the subtree.root to child.
+        # Step 1: Summarize the window from the subtree.root to child
         subtree_root_to_child_root_by_child_anchor = summarize_window(
             child,
             anchor_to_subtree_root_by_subtree_anchor,
@@ -379,16 +359,14 @@ def query_subtree(
             predicate_cols,
         )
 
-        # print(subtree_root_to_child_root_by_child_anchor)
-
-        # subtree_root_to_child_root_by_child_anchor... has a row for every possible realization
-        # of the anchor of the subtree rooted by _child_ (not the input subtree)
-        # with the counts occurring between subtree_root and the child
+        # subtree_root_to_child_root_by_child_anchor has a row for every possible realization of the anchor
+        # of the subtree rooted by _child_ (not the input subtree) with the counts occurring between
+        # subtree_root and the child
 
         # Step 2: Filter to where constraints are valid
         valid_windows = check_constraints(child.constraints, subtree_root_to_child_root_by_child_anchor)
 
-        # Step 3: Update parameters for recursive step:
+        # Step 3: Update parameters for recursive step
         match child.endpoint_expr[1]:
             case timedelta():
                 anchor_offset += child.endpoint_expr[1] + child.endpoint_expr[3]
@@ -447,7 +425,7 @@ def query_subtree(
                     pl.col("timestamp").alias(f"{child.name}/timestamp")
                 )
 
-        # Step 5: Push results back to subtree anchor.
+        # Step 5: Push results back to subtree anchor
         subtree_root_to_child_root_by_child_anchor = subtree_root_to_child_root_by_child_anchor.with_columns(
             pl.struct([pl.col(c).alias(c) for c in predicate_cols]).alias(f"{child.name}/window_summary")
         )
@@ -461,13 +439,12 @@ def query_subtree(
                     on=["subject_id", "timestamp"],
                 )
             case str():
-                # Need a dataframe with one col with a "True" in the possible realizations of
-                # subtree anchor and another col with a "True" in the possible valid corresponding
-                # realizations
-                # of the child node.
-                # Make this with anchor_to_subtree_root_by_subtree_anchor
-                #   (contains rows corresponding to possible start events).
-                # and recursive_result (contains rows corresponding to possible end events).
+                # Need a dataframe with one col with a "True" in the possible realizations of subtree anchor
+                # and another col with a "True" in the possible valid corresponding realizations of the child
+                # node.
+                # Make this with anchor_to_subtree_root_by_subtree_anchor (contains rows corresponding to
+                # possible start events) and recursive_result (contains rows corresponding to possible end
+                # events).
                 final_recursive_result = (
                     recursive_result.join(
                         subtree_root_to_child_root_by_child_anchor.select(
@@ -492,5 +469,4 @@ def query_subtree(
         for df in recursive_results[1:]:
             all_children = all_children.join(df, on=["subject_id", "timestamp"], how="inner")
 
-    # Step 7: return
     return all_children
