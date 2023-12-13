@@ -348,13 +348,13 @@ def query_subtree(
         print(f"Querying subtree rooted at {child.name}...")
 
         # Added to reset anchor_offset and anchor_to_subtree_root_by_subtree_anchor for diverging subtrees
-        if len(child.parent.children) > 1:
-            anchor_offset = timedelta(hours=0)
-            anchor_to_subtree_root_by_subtree_anchor = (
-                predicates_df.filter(predicates_df[child.parent.endpoint_expr[1]] == 1)
-                .select("subject_id", "timestamp", *[pl.col(c) for c in predicate_cols])
-                .with_columns("subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols])
-            )
+        # if len(child.parent.children) > 1:
+        #     anchor_offset = timedelta(hours=0)
+        #     anchor_to_subtree_root_by_subtree_anchor = (
+        #         predicates_df.filter(predicates_df[child.parent.endpoint_expr[1]] == 1)
+        #         .select("subject_id", "timestamp", *[pl.col(c) for c in predicate_cols])
+        #         .with_columns("subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols])
+        #     )
 
         # Step 1: Summarize the window from the subtree.root to child
         subtree_root_to_child_root_by_child_anchor = summarize_window(
@@ -374,56 +374,54 @@ def query_subtree(
         # Step 3: Update parameters for recursive step
         match child.endpoint_expr[1]:
             case timedelta():
-                anchor_offset += child.endpoint_expr[1] + child.endpoint_expr[3]
+                anchor_offset_branch = anchor_offset + child.endpoint_expr[1] + child.endpoint_expr[3]
                 joined = anchor_to_subtree_root_by_subtree_anchor.join(
                     subtree_root_to_child_root_by_child_anchor,
                     on=["subject_id", "timestamp"],
                     suffix="_summary",
                 )
-                anchor_to_subtree_root_by_subtree_anchor = joined.select(
+                anchor_to_subtree_root_by_subtree_anchor_branch = joined.select(
                     "subject_id",
                     "timestamp",
                     *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
                 )
-                anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(
+                anchor_to_subtree_root_by_subtree_anchor_branch = anchor_to_subtree_root_by_subtree_anchor_branch.filter(
                     valid_windows
                 )
             case str():
-                anchor_offset = timedelta(days=0) + child.endpoint_expr[3]
+                anchor_offset_branch = timedelta(days=0) + child.endpoint_expr[3]
                 joined = anchor_to_subtree_root_by_subtree_anchor.join(
                     subtree_root_to_child_root_by_child_anchor,
                     left_on=["subject_id", "timestamp"],
                     right_on=["subject_id", "timestamp_at_anchor"],
                     suffix="_summary",
                 )
-                anchor_to_subtree_root_by_subtree_anchor = joined.select(
+                anchor_to_subtree_root_by_subtree_anchor_branch = joined.select(
                     "subject_id",
                     "timestamp_summary",
                     *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
                 ).rename({"timestamp_summary": "timestamp"})
-                anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(
+                anchor_to_subtree_root_by_subtree_anchor_branch = anchor_to_subtree_root_by_subtree_anchor_branch.filter(
                     valid_windows
+                ).with_columns(
+                    "subject_id",
+                    "timestamp",
+                    *[pl.lit(0).alias(c) for c in predicate_cols],
                 )
-                anchor_to_subtree_root_by_subtree_anchor = (
-                    anchor_to_subtree_root_by_subtree_anchor.with_columns(
-                        "subject_id",
-                        "timestamp",
-                        *[pl.lit(0).alias(c) for c in predicate_cols],
-                    )
-                )
+                
 
         # Step 4: Recurse
         recursive_result = query_subtree(
             child,
-            anchor_to_subtree_root_by_subtree_anchor,
+            anchor_to_subtree_root_by_subtree_anchor_branch,
             predicates_df,
-            anchor_offset,
+            anchor_offset_branch,
         )
 
         match child.endpoint_expr[1]:
             case timedelta():
                 recursive_result = recursive_result.with_columns(
-                    (pl.col("timestamp") + anchor_offset).alias(f"{child.name}/timestamp")
+                    (pl.col("timestamp") + anchor_offset_branch).alias(f"{child.name}/timestamp")
                 )
             case str():
                 recursive_result = recursive_result.with_columns(
@@ -447,8 +445,8 @@ def query_subtree(
                 # Need a dataframe with one col with a "True" in the possible realizations of subtree anchor
                 # and another col with a "True" in the possible valid corresponding realizations of the child
                 # node.
-                # Make this with anchor_to_subtree_root_by_subtree_anchor (contains rows corresponding to
-                # possible start events) and recursive_result (contains rows corresponding to possible end
+                # Make this with anchor_to_subtree_root_by_subtree_anchor_branch (contains rows corresponding 
+                # to possible start events) and recursive_result (contains rows corresponding to possible end
                 # events).
                 final_recursive_result = (
                     recursive_result.join(
