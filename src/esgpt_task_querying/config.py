@@ -1,4 +1,5 @@
-"""TODO(justin): Add a module docstring."""
+"""This module contains functions for loading and parsing the configuration file into a dot accessible
+dictionary and subsequently building a tree structure from the configuration."""
 
 import re
 from datetime import timedelta
@@ -8,6 +9,13 @@ from bigtree import Node, preorder_iter
 
 
 class DotAccessibleDict(dict):
+    """A dictionary subclass that allows accessing values using dot notation.
+
+    Example:
+        >>> config = DotAccessibleDict({'key': 'value'})
+        print(config.key)  # Output: 'value'
+    """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for key, value in self.items():
@@ -22,13 +30,29 @@ class DotAccessibleDict(dict):
 
 
 def load_config(config_path: str) -> DotAccessibleDict:
+    """Load a configuration file from the given path and return it as a DotAccessibleDict.
+
+    Args:
+        config_path (str): The path to the configuration file.
+
+    Returns:
+        DotAccessibleDict: The loaded configuration as a DotAccessibleDict.
+    """
     yaml = ruamel.yaml.YAML()
     with open(config_path) as file:
         config_dict = yaml.load(file)
     return DotAccessibleDict(config_dict)
 
 
-def parse_timedelta(time_str):
+def parse_timedelta(time_str: str) -> timedelta:
+    """Parse a time string and return a timedelta object.
+
+    Args:
+        time_str (str): The time string to parse.
+
+    Returns:
+        timedelta: The parsed timedelta object.
+    """
     if not time_str:
         return timedelta(days=0)
 
@@ -46,7 +70,15 @@ def parse_timedelta(time_str):
     )
 
 
-def build_tree_from_config(cfg):
+def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
+    """Build a tree structure from the given configuration.
+
+    Args:
+        cfg: The configuration object.
+
+    Returns:
+        Node: The root node of the built tree.
+    """
     nodes = {}
     windows = [x for x, y in cfg.windows.items()]
 

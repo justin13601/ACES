@@ -1,4 +1,7 @@
-"""TODO(justin): Add a module docstring."""
+"""This module contains the main function for querying a task.
+
+It generates the predicate columns, builds the tree, and recursively queries the tree.
+"""
 
 from datetime import timedelta
 
@@ -10,7 +13,16 @@ from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
 
-def query_task(cfg_path, ESD):
+def query_task(cfg_path: str, ESD: pl.DataFrame) -> pl.DataFrame:
+    """Query a task using the provided configuration file and event stream data.
+
+    Args:
+        cfg_path: The path to the configuration file.
+        ESD: The event stream data.
+
+    Returns:
+        polars.DataFrame: The result of the task query.
+    """
     if ESD["timestamp"].dtype != pl.Datetime:
         ESD = ESD.with_columns(
             pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
