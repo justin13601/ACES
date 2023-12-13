@@ -347,6 +347,15 @@ def query_subtree(
     for child in subtree.children:
         print(f"Querying subtree rooted at {child.name}...")
 
+        # Added to reset anchor_offset and anchor_to_subtree_root_by_subtree_anchor for diverging subtrees
+        if len(child.parent.children) > 1:
+            anchor_offset = timedelta(hours=0)
+            anchor_to_subtree_root_by_subtree_anchor = (
+                predicates_df.filter(predicates_df[child.parent.endpoint_expr[1]] == 1)
+                    .select('subject_id', 'timestamp', *[pl.col(c) for c in predicate_cols])
+                    .with_columns('subject_id', 'timestamp', *[pl.lit(0).alias(c) for c in predicate_cols])
+            )
+
         # Step 1: Summarize the window from the subtree.root to child
         subtree_root_to_child_root_by_child_anchor = summarize_window(
             child,
