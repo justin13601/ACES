@@ -14,6 +14,7 @@ from esgpt_task_querying.query import (
     summarize_event_bound_window,
     summarize_temporal_window,
     summarize_window,
+    check_constraints
 )
 
 from bigtree import Node
@@ -363,3 +364,43 @@ class TestQueryFunctions(unittest.TestCase):
 
     def test_query_subtree(self):
         raise NotImplementedError
+    
+    def test_check_constraints(self):
+        test_summary_df = pl.DataFrame(
+            {
+                'subject_id': [1, 1, 1],
+                'timestamp': ['12/1/1900 12:00', '12/1/1900 13:00', '12/1/1900 14:00'],
+                'is_admission': [1, 0, 0],
+                'is_lab': [0, 1, 0],
+                'is_discharge': [0, 0, 1],
+                'is_any': [1, 1, 1],
+            }
+        ).with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
+
+        test_empty_constraints = {}
+        test_empty_constraints_result = pl.all_horizontal([pl.lit(True)])
+
+        test_non_empty_constraints = {"is_admission": (None, 0), "is_death": (None, 0), "is_discharge": (None, 0)}
+        test_non_empty_constraints_result = pl.all_horizontal([pl.col('is_admission') <= 0, pl.col('is_death') <= 0, pl.col('is_discharge') <= 0])
+
+        cases = [
+            {
+                "msg": "Testing check_constraints with empty constraints, should keep all rows",
+                "window_constraints": test_empty_constraints,
+                "summary_df": test_summary_df,
+                "want": test_empty_constraints_result,
+            },
+            {
+                "msg": "Testing check_constraints with exclude constraints, should filter accordingly",
+                "window_constraints": test_non_empty_constraints,
+                "summary_df": test_summary_df,
+                "want": test_non_empty_constraints_result,
+            }
+        ]
+
+        for c in cases:
+            with self.subTest(msg=c.pop("msg")):
+                want = c.pop("want")
+                got = check_constraints(**c)
+                assert(str(got)==str(want))
+
