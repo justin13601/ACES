@@ -92,14 +92,22 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
                 any_expr = pl.col(f"is_{predicate_info.predicates[0]}")
                 for predicate in predicate_info.predicates[1:]:
                     any_expr = any_expr | pl.col(f"is_{predicate}")
-                ESD = ESD.with_columns(any_expr.alias(f"is_{'_or_'.join(predicate_info.predicates)}"))
-                print(f"Added predicate column is_{'_or_'.join(predicate_info.predicates)}.")
+                ESD = ESD.with_columns(
+                    any_expr.alias(f"is_{'_or_'.join(predicate_info.predicates)}")
+                )
+                print(
+                    f"Added predicate column is_{'_or_'.join(predicate_info.predicates)}."
+                )
             elif predicate_info.type == "ALL":
-                all_expr = pl.col(predicate_info.predicates[0])
+                all_expr = pl.col(f"is_{predicate_info.predicates[0]}")
                 for predicate in predicate_info.predicates[1:]:
-                    all_expr = all_expr & pl.col(predicate)
-                ESD = ESD.with_column(all_expr.alias(f"is_{'_and_'.join(predicate_info.predicates)}"))
-                print(f"Added predicate column is_{'_and_'.join(predicate_info.predicates)}.")
+                    all_expr = all_expr & pl.col(f"is_{predicate}")
+                ESD = ESD.with_columns(
+                    all_expr.alias(f"is_{'_and_'.join(predicate_info.predicates)}")
+                )
+                print(
+                    f"Added predicate column is_{'_and_'.join(predicate_info.predicates)}."
+                )
             else:
                 raise ValueError(f"Invalid predicate type {predicate_info.type}.")
 
