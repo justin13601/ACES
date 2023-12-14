@@ -87,6 +87,4 @@ A tree structure is constructed based on the windows defined in the configuratio
 
 ## Acknowledgement
 
-Appeared at NeurIPS 2023 on the Event Stream GPT Poster: ???
-
 For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding Event Stream GPT, please refer to the ESGPT repository. Contributions are welcome via pull requests.
