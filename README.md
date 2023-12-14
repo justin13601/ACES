@@ -89,7 +89,7 @@ A tree structure is constructed based on the windows defined in the configuratio
 
 - `check_constraints()` checks if the predicate counts in a window satisfy the inclusion and exclusion constraints of the window.
 
-`query_subtree()` is recursively called to query each subtree in the tree structure in a depth-first manner. The function first summarizes the temporal- or event-bound window defined at each node by calling `summarize_window()`, and joins results from nodes in the subtree.
+`query_subtree()` is recursively called to query each subtree in the tree structure in a depth-first manner. The function first summarizes the temporal- or event-bound window defined at each node by calling `summarize_window()`. Then, the returned summaries are filtered accordingly by `check_constraints()`. The resulting valid rows from each recursed node is then merged to form the final result.
 
 ## Acknowledgements
 
