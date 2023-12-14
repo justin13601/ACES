@@ -156,15 +156,15 @@ class TestQueryFunctions(unittest.TestCase):
                 'is_any': [1, 1, 1],
             }
         ).with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
-        test_1_endpoint_expr = (False, 'is_discharge', True, None)  
+        test_1_endpoint_expr = (True, 'is_discharge', True, None)  
         test_1_anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
             {
                 'subject_id': [1],
                 'timestamp': ['12/1/1900 12:00'],
-                'is_admission': [1],
+                'is_admission': [0],
                 'is_lab': [0],
                 'is_discharge': [0],
-                'is_any': [1],
+                'is_any': [0],
             }
         ).with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
         test_1_result = pl.DataFrame(
@@ -176,10 +176,10 @@ class TestQueryFunctions(unittest.TestCase):
                 'is_lab': [1],
                 'is_discharge': [1],
                 'is_any': [2],
-                'is_admission_summary': [1],
+                'is_admission_summary': [0],
                 'is_lab_summary': [0],
                 'is_discharge_summary': [0],
-                'is_any_summary': [1],
+                'is_any_summary': [0],
             }
         ).with_columns(
             pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime), 
