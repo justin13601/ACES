@@ -1,14 +1,20 @@
-# ESGPT Task Querying with YAML Configuration
+# ESGPT Task Querying - Coming Soon...
 
 ![](https://img.shields.io/badge/python-3.10-blue)
 
-## Introduction
+## Background
 
 Event Stream GPT (ESGPT) is a library that streamlines the development of generative, pre-trained transformers (i.e., foundation models) over event stream datasets, such as Electronic Health Records (EHR). ESGPT is designed to extract, preprocess, and manage these datasets efficiently, providing a Huggingface-compatible modeling API and introducing critical capabilities for representing complex intra-event causal dependencies and measuring zero-shot performance. For more detailed information, please refer to the ESGPT GitHub repository: [ESGPT GitHub Repo](https://github.com/esgpt).
 
-A feature of ESGPT is the ability to query EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML configuration file. This README provides an overview of this feature, including a description of the YAML configuration file's fields, an outline of the algorithm, and instructions for use.
+A feature of ESGPT is the ability to query EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML configuration file. This streamlines the process of extracting task-specific cohorts from large time-series datasets, offering a powerful and user-friendly solution to researchers and developers. The use of a human-readable YAML configuration file also eliminates the need for users to be proficient in complex dataframe querying, making the querying process accessible to a broader audience.
+
+There are diverse applications in healthcare and beyond. For instance, researchers can effortlessly define subsets of EHR datasets for training of foundational models. Retrospective analyses can also become more accessible to clinicians as it enables the extraction of tailored cohorts for studying specific medical conditions or population demographics.
+
+This README provides an overview of this feature, including a description of the YAML configuration file's fields (see `sample_config.yaml`), an outline of the algorithm, and instructions for use.
 
 ## Task Schema Definition
+
+Provided below are several examples of clinically-meaningful tasks that ESGPT Task Querying could easily extract subject cohorts for:
 
 ![Task Schema Definition](./TaskSchemaDefinition.svg)
 
@@ -85,6 +91,8 @@ A tree structure is constructed based on the windows defined in the configuratio
 
 `query_subtree()` is recursively called to query each subtree in the tree structure in a depth-first manner. The function first summarizes the temporal- or event-bound window defined at each node by calling `summarize_window()`, and joins results from nodes in the subtree.
 
-## Acknowledgement
+## Acknowledgements
+
+**Matthew McDermott**, PhD | *Harvard Medical School*
 
 For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding Event Stream GPT, please refer to the ESGPT repository. Contributions are welcome via pull requests.
