@@ -93,7 +93,7 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
                 for predicate in predicate_info.predicates[1:]:
                     any_expr = any_expr | pl.col(f"is_{predicate}")
                 ESD = ESD.with_columns(
-                    any_expr.alias(f"is_{'_or_'.join(predicate_info.predicates)}")
+                    any_expr.alias(f"is_{predicate_name}")
                 )
                 print(
                     f"Added predicate column is_{'_or_'.join(predicate_info.predicates)}."
@@ -103,7 +103,7 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
                 for predicate in predicate_info.predicates[1:]:
                     all_expr = all_expr & pl.col(f"is_{predicate}")
                 ESD = ESD.with_columns(
-                    all_expr.alias(f"is_{'_and_'.join(predicate_info.predicates)}")
+                    all_expr.alias(f"is_{predicate_name}")
                 )
                 print(
                     f"Added predicate column is_{'_and_'.join(predicate_info.predicates)}."
