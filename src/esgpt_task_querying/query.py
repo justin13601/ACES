@@ -261,6 +261,7 @@ def check_constraints(window_constraints, summary_df):
     if not valid_exprs:
         valid_exprs.append(pl.lit(True))
 
+
     return pl.all_horizontal(valid_exprs)
 
 
