@@ -38,6 +38,7 @@ The YAML configuration file allows users to define specific predicates and windo
 ### Predicates
 
 Predicates describe the event at a timestamp. Predicate columns begin with `is_` and are initialized as binary counts for each row of your ESD. Here is an example .csv file with predicate columns generated.
+
 ```
 subject_id,timestamp,event_type,dx,lab_test,lab_value,is_death,is_admission,is_discharge,is_covid,is_death_or_discharge,is_any
 1,12/1/1989 12:03,ADMISSION,,,,0,1,0,0,0,1
