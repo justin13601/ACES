@@ -261,7 +261,6 @@ def check_constraints(window_constraints, summary_df):
     if not valid_exprs:
         valid_exprs.append(pl.lit(True))
 
-
     return pl.all_horizontal(valid_exprs)
 
 
@@ -386,8 +385,8 @@ def query_subtree(
                     "timestamp",
                     *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
                 )
-                anchor_to_subtree_root_by_subtree_anchor_branch = anchor_to_subtree_root_by_subtree_anchor_branch.filter(
-                    valid_windows
+                anchor_to_subtree_root_by_subtree_anchor_branch = (
+                    anchor_to_subtree_root_by_subtree_anchor_branch.filter(valid_windows)
                 )
             case str():
                 anchor_offset_branch = timedelta(days=0) + child.endpoint_expr[3]
@@ -402,14 +401,13 @@ def query_subtree(
                     "timestamp_summary",
                     *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
                 ).rename({"timestamp_summary": "timestamp"})
-                anchor_to_subtree_root_by_subtree_anchor_branch = anchor_to_subtree_root_by_subtree_anchor_branch.filter(
-                    valid_windows
-                ).with_columns(
-                    "subject_id",
-                    "timestamp",
-                    *[pl.lit(0).alias(c) for c in predicate_cols],
+                anchor_to_subtree_root_by_subtree_anchor_branch = (
+                    anchor_to_subtree_root_by_subtree_anchor_branch.filter(valid_windows).with_columns(
+                        "subject_id",
+                        "timestamp",
+                        *[pl.lit(0).alias(c) for c in predicate_cols],
+                    )
                 )
-                
 
         # Step 4: Recurse
         recursive_result = query_subtree(
@@ -446,7 +444,7 @@ def query_subtree(
                 # Need a dataframe with one col with a "True" in the possible realizations of subtree anchor
                 # and another col with a "True" in the possible valid corresponding realizations of the child
                 # node.
-                # Make this with anchor_to_subtree_root_by_subtree_anchor_branch (contains rows corresponding 
+                # Make this with anchor_to_subtree_root_by_subtree_anchor_branch (contains rows corresponding
                 # to possible start events) and recursive_result (contains rows corresponding to possible end
                 # events).
                 final_recursive_result = (
