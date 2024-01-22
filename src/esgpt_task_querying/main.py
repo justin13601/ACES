@@ -2,18 +2,20 @@
 
 It generates the predicate columns, builds the tree, and recursively queries the tree.
 """
-
+from pathlib import Path
 from datetime import timedelta
 
 import polars as pl
 from bigtree import preorder_iter, print_tree
+
+from EventStream.data.dataset_polars import Dataset
 
 from .config import build_tree_from_config, load_config
 from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
 
-def query_task(cfg_path: str, ESD: pl.DataFrame) -> pl.DataFrame:
+def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
     """Query a task using the provided configuration file and event stream data.
 
     Args:
@@ -23,16 +25,30 @@ def query_task(cfg_path: str, ESD: pl.DataFrame) -> pl.DataFrame:
     Returns:
         polars.DataFrame: The result of the task query.
     """
-    if ESD["timestamp"].dtype != pl.Datetime:
-        ESD = ESD.with_columns(
+
+    DATA_DIR = Path(data_path)
+    ESD = Dataset.load(DATA_DIR)
+
+    events_df = ESD.events_df.filter(~pl.all_horizontal(pl.all().is_null()))
+    dynamic_measurements_df = ESD.dynamic_measurements_df.filter(~pl.all_horizontal(pl.all().is_null()))
+
+    ESD_data = (events_df
+            .join(dynamic_measurements_df, on="event_id", how="left")
+            .sort(by=['subject_id', 'timestamp'])
+            .unique(subset=['subject_id', 'timestamp', 'event_type'], keep='first')
+            )
+
+
+    if ESD_data["timestamp"].dtype != pl.Datetime:
+        ESD_data = ESD_data.with_columns(
             pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
         )
 
-    if ESD.shape[0] == 0:
+    if ESD_data.shape[0] == 0:
         raise ValueError("Empty ESD!")
-    if "timestamp" not in ESD.columns:
+    if "timestamp" not in ESD_data.columns:
         raise ValueError("ESD does not have timestamp column!")
-    if "subject_id" not in ESD.columns:
+    if "subject_id" not in ESD_data.columns:
         raise ValueError("ESD does not have subject_id column!")
 
     print("Loading config...\n")
@@ -40,7 +56,7 @@ def query_task(cfg_path: str, ESD: pl.DataFrame) -> pl.DataFrame:
 
     print("Generating predicate columns...\n")
     try:
-        ESD = generate_predicate_columns(cfg, ESD)
+        ESD_data = generate_predicate_columns(cfg, ESD_data)
     except Exception as e:
         raise ValueError(
             "Error generating predicate columns from configuration file! Check to make sure the format of "
@@ -52,11 +68,11 @@ def query_task(cfg_path: str, ESD: pl.DataFrame) -> pl.DataFrame:
     print_tree(tree, style="const_bold")
     print("\n")
 
-    predicate_cols = [col for col in ESD.columns if col.startswith("is_")]
+    predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
-    valid_trigger_exprs = [(ESD[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes]
+    valid_trigger_exprs = [(ESD_data[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes]
     anchor_to_subtree_root_by_subtree_anchor = (
-        ESD.filter(pl.all_horizontal(valid_trigger_exprs))
+        ESD_data.filter(pl.all_horizontal(valid_trigger_exprs))
         .select("subject_id", "timestamp", *[pl.col(c) for c in predicate_cols])
         .with_columns("subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols])
     )
@@ -65,7 +81,7 @@ def query_task(cfg_path: str, ESD: pl.DataFrame) -> pl.DataFrame:
     result = query_subtree(
         subtree=tree,
         anchor_to_subtree_root_by_subtree_anchor=anchor_to_subtree_root_by_subtree_anchor,
-        predicates_df=ESD,
+        predicates_df=ESD_data,
         anchor_offset=timedelta(hours=0),
     )
     print("Done.\n")
