@@ -13,9 +13,19 @@ def has_event_type(type_str: str) -> pl.Expr:
     Returns:
         pl.Expr: A Polars expression representing the check for the event type.
 
-    Example:
-        >>> has_event_type("admission")
-        col("event_type").cast(pl.Utf8).str.contains("admission")
+    >>> import polars as pl
+    >>> has_event_type("A").evaluate(pl.DataFrame({"event_type": ["A", "B", "C"]}))
+    shape: (3,)
+    Series: 'event_type' [str]
+    [
+        "A"
+        "A&B"
+        "C"
+    ]
+    0    True
+    1    True
+    2   False
+    dtype: bool
     """
     has_event_type = pl.col("event_type").cast(pl.Utf8).str.contains(type_str)
     return has_event_type
