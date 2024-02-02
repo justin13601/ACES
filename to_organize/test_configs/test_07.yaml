@@ -64,7 +64,7 @@ windows:
     label: death
   input:
     start:
-    duration: 30 days
+    duration: -30 days
     offset: 24 hours
     end: trigger.start + offset
     excludes:  
