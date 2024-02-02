@@ -33,11 +33,10 @@ def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
     dynamic_measurements_df = ESD.dynamic_measurements_df.filter(~pl.all_horizontal(pl.all().is_null()))
 
     ESD_data = (events_df
-            .join(dynamic_measurements_df, on="event_id", how="left")
-            .sort(by=['subject_id', 'timestamp'])
-            .unique(subset=['subject_id', 'timestamp', 'event_type'], keep='first')
-            )
-
+                .join(dynamic_measurements_df, on="event_id", how="left")
+                .drop(['event_id'])
+                .sort(by=['subject_id', 'timestamp', 'event_type'])
+                )
 
     if ESD_data["timestamp"].dtype != pl.Datetime:
         ESD_data = ESD_data.with_columns(
