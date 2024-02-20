@@ -2,6 +2,7 @@
 
 It generates the predicate columns, builds the tree, and recursively queries the tree.
 """
+
 from pathlib import Path
 from datetime import timedelta
 
@@ -30,17 +31,21 @@ def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
     ESD = Dataset.load(DATA_DIR)
 
     events_df = ESD.events_df.filter(~pl.all_horizontal(pl.all().is_null()))
-    dynamic_measurements_df = ESD.dynamic_measurements_df.filter(~pl.all_horizontal(pl.all().is_null()))
+    dynamic_measurements_df = ESD.dynamic_measurements_df.filter(
+        ~pl.all_horizontal(pl.all().is_null())
+    )
 
-    ESD_data = (events_df
-                .join(dynamic_measurements_df, on="event_id", how="left")
-                .drop(['event_id'])
-                .sort(by=['subject_id', 'timestamp', 'event_type'])
-                )
+    ESD_data = (
+        events_df.join(dynamic_measurements_df, on="event_id", how="left")
+        .drop(["event_id"])
+        .sort(by=["subject_id", "timestamp", "event_type"])
+    )
 
     if ESD_data["timestamp"].dtype != pl.Datetime:
         ESD_data = ESD_data.with_columns(
-            pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
+            pl.col("timestamp")
+            .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
+            .cast(pl.Datetime)
         )
 
     if ESD_data.shape[0] == 0:
@@ -69,13 +74,38 @@ def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
 
     predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
-    valid_trigger_exprs = [(ESD_data[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes]
+    valid_trigger_exprs = [
+        (ESD_data[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes
+    ]
+    anchor_to_subtree_root_by_subtree_anchor = ESD_data.clone()
+    anchor_to_subtree_root_by_subtree_anchor_shape = (
+        anchor_to_subtree_root_by_subtree_anchor.shape[0]
+    )
+    for i, condition in enumerate(valid_trigger_exprs):
+        dropped = anchor_to_subtree_root_by_subtree_anchor.filter(~condition)
+        anchor_to_subtree_root_by_subtree_anchor = (
+            anchor_to_subtree_root_by_subtree_anchor.filter(condition)
+        )
+        if (
+            anchor_to_subtree_root_by_subtree_anchor.shape[0]
+            < anchor_to_subtree_root_by_subtree_anchor_shape
+        ):
+            print(
+                f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
+            )
+            anchor_to_subtree_root_by_subtree_anchor_shape = (
+                anchor_to_subtree_root_by_subtree_anchor.shape[0]
+            )
+
     anchor_to_subtree_root_by_subtree_anchor = (
-        ESD_data.filter(pl.all_horizontal(valid_trigger_exprs))
-        .select("subject_id", "timestamp", *[pl.col(c) for c in predicate_cols])
-        .with_columns("subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols])
+        anchor_to_subtree_root_by_subtree_anchor.select(
+            "subject_id", "timestamp", *[pl.col(c) for c in predicate_cols]
+        ).with_columns(
+            "subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols]
+        )
     )
 
+    print("\n")
     print("Querying...")
     result = query_subtree(
         subtree=tree,
@@ -83,6 +113,7 @@ def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
         predicates_df=ESD_data,
         anchor_offset=timedelta(hours=0),
     )
+    print("\n")
     print("Done.\n")
 
     output_order = [node for node in preorder_iter(tree)]
@@ -103,6 +134,8 @@ def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
     if label_window:
         label = cfg.windows[label_window].label
         result = result.with_columns(
-            pl.col(f"{label_window}/window_summary").struct.field(f"is_{label}").alias("label")
+            pl.col(f"{label_window}/window_summary")
+            .struct.field(f"is_{label}")
+            .alias("label")
         )
     return result
