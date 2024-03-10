@@ -469,15 +469,15 @@ def summarize_window(
     return subtree_root_to_child_root_by_child_anchor
 
 
-def check_constraints(window_constraints):
+def check_constraints(window_constraints, summary_df):
     """
 
     Args:
         window_constraints: constraints on counts of predicates that must
             be satsified.
+        summary_df: A dataframe containing a row for every possible realization
 
-    Return: A column or expression that evaluates to True or False for each row
-        depending on whether or not the constraints therein are met.
+    Return: A filtered dataframe containing only the rows that satisfy the constraints.
 
     # Temporal constraint
     # subj_id, ts, pred_A, pred_B
@@ -516,7 +516,15 @@ def check_constraints(window_constraints):
     if not valid_exprs:
         valid_exprs.append(pl.lit(True))
 
-    return valid_exprs
+    summary_df_shape = summary_df.shape[0]
+    for condition in valid_exprs:
+        dropped = summary_df.filter(~condition)
+        summary_df = summary_df.filter(condition)
+        if summary_df.shape[0] < summary_df_shape:
+            print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}.")
+            summary_df_shape = summary_df.shape[0]
+
+    return summary_df
 
 
 """## Recursive Loop"""
@@ -645,8 +653,8 @@ def query_subtree(
         # with the counts occurring between subtree_root and the child
 
         # Step 2: Filter to where constraints are valid
-        valid_windows = check_constraints(
-            child.constraints
+        subtree_root_to_child_root_by_child_anchor = check_constraints(
+            child.constraints, subtree_root_to_child_root_by_child_anchor
         )
 
         # Step 3: Update parameters for recursive step:
@@ -664,13 +672,13 @@ def query_subtree(
                     *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
                 )
 
-                anchor_to_subtree_root_by_subtree_anchor_branch_shape = anchor_to_subtree_root_by_subtree_anchor_branch.shape[0]
-                for condition in valid_windows:
-                    dropped = anchor_to_subtree_root_by_subtree_anchor_branch.filter(~condition)
-                    anchor_to_subtree_root_by_subtree_anchor_branch = anchor_to_subtree_root_by_subtree_anchor_branch.filter(condition)
-                    if anchor_to_subtree_root_by_subtree_anchor_branch.shape[0] < anchor_to_subtree_root_by_subtree_anchor_branch_shape:
-                        print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}.")
-                        anchor_to_subtree_root_by_subtree_anchor_branch_shape = anchor_to_subtree_root_by_subtree_anchor_branch.shape[0]
+                # anchor_to_subtree_root_by_subtree_anchor_branch_shape = anchor_to_subtree_root_by_subtree_anchor_branch.shape[0]
+                # for condition in valid_windows:
+                #     dropped = anchor_to_subtree_root_by_subtree_anchor_branch.filter(~condition)
+                #     anchor_to_subtree_root_by_subtree_anchor_branch = anchor_to_subtree_root_by_subtree_anchor_branch.filter(condition)
+                #     if anchor_to_subtree_root_by_subtree_anchor_branch.shape[0] < anchor_to_subtree_root_by_subtree_anchor_branch_shape:
+                #         print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}.")
+                #         anchor_to_subtree_root_by_subtree_anchor_branch_shape = anchor_to_subtree_root_by_subtree_anchor_branch.shape[0]
 
                 # anchor_to_subtree_root_by_subtree_anchor_branch = (
                 #     anchor_to_subtree_root_by_subtree_anchor_branch.filter(pl.all_horizontal(valid_windows))
@@ -678,11 +686,11 @@ def query_subtree(
 
             case str():
                 anchor_offset_branch = timedelta(days=0) + child.endpoint_expr[3]
-                anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.with_columns(
-                    "subject_id",
-                    "timestamp",
-                    *[pl.lit(0).alias(c) for c in predicate_cols],
-                )
+                # anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.with_columns(
+                #     "subject_id",
+                #     "timestamp",
+                #     *[pl.lit(0).alias(c) for c in predicate_cols],
+                # )
                 joined = anchor_to_subtree_root_by_subtree_anchor.join(
                     subtree_root_to_child_root_by_child_anchor,
                     left_on=["subject_id", "timestamp"],
@@ -694,14 +702,14 @@ def query_subtree(
                     "timestamp_summary",
                     *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
                 ).rename({"timestamp_summary": "timestamp"})
-                
-                anchor_to_subtree_root_by_subtree_anchor_branch_shape = anchor_to_subtree_root_by_subtree_anchor_branch.shape[0]
-                for condition in valid_windows:
-                    dropped = anchor_to_subtree_root_by_subtree_anchor_branch.filter(~condition)
-                    anchor_to_subtree_root_by_subtree_anchor_branch = anchor_to_subtree_root_by_subtree_anchor_branch.filter(condition)
-                    if anchor_to_subtree_root_by_subtree_anchor_branch.shape[0] < anchor_to_subtree_root_by_subtree_anchor_branch_shape:
-                        print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}.")
-                        anchor_to_subtree_root_by_subtree_anchor_branch_shape = anchor_to_subtree_root_by_subtree_anchor_branch.shape[0]
+                        
+                # anchor_to_subtree_root_by_subtree_anchor_branch_shape = anchor_to_subtree_root_by_subtree_anchor_branch.shape[0]
+                # for condition in valid_windows:
+                #     dropped = anchor_to_subtree_root_by_subtree_anchor_branch.filter(~condition)
+                #     anchor_to_subtree_root_by_subtree_anchor_branch = anchor_to_subtree_root_by_subtree_anchor_branch.filter(condition)
+                #     if anchor_to_subtree_root_by_subtree_anchor_branch.shape[0] < anchor_to_subtree_root_by_subtree_anchor_branch_shape:
+                #         print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}.")
+                #         anchor_to_subtree_root_by_subtree_anchor_branch_shape = anchor_to_subtree_root_by_subtree_anchor_branch.shape[0]
 
                 # anchor_to_subtree_root_by_subtree_anchor_branch = (
                 #     anchor_to_subtree_root_by_subtree_anchor_branch.filter(pl.all_horizontal(valid_windows))
