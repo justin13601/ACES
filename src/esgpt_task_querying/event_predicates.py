@@ -1,6 +1,6 @@
 """This module contains functions for generating predicate columns for event sequences."""
 
-
+import numpy as np
 import polars as pl
 
 
