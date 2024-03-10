@@ -395,7 +395,9 @@ def check_constraints(window_constraints, summary_df):
         dropped = summary_df.filter(~condition)
         summary_df = summary_df.filter(condition)
         if summary_df.shape[0] < summary_df_shape:
-            print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}.")
+            print(
+                f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}."
+            )
             summary_df_shape = summary_df.shape[0]
 
     return summary_df
@@ -507,7 +509,9 @@ def query_subtree(
         # subtree_root and the child
 
         # Step 2: Filter to where constraints are valid
-        valid_windows = check_constraints(child.constraints, subtree_root_to_child_root_by_child_anchor)
+        subtree_root_to_child_root_by_child_anchor = check_constraints(
+            child.constraints, subtree_root_to_child_root_by_child_anchor
+        )
 
         # Step 3: Update parameters for recursive step
         match child.endpoint_expr[1]:
@@ -538,7 +542,7 @@ def query_subtree(
                     "timestamp_summary",
                     *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
                 ).rename({"timestamp_summary": "timestamp"})
-                
+
                 anchor_to_subtree_root_by_subtree_anchor_branch = (
                     anchor_to_subtree_root_by_subtree_anchor_branch.with_columns(
                         "subject_id",
