@@ -167,7 +167,7 @@ class TestQueryFunctions(unittest.TestCase):
         ).with_columns(
             pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
         )
-        test_1_endpoint_expr = (True, "is_discharge", True, None)
+        test_1_endpoint_expr = (False, "is_discharge", True, None)
         test_1_anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
             {
                 "subject_id": [1],
