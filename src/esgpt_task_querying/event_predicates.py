@@ -58,6 +58,9 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
     boolean_cols = []
     count_cols = []
     for predicate_name, predicate_info in cfg.predicates.items():
+        if predicate_name == 'any':
+            continue
+        
         if predicate_info.system == "boolean":
             boolean_cols.append(f"is_{predicate_name}")
         elif predicate_info.system == "count":
@@ -66,6 +69,7 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
             raise ValueError(
                 f"Invalid predicate system {predicate_info.system} for {predicate_name}."
             )
+        
         if "value" in predicate_info:
             if isinstance(predicate_info["value"], list):
                 ESD = ESD.with_columns(
