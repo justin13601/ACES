@@ -259,12 +259,12 @@ def summarize_event_bound_window(
         ],
     )
 
-    if st_inclusive:
+    if not st_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
             "subject_id",
             "timestamp",
             *[
-                (pl.col(f"{c}_final") + pl.col(f"{c}_at_anchor"))
+                (pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor"))
                 for c in predicate_cols
             ],
         )
