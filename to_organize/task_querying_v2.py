@@ -9,6 +9,7 @@ from bigtree import Node
 from bigtree import print_tree
 from bigtree import preorder_iter
 from datetime import timedelta
+from memory_profiler import profile
 
 import polars as pl
 
@@ -375,11 +376,11 @@ def summarize_event_bound_window(
         ],
     )
 
-    if st_inclusive:
+    if not st_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
             "subject_id",
             "timestamp",
-            *[(pl.col(f"{c}_final") + pl.col(f"{c}_at_anchor")) for c in predicate_cols],
+            *[(pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor")) for c in predicate_cols],
         )
     if not end_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
@@ -649,6 +650,7 @@ def query_subtree(
             predicates_df,
             predicate_cols,
         )
+        # display(subtree_root_to_child_root_by_child_anchor.filter(pl.col('subject_id') == 7374))
 
         # display(subtree_root_to_child_root_by_child_anchor)
 
@@ -804,7 +806,7 @@ def query_subtree(
 
 """# End-to-end Run"""
 
-
+@profile
 def query_task(cfg_path, ESD):
     if ESD["timestamp"].dtype != pl.Datetime:
         ESD = ESD.with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
