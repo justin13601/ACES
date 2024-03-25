@@ -361,7 +361,7 @@ def summarize_window(
     return subtree_root_to_child_root_by_child_anchor
 
 
-def check_constraints(window_constraints, summary_df):
+def check_constraints(window_constraints, summary_df, verbose=True):
     """Checks the constraints on the counts of predicates in the summary dataframe.
 
     Args:
@@ -395,9 +395,10 @@ def check_constraints(window_constraints, summary_df):
         dropped = summary_df.filter(~condition)
         summary_df = summary_df.filter(condition)
         if summary_df.shape[0] < summary_df_shape:
-            print(
-                f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}."
-            )
+            if verbose:
+                print(
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}."
+                )
             summary_df_shape = summary_df.shape[0]
 
     return summary_df
@@ -408,6 +409,7 @@ def query_subtree(
     anchor_to_subtree_root_by_subtree_anchor: pl.DataFrame | None,
     predicates_df: pl.DataFrame,
     anchor_offset: float,
+    verbose=True
 ):
     """
 
@@ -484,8 +486,9 @@ def query_subtree(
     recursive_results = []
 
     for child in subtree.children:
-        print("\n")
-        print(f"Querying subtree rooted at {child.name}...")
+        if verbose:
+            print("\n")
+            print(f"Querying subtree rooted at {child.name}...")
 
         # Added to reset anchor_offset and anchor_to_subtree_root_by_subtree_anchor for diverging subtrees
         # if len(child.parent.children) > 1:
@@ -510,7 +513,7 @@ def query_subtree(
 
         # Step 2: Filter to where constraints are valid
         subtree_root_to_child_root_by_child_anchor = check_constraints(
-            child.constraints, subtree_root_to_child_root_by_child_anchor
+            child.constraints, subtree_root_to_child_root_by_child_anchor, verbose=verbose
         )
 
         # Step 3: Update parameters for recursive step

@@ -16,7 +16,7 @@ from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
 
-def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
+def query_task(cfg_path: str, data_path: str, verbose=True) -> pl.DataFrame:
     """Query a task using the provided configuration file and event stream data.
 
     Args:
@@ -55,22 +55,26 @@ def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
     if "subject_id" not in ESD_data.columns:
         raise ValueError("ESD does not have subject_id column!")
 
-    print("Loading config...\n")
+    if verbose:
+        print("Loading config...\n")
     cfg = load_config(cfg_path)
 
-    print("Generating predicate columns...\n")
+    if verbose:
+        print("Generating predicate columns...\n")
     try:
-        ESD_data = generate_predicate_columns(cfg, ESD_data)
+        ESD_data = generate_predicate_columns(cfg, ESD_data, verbose=verbose)
     except Exception as e:
         raise ValueError(
             "Error generating predicate columns from configuration file! Check to make sure the format of "
             "the configuration file is valid."
         ) from e
 
-    print("\nBuilding tree...")
+    if verbose:
+        print("\nBuilding tree...")
     tree = build_tree_from_config(cfg)
-    print_tree(tree, style="const_bold")
-    print("\n")
+    if verbose:
+        print_tree(tree, style="const_bold")
+        print("\n")
 
     predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
@@ -90,9 +94,10 @@ def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
             anchor_to_subtree_root_by_subtree_anchor.shape[0]
             < anchor_to_subtree_root_by_subtree_anchor_shape
         ):
-            print(
-                f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
-            )
+            if verbose:
+                print(
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
+                )
             anchor_to_subtree_root_by_subtree_anchor_shape = (
                 anchor_to_subtree_root_by_subtree_anchor.shape[0]
             )
@@ -105,16 +110,19 @@ def query_task(cfg_path: str, data_path: str) -> pl.DataFrame:
         )
     )
 
-    print("\n")
-    print("Querying...")
+    if verbose:
+        print("\n")
+        print("Querying...")
     result = query_subtree(
         subtree=tree,
         anchor_to_subtree_root_by_subtree_anchor=anchor_to_subtree_root_by_subtree_anchor,
         predicates_df=ESD_data,
         anchor_offset=timedelta(hours=0),
+        verbose=verbose
     )
-    print("\n")
-    print("Done.\n")
+    if verbose:
+        print("\n")
+        print("Done.\n")
 
     output_order = [node for node in preorder_iter(tree)]
 

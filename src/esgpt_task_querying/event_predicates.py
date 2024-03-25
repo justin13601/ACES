@@ -31,7 +31,7 @@ def has_event_type(type_str: str) -> pl.Expr:
     return has_event_type
 
 
-def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
+def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame, verbose=True) -> pl.DataFrame:
     """Generate predicate columns based on the configuration.
 
     Args:
@@ -96,7 +96,8 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
                     .alias(f"is_{predicate_name}")
                     .cast(pl.Int32)
                 )
-                print(f"Added predicate column is_{predicate_name}.")
+                if verbose:
+                    print(f"Added predicate column is_{predicate_name}.")
             else:
                 if predicate_info.column == "event_type":
                     ESD = ESD.with_columns(
@@ -114,7 +115,8 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
                         .alias(f"is_{predicate_name}")
                         .cast(pl.Int32)
                     )
-                print(f"Added predicate column is_{predicate_name}.")
+                if verbose:
+                    print(f"Added predicate column is_{predicate_name}.")
         elif "type" in predicate_info:
             if predicate_info.type == "ANY":
                 any_expr = pl.col(f"is_{predicate_info.predicates[0]}")
@@ -123,9 +125,10 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
                 ESD = ESD.with_columns(
                     any_expr.alias(f"is_{predicate_name}")
                 )
-                print(
-                    f"Added predicate column is_{predicate_name}."
-                )
+                if verbose:
+                    print(
+                        f"Added predicate column is_{predicate_name}."
+                    )
             elif predicate_info.type == "ALL":
                 all_expr = pl.col(f"is_{predicate_info.predicates[0]}")
                 for predicate in predicate_info.predicates[1:]:
@@ -133,9 +136,10 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
                 ESD = ESD.with_columns(
                     all_expr.alias(f"is_{predicate_name}")
                 )
-                print(
-                    f"Added predicate column is_{predicate_name}."
-                )
+                if verbose:
+                    print(
+                        f"Added predicate column is_{predicate_name}."
+                    )
             else:
                 raise ValueError(f"Invalid predicate type {predicate_info.type} for {predicate_name}.")
         else:
