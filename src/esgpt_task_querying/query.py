@@ -560,6 +560,7 @@ def query_subtree(
             anchor_to_subtree_root_by_subtree_anchor_branch,
             predicates_df,
             anchor_offset_branch,
+            verbose=verbose,
         )
 
         match child.endpoint_expr[1]:
