@@ -11,14 +11,12 @@ predicates:
     column: event_type
     value: DEATH
     system: boolean
-  covid:
-    column: diagnosis
-    value: COVID
-    system: count
   discharge_or_death:
     type: ANY
     predicates: [discharge, death]
     system: boolean
+  any:
+    type: special
 
 windows:
   trigger:
@@ -35,7 +33,7 @@ windows:
     end_inclusive: True
   gap:
     start: trigger.end
-    duration: 48 hours
+    duration: 96 hours
     offset:
     end:
     excludes: 
@@ -57,13 +55,16 @@ windows:
         max: 1
     st_inclusive: False
     end_inclusive: True
+    label: death
   input:
     start:
-    duration: -730 days
-    offset: 24 hours
-    end: trigger.start + offset
+    duration: -30 days
+    offset:
+    end: trigger.start
     excludes:  
     includes: 
+      - predicate: any
+        min: 100
+        max: 110
     st_inclusive: False
     end_inclusive: True
-

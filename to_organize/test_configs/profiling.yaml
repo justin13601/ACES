@@ -1,0 +1,138 @@
+predicates:
+  admission:
+    column: event_type
+    value: ADMISSION
+    system: boolean
+  discharge:
+    column: event_type
+    value: DISCHARGE
+    system: boolean
+  death:
+    column: event_type
+    value: DEATH
+    system: boolean
+  lab:
+    column: event_type
+    value: LAB
+    system: count
+  discharge_or_death:
+    type: ANY
+    predicates: [discharge, death]
+    system: boolean
+  lab_or_discharge:
+    type: ANY
+    predicates: [lab, discharge]
+    system: boolean
+  any:
+    type: special
+
+windows:
+  trigger:
+    start: admission
+    duration:
+    offset:
+    end: admission
+    excludes:
+    includes: 
+      - predicate: admission
+        min: 1
+        max: 1
+    st_inclusive: False
+    end_inclusive: True
+  gap_1:
+    start: trigger.end
+    duration: 96 hours
+    offset:
+    end:
+    excludes: 
+      - predicate: admission
+      - predicate: discharge
+      - predicate: death
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  gap_2:
+    start: gap_1.end
+    duration: 24 hours
+    offset:
+    end:
+    excludes: 
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  gap_3:
+    start: gap_2.end
+    duration: 48 hours
+    offset:
+    end:
+    excludes: 
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  gap_4:
+    start: gap_3.end
+    duration: 24 hours
+    offset:
+    end:
+    excludes: 
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  gap_5:
+    start: gap_4.end
+    duration: 24 hours
+    offset:
+    end:
+    excludes: 
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  gap_6:
+    start: gap_5.end
+    duration: 24 hours
+    offset:
+    end:
+    excludes: 
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  gap_7:
+    start: gap_6.end
+    duration: 24 hours
+    offset:
+    end:
+    excludes: 
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  gap_8:
+    start: gap_7.end
+    duration: 24 hours
+    offset:
+    end:
+    excludes: 
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  target:
+    start: gap_8.end
+    duration: 
+    offset:
+    end: discharge_or_death
+    excludes:
+    includes: 
+      - predicate: discharge_or_death
+        min: 1
+        max: 1
+    st_inclusive: False
+    end_inclusive: True
+    label: death
+  input:
+    start:
+    duration: -30 days
+    offset:
+    end: trigger.start
+    excludes:  
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
