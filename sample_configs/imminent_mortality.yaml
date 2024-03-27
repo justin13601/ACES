@@ -1,0 +1,44 @@
+
+trigger on any event, in next 48 hours death event
+
+
+predicates:
+  admission:
+    column: event_type
+    value: ADMISSION
+    system: boolean
+  discharge:
+    column: event_type
+    value: DISCHARGE
+    system: boolean
+  death:
+    column: event_type
+    value: DEATH
+    system: boolean
+  any: 
+    type: special
+
+
+windows:
+  trigger:
+    start: any
+    duration:
+    offset:
+    end: any
+    excludes:
+    includes: 
+      - predicate: any
+        min: 1
+        max: 1
+    st_inclusive: False
+    end_inclusive: True
+  target:
+    start: trigger.end
+    duration: 48 hours
+    offset:
+    end: 
+    excludes:
+    includes:
+    st_inclusive: False
+    end_inclusive: True
+    label: death

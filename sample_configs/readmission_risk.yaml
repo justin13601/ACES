@@ -1,0 +1,49 @@
+predicates:
+  admission:
+    column: event_type
+    value: ADMISSION
+    system: boolean
+  discharge:
+    column: event_type
+    value: DISCHARGE
+    system: boolean
+  any: 
+    type: special
+
+windows:
+  trigger:
+    start: admission
+    duration:
+    offset:
+    end: admission
+    excludes:
+    includes: 
+      - predicate: admission
+        min: 1
+        max: 1
+    st_inclusive: False
+    end_inclusive: True
+  input:
+    start: trigger.end
+    duration:
+    offset:
+    end: discharge
+    excludes:
+    includes: 
+      - predicate: discharge
+        min: 1
+        max: 1
+      - predicate: any
+        min: 5
+    st_inclusive: False
+    end_inclusive: True
+  target:
+    start: input.end
+    duration: 30 days
+    offset:
+    end:
+    excludes:
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+    label: admission

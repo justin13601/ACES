@@ -1,0 +1,76 @@
+predicates:
+  lab:
+    column: event_type
+    value: LAB
+    system: count
+  hemoglobin:
+    column: lab
+    value: Hemoglobin (g/dl)
+    system: count
+  abnormal_value:
+    column: valuenum
+    value:
+      - min: 17.2
+      - max: 13.8
+    system: boolean
+  normal_value:
+    column: valuenum
+    value:
+      - min: 13.8
+      - max: 17.2
+    system: boolean
+  abnormal_hemoglobin:
+    type: ALL
+    predicates: [hemoglobin, abnormal_value]
+    system: boolean
+  normal_hemoglobin:
+    type: ALL
+    predicates: [hemoglobin, normal_value]
+    system: boolean
+  any: 
+    type: special
+
+windows:
+  trigger:
+    start: normal_hemoglobin
+    duration:
+    offset:
+    end: normal_hemoglobin
+    excludes:
+    includes: 
+      - predicate: normal_hemoglobin
+        min: 1
+    st_inclusive: False
+    end_inclusive: True
+  gap:
+    start: trigger.end
+    duration: 24 hours
+    offset:
+    end:
+    excludes:
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  target:
+    start: gap.end
+    duration: 7 days
+    offset:
+    end: 
+    excludes:
+    includes: 
+      - predicate: abnormal_hemoglobin
+        min: 1
+    st_inclusive: False
+    end_inclusive: True
+    label: abnormal_hemoglobin
+  input:
+    start:
+    duration: 30 days
+    offset:
+    end: trigger.start
+    excludes:
+    includes: 
+    - predicate: any
+      min: 5
+    st_inclusive: False
+    end_inclusive: True

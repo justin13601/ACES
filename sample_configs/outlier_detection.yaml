@@ -11,14 +11,29 @@ predicates:
     column: event_type
     value: DEATH
     system: boolean
-  covid:
-    column: diagnosis
-    value: COVID  
+  lab:
+    column: event_type
+    value: LAB
+    system: count
+  abnormal_lab_num:
+    column: valuenum
+    value: 
+      - min: 10000
     system: boolean
+  heart_rate:
+    column: lab
+    value: Heart Rate (bpm)
+    system: count
   discharge_or_death:
     type: ANY
     predicates: [discharge, death]
     system: boolean
+  abnormal_heart_rate:
+    type: ALL
+    predicates: [heart_rate, abnormal_lab_num]
+    system: boolean
+  any: 
+    type: special
 
 windows:
   trigger:
@@ -35,10 +50,10 @@ windows:
     end_inclusive: True
   gap:
     start: trigger.end
-    duration: 48 hours
+    duration: 2 days
     offset:
-    end: gap.start + gap.duration
-    excludes: 
+    end:
+    excludes:
       - predicate: admission
       - predicate: discharge
       - predicate: death
@@ -47,27 +62,17 @@ windows:
     end_inclusive: True
   target:
     start: gap.end
-    duration: 
+    duration:
     offset:
     end: discharge_or_death
     excludes:
     includes: 
+      - predicate: abnormal_heart_rate
+        min: 1
+        max: 1
       - predicate: discharge_or_death
         min: 1
         max: 1
     st_inclusive: False
     end_inclusive: True
     label: death
-  input:
-    start:
-    duration: 30 days
-    offset: 24 hours
-    end: trigger.start + offset
-    excludes:  
-      - predicate: covid
-    includes: 
-      - predicate: any
-        min: 5
-        max:
-    st_inclusive: False
-    end_inclusive: True
