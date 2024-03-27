@@ -137,7 +137,7 @@ def build_tree_from_config(cfg):
     return root
 
 
-def generate_predicate_columns(cfg, ESD):
+def generate_predicate_columns(cfg, ESD, verbose=True):
     boolean_cols = []
     count_cols = []
     for predicate_name, predicate_info in cfg.predicates.items():
@@ -179,7 +179,8 @@ def generate_predicate_columns(cfg, ESD):
                     .alias(f"is_{predicate_name}")
                     .cast(pl.Int32)
                 )
-                print(f"Added predicate column is_{predicate_name}.")
+                if verbose:
+                    print(f"Added predicate column is_{predicate_name}.")
             else:
                 if predicate_info.column == "event_type":
                     ESD = ESD.with_columns(
@@ -197,7 +198,8 @@ def generate_predicate_columns(cfg, ESD):
                         .alias(f"is_{predicate_name}")
                         .cast(pl.Int32)
                     )
-                print(f"Added predicate column is_{predicate_name}.")
+                if verbose:
+                    print(f"Added predicate column is_{predicate_name}.")
         elif "type" in predicate_info:
             if predicate_info.type == "ANY":
                 any_expr = pl.col(f"is_{predicate_info.predicates[0]}")
@@ -206,9 +208,10 @@ def generate_predicate_columns(cfg, ESD):
                 ESD = ESD.with_columns(
                     any_expr.alias(f"is_{predicate_name}")
                 )
-                print(
-                    f"Added predicate column is_{predicate_name}."
-                )
+                if verbose:
+                    print(
+                        f"Added predicate column is_{predicate_name}."
+                    )
             elif predicate_info.type == "ALL":
                 all_expr = pl.col(f"is_{predicate_info.predicates[0]}")
                 for predicate in predicate_info.predicates[1:]:
@@ -216,9 +219,10 @@ def generate_predicate_columns(cfg, ESD):
                 ESD = ESD.with_columns(
                     all_expr.alias(f"is_{predicate_name}")
                 )
-                print(
-                    f"Added predicate column is_{predicate_name}."
-                )
+                if verbose:
+                    print(
+                        f"Added predicate column is_{predicate_name}."
+                    )
             else:
                 raise ValueError(f"Invalid predicate type {predicate_info.type} for {predicate_name}.")
         else:
@@ -474,7 +478,7 @@ def summarize_window(
     return subtree_root_to_child_root_by_child_anchor
 
 
-def check_constraints(window_constraints, summary_df):
+def check_constraints(window_constraints, summary_df, verbose=True):
     """
 
     Args:
@@ -526,7 +530,8 @@ def check_constraints(window_constraints, summary_df):
         dropped = summary_df.filter(~condition)
         summary_df = summary_df.filter(condition)
         if summary_df.shape[0] < summary_df_shape:
-            print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}.")
+            if verbose:
+                print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}.")
             summary_df_shape = summary_df.shape[0]
 
     return summary_df
@@ -540,6 +545,7 @@ def query_subtree(
     anchor_to_subtree_root_by_subtree_anchor: pl.DataFrame | None,
     predicates_df: pl.DataFrame,
     anchor_offset: float,
+    verbose=True,
 ):
     """
     Args:
@@ -631,8 +637,9 @@ def query_subtree(
     recursive_results = []
 
     for child in subtree.children:
-        print("\n")
-        print(f"Querying subtree rooted at {child.name}...")
+        if verbose:
+            print("\n")
+            print(f"Querying subtree rooted at {child.name}...")
         # Added to reset anchor_offset and anchor_to_subtree_root_by_subtree_anchor for diverging subtrees
         # if len(child.parent.children) > 1:
         #     anchor_offset = timedelta(hours=0)
@@ -660,7 +667,7 @@ def query_subtree(
 
         # Step 2: Filter to where constraints are valid
         subtree_root_to_child_root_by_child_anchor = check_constraints(
-            child.constraints, subtree_root_to_child_root_by_child_anchor
+            child.constraints, subtree_root_to_child_root_by_child_anchor, verbose=verbose
         )
 
         # Step 3: Update parameters for recursive step:
@@ -734,6 +741,7 @@ def query_subtree(
             anchor_to_subtree_root_by_subtree_anchor_branch,
             predicates_df,
             anchor_offset_branch,
+            verbose=verbose,
         )
 
         match child.endpoint_expr[1]:
@@ -806,8 +814,8 @@ def query_subtree(
 
 """# End-to-end Run"""
 
-@profile
-def query_task(cfg_path, ESD):
+# @profile
+def query_task(cfg_path, ESD, verbose=True):
     if ESD["timestamp"].dtype != pl.Datetime:
         ESD = ESD.with_columns(pl.col('timestamp').str.strptime(pl.Datetime, format='%m/%d/%Y %H:%M').cast(pl.Datetime))
 
@@ -818,22 +826,26 @@ def query_task(cfg_path, ESD):
     if "subject_id" not in ESD.columns:
         raise ValueError("ESD does not have subject_id column!")
 
-    print("Loading config...\n")
+    if verbose:
+        print("Loading config...\n")
     cfg = load_config(cfg_path)
 
-    print("Generating predicate columns...\n")
+    if verbose:
+        print("Generating predicate columns...\n")
     try:
-        ESD = generate_predicate_columns(cfg, ESD)
+        ESD = generate_predicate_columns(cfg, ESD, verbose=verbose)
     except Exception as e:
         print(repr(e))
         raise ValueError(
             "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
         ) from e
 
-    print("\nBuilding tree...")
+    if verbose:
+        print("\nBuilding tree...")
     tree = build_tree_from_config(cfg)
-    print_tree(tree, style="const_bold")
-    print("\n")
+    if verbose:
+        print_tree(tree, style="const_bold")
+        print("\n")
 
     predicate_cols = [col for col in ESD.columns if col.startswith("is_")]
 
@@ -847,7 +859,8 @@ def query_task(cfg_path, ESD):
         dropped = anchor_to_subtree_root_by_subtree_anchor.filter(~condition)
         anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(condition)
         if anchor_to_subtree_root_by_subtree_anchor.shape[0] < anchor_to_subtree_root_by_subtree_anchor_shape:
-            print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}.")
+            if verbose:
+                print(f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}.")
             anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
 
     anchor_to_subtree_root_by_subtree_anchor = (anchor_to_subtree_root_by_subtree_anchor
@@ -857,16 +870,19 @@ def query_task(cfg_path, ESD):
         )
     )
 
-    print("\n")
-    print("Querying...")
+    if verbose:
+        print("\n")
+        print("Querying...")
     result = query_subtree(
         subtree=tree,
         anchor_to_subtree_root_by_subtree_anchor=anchor_to_subtree_root_by_subtree_anchor,
         predicates_df=ESD,
         anchor_offset=timedelta(hours=0),
+        verbose=verbose,
     )
-    print("\n")
-    print("Done.\n")
+    if verbose:
+        print("\n")
+        print("Done.\n")
 
     output_order = [node for node in preorder_iter(tree)]
 
