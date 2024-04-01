@@ -1,7 +1,3 @@
-
-trigger on any event, in next 48 hours death event
-
-
 predicates:
   admission:
     column: event_type
@@ -17,7 +13,6 @@ predicates:
     system: boolean
   any: 
     type: special
-
 
 windows:
   trigger:
