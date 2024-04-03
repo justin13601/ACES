@@ -337,11 +337,152 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
 
 
 def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria, num_rows=None):
-    pass
+    pr = cProfile.Profile()
+    pr.enable()
+    ESD = Dataset.load(DATA_DIR)
+    events_df = ESD.events_df
+    dynamic_measurements_df = ESD.dynamic_measurements_df
+    pr.disable()
+    ps = pstats.Stats(pr, stream=sys.stdout)
+    load_time = ps.total_tt
+    print(f"Load time: {load_time}")
 
+    pr.enable()
+    events_df = events_df.filter(~pl.all_horizontal(pl.all().is_null()))
+    dynamic_measurements_df = dynamic_measurements_df.filter(
+        ~pl.all_horizontal(pl.all().is_null())
+    )
+    df_data = (
+        events_df.join(dynamic_measurements_df, on="event_id", how="left")
+        .drop(["event_id"])
+        .sort(by=["subject_id", "timestamp", "event_type"])
+    )
+    pr.disable()
+    ps = pstats.Stats(pr, stream=sys.stdout)
+    preprocess_time = ps.total_tt - load_time
+    print(f"Preprocess time: {preprocess_time}")
+
+    if num_rows:
+        df_temp = df_data.head(num_rows)
+    else:
+        df_temp = df_data
+
+    profiling_results = []
+    for i in num_criteria:
+        print(
+            f"====================================={i} Extra Windows in Parallel ====================================="
+        )
+        print(f"Number of rows: {df_temp.shape[0]}")
+        print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
+
+        config = f"test_configs/profile_based_on_num_windows_in_parallel_{i}.yaml"
+
+        pr = cProfile.Profile()
+        pr.enable()
+        df_result = esgpt_task_querying.query_task(
+            config, df_temp, verbose=False
+        )
+        pr.disable()
+        ps = pstats.Stats(pr, stream=sys.stdout)
+        query_time = ps.total_tt
+        print(f"Query time: {query_time}")
+
+        print(f"Number of rows: {df_result.shape[0]}")
+        print(f"Number of patients: {df_result['subject_id'].n_unique()}")
+
+        profiling_result = {
+            "num_extra_windows_in_parallel": i,
+            "load_time": load_time,
+            "preprocess_time": preprocess_time,
+            "query_time": query_time,
+            "cumulative_time": load_time + preprocess_time + query_time,
+            "original_rows": df_temp.shape[0],
+            "original_patients": df_temp["subject_id"].n_unique(),
+            "result_rows": df_result.shape[0],
+            "result_patients: ": df_result["subject_id"].n_unique(),
+            "notes": get_machine_details(),
+        }
+        profiling_results.append(profiling_result)
+
+    df_profiling_results = pd.DataFrame(profiling_results)
+    df_profiling_results.to_csv(
+        os.path.join(output_dir, "profile_based_on_num_windows_in_parallel_results.csv"),
+        index=False,
+    )
 
 def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
-    pass
+    pr = cProfile.Profile()
+    pr.enable()
+    ESD = Dataset.load(DATA_DIR)
+    events_df = ESD.events_df
+    dynamic_measurements_df = ESD.dynamic_measurements_df
+    pr.disable()
+    ps = pstats.Stats(pr, stream=sys.stdout)
+    load_time = ps.total_tt
+    print(f"Load time: {load_time}")
+
+    pr.enable()
+    events_df = events_df.filter(~pl.all_horizontal(pl.all().is_null()))
+    dynamic_measurements_df = dynamic_measurements_df.filter(
+        ~pl.all_horizontal(pl.all().is_null())
+    )
+    df_data = (
+        events_df.join(dynamic_measurements_df, on="event_id", how="left")
+        .drop(["event_id"])
+        .sort(by=["subject_id", "timestamp", "event_type"])
+    )
+    pr.disable()
+    ps = pstats.Stats(pr, stream=sys.stdout)
+    preprocess_time = ps.total_tt - load_time
+    print(f"Preprocess time: {preprocess_time}")
+
+    if num_rows:
+        df_temp = df_data.head(num_rows)
+    else:
+        df_temp = df_data
+
+    profiling_results = []
+    for i in tasks:
+        print(
+            f"=====================================Task: {i}====================================="
+        )
+        print(f"Number of rows: {df_temp.shape[0]}")
+        print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
+
+        config = f"../sample_configs/{i}.yaml"
+
+        pr = cProfile.Profile()
+        pr.enable()
+        df_result = esgpt_task_querying.query_task(
+            config, df_temp, verbose=False
+        )
+        pr.disable()
+        ps = pstats.Stats(pr, stream=sys.stdout)
+        query_time = ps.total_tt
+        print(f"Query time: {query_time}")
+
+        print(f"Number of rows: {df_result.shape[0]}")
+        print(f"Number of patients: {df_result['subject_id'].n_unique()}")
+
+        profiling_result = {
+            "num_extra_windows_in_parallel": i,
+            "load_time": load_time,
+            "preprocess_time": preprocess_time,
+            "query_time": query_time,
+            "cumulative_time": load_time + preprocess_time + query_time,
+            "original_rows": df_temp.shape[0],
+            "original_patients": df_temp["subject_id"].n_unique(),
+            "result_rows": df_result.shape[0],
+            "result_patients: ": df_result["subject_id"].n_unique(),
+            "notes": get_machine_details(),
+        }
+        profiling_results.append(profiling_result)
+
+    df_profiling_results = pd.DataFrame(profiling_results)
+    df_profiling_results.to_csv(
+        os.path.join(output_dir, "profile_based_on_task_results.csv"),
+        index=False,
+    )
 
 
 if __name__ == "__main__":
@@ -379,27 +520,27 @@ if __name__ == "__main__":
     
     ############ Number of criteria ############
     num_critera = [0, 1, 2, 4, 8, 16]
-    # profile_based_on_num_criteria(DATA_DIR, output_dir, num_critera, num_rows=10000000)
+    # profile_based_on_num_criteria(DATA_DIR, output_dir, num_critera, num_rows=150000000)
 
     ############ Number of windows in series (segments) ############
     num_windows_series = [0, 1, 2, 4, 8, 16]
-    profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_windows_series, num_rows=10000000)
+    # profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_windows_series, num_rows=150000000)
 
     ############ Number of windows in parallel (overlapping) ############
     num_windows_parallel = [0, 1, 2, 4, 8, 16]
-    # profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_windows_parallel, num_rows=10000000)
+    # profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_windows_parallel, num_rows=150000000)
 
     ############ Various tasks ############
     tasks = [
-        'inhospital_mortality',
-        'abnormal_lab',
-        'imminent_mortality',
+        # 'inhospital_mortality',
+        # 'abnormal_lab',
+        # 'imminent_mortality',
+        # 'outlier_detection',
+        # 'readmission_risk',
+        'long_term_incidence',
         'intervention_weaning',
-        'outlier_detection',
-        'readmission_risk',
-        'long_term_incidence'
     ]
-    # profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=10000000)
+    profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=10000000)
 
     ############ Number of threads ############
     # Warning: Will run inhospital mortality on full dataset, so will take a really long time to load the data with low number of threads
