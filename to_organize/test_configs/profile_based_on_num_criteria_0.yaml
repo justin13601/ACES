@@ -15,6 +15,70 @@ predicates:
     type: ANY
     predicates: [discharge, death]
     system: boolean
+  predicate_1:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_2:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_3:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_4:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_5:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_6:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_7:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_8:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_9:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_10:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_11:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_12:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_13:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_14:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_15:
+    column: event_type
+    value: LAB
+    system: count
+  predicate_16:
+    column: event_type
+    value: LAB
+    system: count
   any:
     type: special
 
@@ -31,7 +95,7 @@ windows:
         max: 1
     st_inclusive: False
     end_inclusive: True
-  gap:
+  gap_1:
     start: trigger.end
     duration: 96 hours
     offset:
@@ -44,7 +108,7 @@ windows:
     st_inclusive: False
     end_inclusive: True
   target:
-    start: gap.end
+    start: gap_1.end
     duration: 
     offset:
     end: discharge_or_death
@@ -63,7 +127,5 @@ windows:
     end: trigger.start
     excludes:  
     includes: 
-      - predicate: any
-        min: 100
     st_inclusive: False
     end_inclusive: True

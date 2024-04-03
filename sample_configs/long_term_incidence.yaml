@@ -7,63 +7,58 @@ predicates:
     column: event_type
     value: DISCHARGE
     system: boolean
-  death:
+  myocardial_infarction:
     column: event_type
-    value: DEATH
-    system: boolean
-  discharge_or_death:
-    type: ANY
-    predicates: [discharge, death]
+    value: MI
     system: boolean
   any:
     type: special
 
 windows:
   trigger:
-    start: admission
+    start: discharge
     duration:
     offset:
-    end: admission
+    end: discharge
     excludes:
     includes: 
-      - predicate: admission
+      - predicate: discharge
         min: 1
         max: 1
     st_inclusive: False
     end_inclusive: True
   gap:
     start: trigger.end
-    duration: 96 hours
+    duration: 1 year
     offset:
     end:
-    excludes: 
-      - predicate: admission
-      - predicate: discharge
-      - predicate: death
-    includes: 
+    excludes:
+      - predicate: myocardial_infarction
+    includes:
     st_inclusive: False
     end_inclusive: True
+    label: 
   target:
     start: gap.end
-    duration: 
+    duration: 3 years
     offset:
-    end: discharge_or_death
+    end:
     excludes:
     includes: 
-      - predicate: discharge_or_death
-        min: 1
-        max: 1
     st_inclusive: False
     end_inclusive: True
-    label: death
+    label: myocardial_infarction
   input:
-    start:
-    duration: -30 days
+    start: admission
+    duration:
     offset:
     end: trigger.start
     excludes:  
     includes: 
       - predicate: any
         min: 100
+      - predicate: discharge
+        min: 1
+        max: 1
     st_inclusive: False
     end_inclusive: True

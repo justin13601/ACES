@@ -56,7 +56,7 @@ def profile_based_on_num_threads(DATA_DIR, config):
     print(
         f"====================================={pl.thread_pool_size()} Threads====================================="
     )
-    df_temp = df_data.head(10000000)
+    df_temp = df_data
     print(f"Number of rows: {df_temp.shape[0]}")
     print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
@@ -77,7 +77,7 @@ def profile_based_on_num_threads(DATA_DIR, config):
         "preprocess_time": preprocess_time,
         "query_time": query_time,
         "cumulative_time": load_time + preprocess_time + query_time,
-        "original_rows": 10000000,
+        "original_rows": df_temp.shape[0],
         "original_patients": df_temp["subject_id"].n_unique(),
         "result_rows": df_result.shape[0],
         "result_patients": df_result["subject_id"].n_unique(),

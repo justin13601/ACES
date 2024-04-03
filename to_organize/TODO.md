@@ -8,6 +8,7 @@ TODO:
     check more variables:
         number of predicates/columns, number of patients/rows, types of configs, number of outputs rows (schema) -> structs and dataframe size	
 	    number of inclusion/exclusion criteria (change last window)
+            -> seems like number of criteria does not affect the query time (real nor fake criteria)
 	    number of cores/resources (limit threads in polars -> polars max_threads (https://github.com/pola-rs/polars/issues/10847))
 	make a script config + data dir + resource -> saves numbers as file
 
@@ -18,6 +19,7 @@ TODO:
 
 - prompting
     provide more examples or generalize the current one
+    -> Looks like providing multiple examples as context does help
 
 
 Paper notes:

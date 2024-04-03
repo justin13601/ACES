@@ -1,61 +1,41 @@
 predicates:
-  admission:
+  ventilation_on:
     column: event_type
-    value: ADMISSION
+    value: ventilation
     system: boolean
-  discharge:
+  ventilation_off:
     column: event_type
-    value: DISCHARGE
-    system: boolean
-  death:
-    column: event_type
-    value: DEATH
-    system: boolean
-  discharge_or_death:
-    type: ANY
-    predicates: [discharge, death]
+    value: ventilation
     system: boolean
   any:
     type: special
 
 windows:
   trigger:
-    start: admission
+    start: ventilation_on
     duration:
     offset:
-    end: admission
+    end: ventilation_on
     excludes:
     includes: 
-      - predicate: admission
+      - predicate: ventilation_on
         min: 1
         max: 1
-    st_inclusive: False
-    end_inclusive: True
-  gap:
-    start: trigger.end
-    duration: 96 hours
-    offset:
-    end:
-    excludes: 
-      - predicate: admission
-      - predicate: discharge
-      - predicate: death
-    includes: 
     st_inclusive: False
     end_inclusive: True
   target:
-    start: gap.end
+    start: trigger.end
     duration: 
     offset:
-    end: discharge_or_death
+    end: ventilation_off
     excludes:
     includes: 
-      - predicate: discharge_or_death
+      - predicate: ventilation_off
         min: 1
         max: 1
     st_inclusive: False
     end_inclusive: True
-    label: death
+    label: 
   input:
     start:
     duration: -30 days
@@ -65,21 +45,5 @@ windows:
     includes: 
       - predicate: any
         min: 100
-        max: 110
     st_inclusive: False
     end_inclusive: True
-
-
-
-
-
-
-trigger on start of intervention, predict time / target to weaning (end of mech vent), input up to inter, leave label empty
-mechanical ventilation
-
-
-
-
-longterm predict
-
-at first discharge, myocardial infarc, no MI in admission (target 1-3 years will they have MI), must have certain num of events, input contraint on 1 discharge event for first discharge 

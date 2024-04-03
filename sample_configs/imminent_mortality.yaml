@@ -1,12 +1,4 @@
 predicates:
-  admission:
-    column: event_type
-    value: ADMISSION
-    system: boolean
-  discharge:
-    column: event_type
-    value: DISCHARGE
-    system: boolean
   death:
     column: event_type
     value: DEATH
@@ -34,6 +26,8 @@ windows:
     end: 
     excludes:
     includes:
+      - predicate: any
+        min: 100
     st_inclusive: False
     end_inclusive: True
     label: death
