@@ -538,7 +538,7 @@ if __name__ == "__main__":
         # 'outlier_detection',
         # 'readmission_risk',
         'long_term_incidence',
-        'intervention_weaning',
+        # 'intervention_weaning',
     ]
     profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=10000000)
 
