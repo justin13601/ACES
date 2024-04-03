@@ -896,8 +896,9 @@ def query_task(cfg_path, ESD, verbose=True):
     label_window = None
     for window in cfg.windows:
         if "label" in cfg.windows[window]:
-            label_window = window
-            break
+            if cfg.windows[window].label:
+                label_window = window
+                break
 
     if label_window:
         label = cfg.windows[label_window].label

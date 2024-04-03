@@ -132,12 +132,13 @@ def query_task(cfg_path: str, data_path: str, verbose=True) -> pl.DataFrame:
         *[f"{c.name}/timestamp" for c in output_order[1:]],
         *[f"{c.name}/window_summary" for c in output_order[1:]],
     ).rename({"timestamp": f"{tree.name}/timestamp"})
-
+    
     label_window = None
     for window in cfg.windows:
         if "label" in cfg.windows[window]:
-            label_window = window
-            break
+            if cfg.windows[window].label:
+                label_window = window
+                break
 
     if label_window:
         label = cfg.windows[label_window].label
