@@ -1,24 +1,36 @@
 predicates:
-  ventilation_on:
+  procedure_start:
     column: event_type
-    value: ventilation
+    value: PROCEDURE_START
     system: boolean
-  ventilation_off:
+  procedure_end:
     column: event_type
-    value: ventilation
+    value: PROCEDURE_END
+    system: boolean
+  ventilation:
+    column: procedure
+    value: Invasive Ventilation
+    system: boolean
+  ventilation_start:
+    type: ALL
+    predicates: [procedure_start, ventilation]
+    system: boolean
+  ventilation_end:
+    type: ALL
+    predicates: [procedure_end, ventilation]
     system: boolean
   any:
     type: special
 
 windows:
   trigger:
-    start: ventilation_on
+    start: ventilation_start
     duration:
     offset:
-    end: ventilation_on
+    end: ventilation_start
     excludes:
     includes: 
-      - predicate: ventilation_on
+      - predicate: ventilation_start
         min: 1
         max: 1
     st_inclusive: False
@@ -27,10 +39,10 @@ windows:
     start: trigger.end
     duration: 
     offset:
-    end: ventilation_off
+    end: ventilation_end
     excludes:
     includes: 
-      - predicate: ventilation_off
+      - predicate: ventilation_end
         min: 1
         max: 1
     st_inclusive: False

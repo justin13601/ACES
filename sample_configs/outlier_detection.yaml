@@ -14,19 +14,19 @@ predicates:
   outlier_num:
     column: valuenum
     value: 
-      - min: 10000
+      - min: 1000
     system: boolean
   heart_rate:
     column: lab
     value: Heart Rate (bpm)
     system: count
-  discharge_or_death:
-    type: ANY
-    predicates: [discharge, death]
-    system: boolean
   outlier_heart_rate:
     type: ALL
     predicates: [heart_rate, outlier_num]
+    system: boolean
+  discharge_or_death:
+    type: ANY
+    predicates: [discharge, death]
     system: boolean
   any: 
     type: special
