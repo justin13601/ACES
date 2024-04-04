@@ -3,10 +3,14 @@ predicates:
     column: lab
     value: Hemoglobin (g/dl)
     system: count
-  abnormal_value:
+  abnormal_value_1:
     column: valuenum
     value:
       - min: 17.2
+    system: boolean
+  abnormal_value_2:
+    column: valuenum
+    value:
       - max: 13.8
     system: boolean
   normal_value:
@@ -15,9 +19,17 @@ predicates:
       - min: 13.8
       - max: 17.2
     system: boolean
-  abnormal_hemoglobin:
+  abnormal_hemoglobin_1:
     type: ALL
-    predicates: [hemoglobin, abnormal_value]
+    predicates: [hemoglobin, abnormal_value_1]
+    system: boolean
+  abnormal_hemoglobin_2:
+    type: ALL
+    predicates: [hemoglobin, abnormal_value_2]
+    system: boolean
+  abnormal_hemoglobin:
+    type: ANY
+    predicates: [abnormal_hemoglobin_1, abnormal_hemoglobin_2]
     system: boolean
   normal_hemoglobin:
     type: ALL
@@ -61,7 +73,7 @@ windows:
     label: abnormal_hemoglobin
   input:
     start:
-    duration: 30 days
+    duration: -30 days
     offset:
     end: trigger.start
     excludes:

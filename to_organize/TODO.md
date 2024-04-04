@@ -2,6 +2,21 @@ TODO:
 - computational profile
     create run_profiling so matthew can run on bigger dataset
 	more variety, abnormal lab, weaning, progression
+        -> double check configs
+        -> slight issue with window boundaries (after predicate column generation)
+            -> consecutive same type windows (if st, +)
+            -> alternating windows (both not, -)
+            -> abnormal labs (consec time but input is also time, if st, +, main ones correct, others not-strange)
+            -> intervention_weaning (consec event, if st, +, fully correct, else missing one)
+            -> readmission risk (consec event, if st, +, fully correct, else missing one)
+            -> inhospital mortality (alt, both not, -, fully correct, else missing one)
+            -> outlier detection (alt, both not, -, fully correct, else missing one)
+            -> long term incidence (consec time but input is event, fully correct either way)
+            -> imminent mortality (alt, fully correct either way)
+        -> target must contain label?
+        -> binary label or count?
+        -> two lab rows with everything identical except for measurement_id and value_num (17.299999 vs. 6.600000 hemoglobin)
+        -> min/max of predicate, boundaries? eql to?
     total memory and cores allocated and machine details, chatgpt should be able to write to file
     use google spreadsheet -> csv so can plot using code
     
@@ -28,6 +43,10 @@ Paper notes:
 - demonstrate efficacy
 - future work, gpt, user eval; tractable to extract from natural language interface; Further research to appropriately communicate the elements in the data tables to design the appropriate predicates
 - limitation of defining a true trigger window
+
+Statistics:
+- http://varianceexplained.org/statistics/beta_distribution_and_baseball/
+- https://www.getguesstimate.com/scratchpad
 
 
 ABNORMAL LABS

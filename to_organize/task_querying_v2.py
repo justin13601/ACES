@@ -467,6 +467,8 @@ def summarize_window(
                 child.endpoint_expr,
                 anchor_to_subtree_root_by_subtree_anchor,
             )
+    
+    display(subtree_anchor_to_child_root_by_child_anchor.filter(subtree_anchor_to_child_root_by_child_anchor['subject_id'] == 1790))
 
     subtree_root_to_child_root_by_child_anchor = subtree_anchor_to_child_root_by_child_anchor.select(
         "subject_id",
@@ -577,6 +579,21 @@ def query_subtree(
           (node_A)
           |
           to_discharge
+          |
+          (node_B)
+          |
+          36h
+          |
+          (node_C)
+
+          # Example:
+          (admission_event)
+          |
+          24h
+          |
+          (node_A)
+          |
+          24h
           |
           (node_B)
           |

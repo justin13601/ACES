@@ -410,6 +410,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
         index=False,
     )
 
+
 def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
     pr = cProfile.Profile()
     pr.enable()
@@ -540,7 +541,7 @@ if __name__ == "__main__":
         'long_term_incidence',
         'intervention_weaning',
     ]
-    # profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=150000000)
+    # profile_based_on_task(DATA_DIR, output_dir, tasks)
 
     ############ Number of threads ############
     # Warning: Will run inhospital mortality on full dataset, so will take a really long time to load the data with low number of threads
