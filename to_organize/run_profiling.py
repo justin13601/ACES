@@ -532,15 +532,15 @@ if __name__ == "__main__":
 
     ############ Various tasks ############
     tasks = [
-        # 'inhospital_mortality',
-        # 'abnormal_lab',
-        # 'imminent_mortality',
-        # 'outlier_detection',
-        # 'readmission_risk',
+        'inhospital_mortality',
+        'abnormal_lab',
+        'imminent_mortality',
+        'outlier_detection',
+        'readmission_risk',
         'long_term_incidence',
-        # 'intervention_weaning',
+        'intervention_weaning',
     ]
-    profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=10000000)
+    # profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=150000000)
 
     ############ Number of threads ############
     # Warning: Will run inhospital mortality on full dataset, so will take a really long time to load the data with low number of threads

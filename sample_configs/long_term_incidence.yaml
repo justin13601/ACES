@@ -89,8 +89,8 @@ windows:
     end_inclusive: True
     label: myocardial_infarction
   input:
-    start: 
-    duration: 30 days
+    start: admission
+    duration:
     offset:
     end: trigger.start
     excludes:  
