@@ -45,9 +45,7 @@ windows:
     offset:
     end: normal_hemoglobin
     excludes:
-    includes: 
-      - predicate: normal_hemoglobin
-        min: 1
+    includes:
     st_inclusive: False
     end_inclusive: True
   gap:
@@ -66,7 +64,7 @@ windows:
     end: 
     excludes:
     includes: 
-      - predicate: abnormal_hemoglobin
+      - predicate: hemoglobin
         min: 1
     st_inclusive: False
     end_inclusive: True
@@ -77,8 +75,6 @@ windows:
     offset:
     end: trigger.start
     excludes:
-    includes: 
-    - predicate: any
-      min: 100
+    includes:
     st_inclusive: False
     end_inclusive: True

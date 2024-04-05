@@ -7,16 +7,13 @@ predicates:
     type: special
 
 windows:
-  trigger:
+  trigger: # triggers on any event
     start: any
     duration:
     offset:
     end: any
     excludes:
-    includes: 
-      - predicate: any
-        min: 1
-        max: 1
+    includes:
     st_inclusive: False
     end_inclusive: True
   target:
@@ -26,8 +23,6 @@ windows:
     end: 
     excludes:
     includes:
-      - predicate: any
-        min: 100
     st_inclusive: False
     end_inclusive: True
     label: death
