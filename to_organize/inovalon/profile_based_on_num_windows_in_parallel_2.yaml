@@ -1,0 +1,62 @@
+predicates:
+  admission:
+    column: event_type
+    value: IPPSCLAIMCOST_START
+    system: boolean
+  discharge:
+    column: event_type
+    value: IPPSCLAIMCOST_END
+    system: boolean
+  any:
+    type: special
+
+windows:
+  trigger:
+    start: admission
+    duration:
+    offset:
+    end: admission
+    includes: 
+    excludes:
+    st_inclusive: False
+    end_inclusive: True
+  input:
+    start: trigger.end
+    duration:
+    offset:
+    end: discharge
+    excludes:
+    includes: 
+      - predicate: discharge
+        min: 1
+        max: 1
+    st_inclusive: False
+    end_inclusive: True
+  gap_1:
+    start: trigger.end
+    duration: 60 seconds
+    offset:
+    end:
+    excludes:
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  gap_2:
+    start: trigger.end
+    duration: 60 seconds
+    offset:
+    end:
+    excludes:
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+  target:
+    start: input.end
+    duration: 30 days
+    offset:
+    end:
+    excludes:
+    includes: 
+    st_inclusive: False
+    end_inclusive: True
+    label: admission
