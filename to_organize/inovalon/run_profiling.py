@@ -536,7 +536,6 @@ if __name__ == "__main__":
     profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_windows_parallel, num_rows=num_rows)
 
     tasks = [
-        'abnormal_lab',
         'readmission_risk',
         'long_term_incidence',
     ]
