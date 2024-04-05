@@ -93,10 +93,7 @@ if __name__ == "__main__":
     ############ DIRECTORIES ############
 
     os.makedirs(output_dir, exist_ok=True)
-    
-    ############ Number of threads ############
-    config = "test_configs/profile_based_on_num_threads.yaml"
+    config = "profile_based_on_num_threads.yaml"
     profiling_result = profile_based_on_num_threads(DATA_DIR, config)
-
     with open(output_dir / "profiling_result.pkl", "wb") as f:
         pickle.dump(profiling_result, f)

@@ -51,7 +51,7 @@ def profile_based_on_num_original_rows(DATA_DIR, output_dir, original_rows):
     preprocess_time = ps.total_tt - load_time
     print(f"Preprocess time: {preprocess_time}")
 
-    config = "test_configs/profile_based_on_num_original_rows.yaml"
+    config = "profile_based_on_num_original_rows.yaml"
 
     profiling_results = []
     for i in original_rows:
@@ -149,7 +149,7 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
         print(f"Number of rows: {df_temp.shape[0]}")
         print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"test_configs/profile_based_on_num_predicates_{i}.yaml"
+        config = f"profile_based_on_num_predicates_{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -224,7 +224,7 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
         print(f"Number of rows: {df_temp.shape[0]}")
         print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"test_configs/profile_based_on_num_criteria_{i}.yaml"
+        config = f"profile_based_on_num_criteria_{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -299,7 +299,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
         print(f"Number of rows: {df_temp.shape[0]}")
         print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"test_configs/profile_based_on_num_windows_in_series_{i}.yaml"
+        config = f"profile_based_on_num_windows_in_series_{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -374,7 +374,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
         print(f"Number of rows: {df_temp.shape[0]}")
         print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"test_configs/profile_based_on_num_windows_in_parallel_{i}.yaml"
+        config = f"profile_based_on_num_windows_in_parallel_{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -449,7 +449,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
         print(f"Number of rows: {df_temp.shape[0]}")
         print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"../sample_configs/{i}.yaml"
+        config = f"{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -491,10 +491,9 @@ if __name__ == "__main__":
     output_dir = Path("profiling_output")
     ############ DIRECTORIES ############
 
-    os.makedirs(output_dir, exist_ok=True)
-
-    ############ Number of original rows ############
-    num_rows = [
+    ############ VARIABLES TO CHANGE ############
+    #Number of original rows
+    num_original_rows = [
         10,
         50,
         100,
@@ -512,36 +511,35 @@ if __name__ == "__main__":
         100000000,
         150000000,
     ]
-    # profile_based_on_num_original_rows(DATA_DIR, output_dir, num_rows)
 
-    ############ Number of predicates ############
+    #Number of rows to test other profiling on, leave as None to test it on full Inovalon, else integer
+    num_rows = None
+
+    #Number of polars threads, will run on full Inovalon regardless of num_rows
+    num_threads = [36, 32, 28, 24, 20, 16, 12, 8, 4, 2, 1]
+    ############ VARIABLES TO CHANGE ############
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    profile_based_on_num_original_rows(DATA_DIR, output_dir, num_original_rows)
+
     num_predicates = [0, 1, 2, 4, 8, 16]
-    # profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_rows=10000000)
+    profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_rows=num_rows)
     
-    ############ Number of criteria ############
     num_critera = [0, 1, 2, 4, 8, 16]
-    # profile_based_on_num_criteria(DATA_DIR, output_dir, num_critera, num_rows=150000000)
+    profile_based_on_num_criteria(DATA_DIR, output_dir, num_critera, num_rows=num_rows)
 
-    ############ Number of windows in series (segments) ############
     num_windows_series = [0, 1, 2, 4, 8, 16]
-    # profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_windows_series, num_rows=150000000)
+    profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_windows_series, num_rows=num_rows)
 
-    ############ Number of windows in parallel (overlapping) ############
     num_windows_parallel = [0, 1, 2, 4, 8, 16]
-    # profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_windows_parallel, num_rows=150000000)
+    profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_windows_parallel, num_rows=num_rows)
 
-    ############ Various tasks ############
     tasks = [
-        'inhospital_mortality',
         'abnormal_lab',
-        'imminent_mortality',
         'readmission_risk',
         'long_term_incidence',
-        'intervention_weaning',
     ]
-    # profile_based_on_task(DATA_DIR, output_dir, tasks)
+    profile_based_on_task(DATA_DIR, output_dir, tasks)
 
-    ############ Number of threads ############
-    # Warning: Will run inhospital mortality on full dataset, so will take a really long time to load the data with low number of threads
-    num_threads = [36, 32, 28, 24, 20, 16, 12, 8, 4, 2, 1]
-    # profile_based_on_num_threads(output_dir, num_threads)
+    profile_based_on_num_threads(output_dir, num_threads)
