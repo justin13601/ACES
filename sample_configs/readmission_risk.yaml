@@ -16,6 +16,7 @@ windows:
     duration:
     offset:
     end: admission
+    includes: 
     excludes:
     st_inclusive: False
     end_inclusive: True

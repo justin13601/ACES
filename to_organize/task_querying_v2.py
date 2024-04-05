@@ -468,7 +468,7 @@ def summarize_window(
                 anchor_to_subtree_root_by_subtree_anchor,
             )
     
-    display(subtree_anchor_to_child_root_by_child_anchor.filter(subtree_anchor_to_child_root_by_child_anchor['subject_id'] == 1790))
+    display(subtree_anchor_to_child_root_by_child_anchor.filter(subtree_anchor_to_child_root_by_child_anchor['subject_id'] == 1984))
 
     subtree_root_to_child_root_by_child_anchor = subtree_anchor_to_child_root_by_child_anchor.select(
         "subject_id",

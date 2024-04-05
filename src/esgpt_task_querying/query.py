@@ -189,6 +189,9 @@ def summarize_event_bound_window(
         tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]
     ),
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
+    prev_endpoint_expr: (
+        tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]
+    ),
 ) -> pl.LazyFrame | pl.DataFrame:
     """Summarizes the event-bound window based on the given predicates and anchor-to-subtree-root mapping.
 
@@ -259,15 +262,28 @@ def summarize_event_bound_window(
         ],
     )
 
-    if not st_inclusive:
-        cumsum_anchor_child = cumsum_anchor_child.with_columns(
-            "subject_id",
-            "timestamp",
-            *[
-                (pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor"))
-                for c in predicate_cols
-            ],
-        )
+    # patch for case where there are consecutive windows of the same type
+    match prev_endpoint_expr[1]:
+        case timedelta():
+            if not st_inclusive:
+                cumsum_anchor_child = cumsum_anchor_child.with_columns(
+                    "subject_id",
+                    "timestamp",
+                    *[
+                        (pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor"))
+                        for c in predicate_cols
+                    ],
+                )
+        case str():
+            if st_inclusive:
+                cumsum_anchor_child = cumsum_anchor_child.with_columns(
+                    "subject_id",
+                    "timestamp",
+                    *[
+                        (pl.col(f"{c}_final") + pl.col(f"{c}_at_anchor"))
+                        for c in predicate_cols
+                    ],
+                )
     if not end_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
             "subject_id",
@@ -347,6 +363,7 @@ def summarize_window(
                 predicate_cols,
                 child.endpoint_expr,
                 anchor_to_subtree_root_by_subtree_anchor,
+                child.parent.endpoint_expr,
             )
 
     subtree_root_to_child_root_by_child_anchor = (

@@ -16,7 +16,7 @@ from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
 
-def query_task(cfg_path: str, data_path: str, verbose=True) -> pl.DataFrame:
+def query_task(cfg_path: str, data: str | pl.DataFrame, verbose=True) -> pl.DataFrame:
     """Query a task using the provided configuration file and event stream data.
 
     Args:
@@ -26,20 +26,23 @@ def query_task(cfg_path: str, data_path: str, verbose=True) -> pl.DataFrame:
     Returns:
         polars.DataFrame: The result of the task query.
     """
+    match data:
+        case str():
+            DATA_DIR = Path(data)
+            ESD = Dataset.load(DATA_DIR)
 
-    DATA_DIR = Path(data_path)
-    ESD = Dataset.load(DATA_DIR)
+            events_df = ESD.events_df.filter(~pl.all_horizontal(pl.all().is_null()))
+            dynamic_measurements_df = ESD.dynamic_measurements_df.filter(
+                ~pl.all_horizontal(pl.all().is_null())
+            )
 
-    events_df = ESD.events_df.filter(~pl.all_horizontal(pl.all().is_null()))
-    dynamic_measurements_df = ESD.dynamic_measurements_df.filter(
-        ~pl.all_horizontal(pl.all().is_null())
-    )
-
-    ESD_data = (
-        events_df.join(dynamic_measurements_df, on="event_id", how="left")
-        .drop(["event_id"])
-        .sort(by=["subject_id", "timestamp", "event_type"])
-    )
+            ESD_data = (
+                events_df.join(dynamic_measurements_df, on="event_id", how="left")
+                .drop(["event_id"])
+                .sort(by=["subject_id", "timestamp", "event_type"])
+            )
+        case pl.DataFrame():
+            ESD_data = data
 
     if ESD_data["timestamp"].dtype != pl.Datetime:
         ESD_data = ESD_data.with_columns(
@@ -78,9 +81,14 @@ def query_task(cfg_path: str, data_path: str, verbose=True) -> pl.DataFrame:
 
     predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
-    valid_trigger_exprs = [
-        (ESD_data[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes
-    ]
+    if cfg.windows.trigger.includes:
+        valid_trigger_exprs = [
+            (ESD_data[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes
+        ]
+    else:
+        valid_trigger_exprs = [
+            (ESD_data[f"is_{cfg.windows.trigger.start}"] == 1)
+        ]
     anchor_to_subtree_root_by_subtree_anchor = ESD_data.clone()
     anchor_to_subtree_root_by_subtree_anchor_shape = (
         anchor_to_subtree_root_by_subtree_anchor.shape[0]
@@ -95,9 +103,14 @@ def query_task(cfg_path: str, data_path: str, verbose=True) -> pl.DataFrame:
             < anchor_to_subtree_root_by_subtree_anchor_shape
         ):
             if verbose:
-                print(
-                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
-                )
+                if cfg.windows.trigger.includes:
+                    print(
+                        f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
+                    )
+                else:
+                    print(
+                        f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg.windows.trigger.start}."
+                    )
             anchor_to_subtree_root_by_subtree_anchor_shape = (
                 anchor_to_subtree_root_by_subtree_anchor.shape[0]
             )

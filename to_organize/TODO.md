@@ -1,14 +1,26 @@
 TODO:
+- add beginning of record
+- add if to check for window pattern
+- evaluate predicate cols on dynamic measurements first -> boolean is any on readme
+- Fix null value returns
+
+
+
+
 - computational profile
     create run_profiling so matthew can run on bigger dataset
 	more variety, abnormal lab, weaning, progression
         -> double check configs
         -> slight issue with window boundaries (after predicate column generation)
+                (if st) abnormal labs: time -> event -> time -> time
+                (if st) intervention weaning: time -> event -> event
+                (if st) readmission risk: event -> event -> time
+                (if not st) inhospital mortality: time -> event -> time -> event
             -> consecutive same type windows (if st, +)
             -> alternating windows (both not, -)
             -> abnormal labs (consec time but input is also time, if st, +, main ones correct, others not-strange)
-            -> intervention_weaning (consec event, if st, +, fully correct, else missing one)
-            -> readmission risk (consec event, if st, +, fully correct, else missing one)
+            -> intervention_weaning (consec event, if st, +, fully correct, else missing one proc_st)
+            -> readmission risk (consec event, if st, +, fully correct, else missing one, also some null counts...)
             -> inhospital mortality (alt, both not, -, fully correct, else missing one)
             -> outlier detection (alt, both not, -, fully correct, else missing one)
             -> long term incidence (consec time but input is event, fully correct either way)
@@ -16,7 +28,7 @@ TODO:
         -> target must contain label?
         -> binary label or count?
         -> two lab rows with everything identical except for measurement_id and value_num (17.299999 vs. 6.600000 hemoglobin)
-        -> min/max of predicate, boundaries? eql to?
+        -> min/max of predicate, what to do for boundaries? eql to the min/max?
     total memory and cores allocated and machine details, chatgpt should be able to write to file
     use google spreadsheet -> csv so can plot using code
     

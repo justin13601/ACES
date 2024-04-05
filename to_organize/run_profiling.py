@@ -9,8 +9,7 @@ import platform
 import psutil
 import cProfile, pstats, sys
 
-# from esgpt_task_querying import main
-import task_querying_v2 as esgpt_task_querying
+from esgpt_task_querying import main
 from EventStream.data.dataset_polars import Dataset
 
 
@@ -65,7 +64,7 @@ def profile_based_on_num_original_rows(DATA_DIR, output_dir, original_rows):
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = esgpt_task_querying.query_task(config, df_temp, verbose=False)
+        df_result = main.query_task(config, df_temp, verbose=False)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -154,7 +153,7 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = esgpt_task_querying.query_task(
+        df_result = main.query_task(
             config, df_temp, verbose=False
         )
         pr.disable()
@@ -229,7 +228,7 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = esgpt_task_querying.query_task(
+        df_result = main.query_task(
             config, df_temp, verbose=False
         )
         pr.disable()
@@ -304,7 +303,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = esgpt_task_querying.query_task(
+        df_result = main.query_task(
             config, df_temp, verbose=False
         )
         pr.disable()
@@ -379,7 +378,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = esgpt_task_querying.query_task(
+        df_result = main.query_task(
             config, df_temp, verbose=False
         )
         pr.disable()
@@ -454,7 +453,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = esgpt_task_querying.query_task(
+        df_result = main.query_task(
             config, df_temp, verbose=False
         )
         pr.disable()

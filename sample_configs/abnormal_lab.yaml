@@ -3,37 +3,37 @@ predicates:
     column: lab
     value: Hemoglobin (g/dl)
     system: count
-  abnormal_value_1:
+  abnormal_min_value:
     column: valuenum
     value:
       - min: 17.2
     system: boolean
-  abnormal_value_2:
+  abnormal_max_value:
     column: valuenum
     value:
       - max: 13.8
     system: boolean
-  normal_value:
+  normal_range:
     column: valuenum
     value:
       - min: 13.8
       - max: 17.2
     system: boolean
-  abnormal_hemoglobin_1:
+  abnormal_min_hemoglobin:
     type: ALL
-    predicates: [hemoglobin, abnormal_value_1]
+    predicates: [hemoglobin, abnormal_min_value]
     system: boolean
-  abnormal_hemoglobin_2:
+  abnormal_max_hemoglobin:
     type: ALL
-    predicates: [hemoglobin, abnormal_value_2]
+    predicates: [hemoglobin, abnormal_max_value]
     system: boolean
   abnormal_hemoglobin:
     type: ANY
-    predicates: [abnormal_hemoglobin_1, abnormal_hemoglobin_2]
+    predicates: [abnormal_min_hemoglobin, abnormal_max_hemoglobin]
     system: boolean
   normal_hemoglobin:
     type: ALL
-    predicates: [hemoglobin, normal_value]
+    predicates: [hemoglobin, normal_range]
     system: boolean
   any: 
     type: special

@@ -10,8 +10,7 @@ import platform
 import psutil
 import cProfile, pstats, sys
 
-# from esgpt_task_querying import main
-import task_querying_v2 as esgpt_task_querying
+from esgpt_task_querying import main
 from EventStream.data.dataset_polars import Dataset
 
 
@@ -62,7 +61,7 @@ def profile_based_on_num_threads(DATA_DIR, config):
 
     pr = cProfile.Profile()
     pr.enable()
-    df_result = esgpt_task_querying.query_task(config, df_temp, verbose=False)
+    df_result = main.query_task(config, df_temp, verbose=False)
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     query_time = ps.total_tt
