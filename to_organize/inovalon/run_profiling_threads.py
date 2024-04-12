@@ -88,8 +88,8 @@ def profile_based_on_num_threads(DATA_DIR, config):
 
 if __name__ == "__main__":
     ############ DIRECTORIES ############
-    DATA_DIR = Path("../MIMIC_ESD_new_schema_08-31-23-1")
-    output_dir = Path("profiling_output")
+    DATA_DIR = Path("/n/data1/hms/dbmi/zaklab/inovalon_mbm47/processed/12-19-23_InovalonSample1M")
+    output_dir = Path("inovalon_profiling_output")
     ############ DIRECTORIES ############
 
     os.makedirs(output_dir, exist_ok=True)

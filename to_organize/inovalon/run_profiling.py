@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import polars as pl
+from loguru import logger
 
 import subprocess
 import pickle
@@ -34,7 +35,7 @@ def profile_based_on_num_original_rows(DATA_DIR, output_dir, original_rows):
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     load_time = ps.total_tt
-    print(f"Load time: {load_time}")
+    logger.debug(f"Load time: {load_time}")
 
     pr.enable()
     events_df = events_df.filter(~pl.all_horizontal(pl.all().is_null()))
@@ -49,18 +50,18 @@ def profile_based_on_num_original_rows(DATA_DIR, output_dir, original_rows):
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     preprocess_time = ps.total_tt - load_time
-    print(f"Preprocess time: {preprocess_time}")
+    logger.debug(f"Preprocess time: {preprocess_time}")
 
     config = "profile_based_on_num_original_rows.yaml"
 
     profiling_results = []
     for i in original_rows:
-        print(
+        logger.debug(
             f"====================================={i} Rows====================================="
         )
         df_temp = df_data.head(i)
-        print(f"Number of rows: {df_temp.shape[0]}")
-        print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_temp.shape[0]}")
+        logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
         pr = cProfile.Profile()
         pr.enable()
@@ -68,10 +69,10 @@ def profile_based_on_num_original_rows(DATA_DIR, output_dir, original_rows):
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
-        print(f"Query time: {query_time}")
+        logger.debug(f"Query time: {query_time}")
 
-        print(f"Number of rows: {df_result.shape[0]}")
-        print(f"Number of patients: {df_result['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_result.shape[0]}")
+        logger.debug(f"Number of patients: {df_result['subject_id'].n_unique()}")
 
         profiling_result = {
             "num_rows": i,
@@ -119,7 +120,7 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     load_time = ps.total_tt
-    print(f"Load time: {load_time}")
+    logger.debug(f"Load time: {load_time}")
 
     pr.enable()
     events_df = events_df.filter(~pl.all_horizontal(pl.all().is_null()))
@@ -134,7 +135,7 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     preprocess_time = ps.total_tt - load_time
-    print(f"Preprocess time: {preprocess_time}")
+    logger.debug(f"Preprocess time: {preprocess_time}")
 
     if num_rows:
         df_temp = df_data.head(num_rows)
@@ -143,11 +144,11 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
 
     profiling_results = []
     for i in num_predicates:
-        print(
+        logger.debug(
             f"====================================={i} Extra Predicates====================================="
         )
-        print(f"Number of rows: {df_temp.shape[0]}")
-        print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_temp.shape[0]}")
+        logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
         config = f"profile_based_on_num_predicates_{i}.yaml"
 
@@ -159,10 +160,10 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
-        print(f"Query time: {query_time}")
+        logger.debug(f"Query time: {query_time}")
 
-        print(f"Number of rows: {df_result.shape[0]}")
-        print(f"Number of patients: {df_result['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_result.shape[0]}")
+        logger.debug(f"Number of patients: {df_result['subject_id'].n_unique()}")
 
         profiling_result = {
             "num_extra_predicates": i,
@@ -194,7 +195,7 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     load_time = ps.total_tt
-    print(f"Load time: {load_time}")
+    logger.debug(f"Load time: {load_time}")
 
     pr.enable()
     events_df = events_df.filter(~pl.all_horizontal(pl.all().is_null()))
@@ -209,7 +210,7 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     preprocess_time = ps.total_tt - load_time
-    print(f"Preprocess time: {preprocess_time}")
+    logger.debug(f"Preprocess time: {preprocess_time}")
 
     if num_rows:
         df_temp = df_data.head(num_rows)
@@ -218,11 +219,11 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
 
     profiling_results = []
     for i in num_criteria:
-        print(
+        logger.debug(
             f"====================================={i} Extra Criteria ====================================="
         )
-        print(f"Number of rows: {df_temp.shape[0]}")
-        print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_temp.shape[0]}")
+        logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
         config = f"profile_based_on_num_criteria_{i}.yaml"
 
@@ -234,10 +235,10 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
-        print(f"Query time: {query_time}")
+        logger.debug(f"Query time: {query_time}")
 
-        print(f"Number of rows: {df_result.shape[0]}")
-        print(f"Number of patients: {df_result['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_result.shape[0]}")
+        logger.debug(f"Number of patients: {df_result['subject_id'].n_unique()}")
 
         profiling_result = {
             "num_extra_criteria": i,
@@ -269,7 +270,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     load_time = ps.total_tt
-    print(f"Load time: {load_time}")
+    logger.debug(f"Load time: {load_time}")
 
     pr.enable()
     events_df = events_df.filter(~pl.all_horizontal(pl.all().is_null()))
@@ -284,7 +285,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     preprocess_time = ps.total_tt - load_time
-    print(f"Preprocess time: {preprocess_time}")
+    logger.debug(f"Preprocess time: {preprocess_time}")
 
     if num_rows:
         df_temp = df_data.head(num_rows)
@@ -293,11 +294,11 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
 
     profiling_results = []
     for i in num_criteria:
-        print(
+        logger.debug(
             f"====================================={i} Extra Windows in Series ====================================="
         )
-        print(f"Number of rows: {df_temp.shape[0]}")
-        print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_temp.shape[0]}")
+        logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
         config = f"profile_based_on_num_windows_in_series_{i}.yaml"
 
@@ -309,10 +310,10 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
-        print(f"Query time: {query_time}")
+        logger.debug(f"Query time: {query_time}")
 
-        print(f"Number of rows: {df_result.shape[0]}")
-        print(f"Number of patients: {df_result['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_result.shape[0]}")
+        logger.debug(f"Number of patients: {df_result['subject_id'].n_unique()}")
 
         profiling_result = {
             "num_extra_windows_in_series": i,
@@ -344,7 +345,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     load_time = ps.total_tt
-    print(f"Load time: {load_time}")
+    logger.debug(f"Load time: {load_time}")
 
     pr.enable()
     events_df = events_df.filter(~pl.all_horizontal(pl.all().is_null()))
@@ -359,7 +360,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     preprocess_time = ps.total_tt - load_time
-    print(f"Preprocess time: {preprocess_time}")
+    logger.debug(f"Preprocess time: {preprocess_time}")
 
     if num_rows:
         df_temp = df_data.head(num_rows)
@@ -368,11 +369,11 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
 
     profiling_results = []
     for i in num_criteria:
-        print(
+        logger.debug(
             f"====================================={i} Extra Windows in Parallel ====================================="
         )
-        print(f"Number of rows: {df_temp.shape[0]}")
-        print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_temp.shape[0]}")
+        logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
         config = f"profile_based_on_num_windows_in_parallel_{i}.yaml"
 
@@ -384,10 +385,10 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
-        print(f"Query time: {query_time}")
+        logger.debug(f"Query time: {query_time}")
 
-        print(f"Number of rows: {df_result.shape[0]}")
-        print(f"Number of patients: {df_result['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_result.shape[0]}")
+        logger.debug(f"Number of patients: {df_result['subject_id'].n_unique()}")
 
         profiling_result = {
             "num_extra_windows_in_parallel": i,
@@ -419,7 +420,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     load_time = ps.total_tt
-    print(f"Load time: {load_time}")
+    logger.debug(f"Load time: {load_time}")
 
     pr.enable()
     events_df = events_df.filter(~pl.all_horizontal(pl.all().is_null()))
@@ -434,7 +435,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     preprocess_time = ps.total_tt - load_time
-    print(f"Preprocess time: {preprocess_time}")
+    logger.debug(f"Preprocess time: {preprocess_time}")
 
     if num_rows:
         df_temp = df_data.head(num_rows)
@@ -443,11 +444,11 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
 
     profiling_results = []
     for i in tasks:
-        print(
+        logger.debug(
             f"=====================================Task: {i}====================================="
         )
-        print(f"Number of rows: {df_temp.shape[0]}")
-        print(f"Number of patients: {df_temp['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_temp.shape[0]}")
+        logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
         config = f"{i}.yaml"
 
@@ -459,10 +460,10 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
-        print(f"Query time: {query_time}")
+        logger.debug(f"Query time: {query_time}")
 
-        print(f"Number of rows: {df_result.shape[0]}")
-        print(f"Number of patients: {df_result['subject_id'].n_unique()}")
+        logger.debug(f"Number of rows: {df_result.shape[0]}")
+        logger.debug(f"Number of patients: {df_result['subject_id'].n_unique()}")
 
         profiling_result = {
             "num_extra_windows_in_parallel": i,
@@ -487,8 +488,8 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
 
 if __name__ == "__main__":
     ############ DIRECTORIES ############
-    DATA_DIR = Path("../MIMIC_ESD_new_schema_08-31-23-1")
-    output_dir = Path("profiling_output")
+    DATA_DIR = Path("/n/data1/hms/dbmi/zaklab/inovalon_mbm47/processed/12-19-23_InovalonSample1M")
+    output_dir = Path("inovalon_profiling_output")
     ############ DIRECTORIES ############
 
     ############ VARIABLES TO CHANGE ############
@@ -516,7 +517,7 @@ if __name__ == "__main__":
     num_rows = None
 
     #Number of polars threads, will run on full Inovalon regardless of num_rows
-    num_threads = [36, 32, 28, 24, 20, 16, 12, 8, 4, 2, 1]
+    num_threads = [16, 12, 8, 4, 2, 1]
     ############ VARIABLES TO CHANGE ############
 
     os.makedirs(output_dir, exist_ok=True)
@@ -529,10 +530,10 @@ if __name__ == "__main__":
     num_critera = [0, 1, 2, 4, 8, 16]
     profile_based_on_num_criteria(DATA_DIR, output_dir, num_critera, num_rows=num_rows)
 
-    num_windows_series = [0, 1, 2, 4, 8, 16]
+    num_windows_series = [0, 1, 2, 4]
     profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_windows_series, num_rows=num_rows)
 
-    num_windows_parallel = [0, 1, 2, 4, 8, 16]
+    num_windows_parallel = [0, 1, 2, 4]
     profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_windows_parallel, num_rows=num_rows)
 
     tasks = [
