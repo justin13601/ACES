@@ -15,8 +15,10 @@ from .config import build_tree_from_config, load_config
 from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
+from loguru import logger
 
-def query_task(cfg_path: str, data: str | pl.DataFrame, verbose=True) -> pl.DataFrame:
+
+def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
     """Query a task using the provided configuration file and event stream data.
 
     Args:
@@ -58,37 +60,32 @@ def query_task(cfg_path: str, data: str | pl.DataFrame, verbose=True) -> pl.Data
     if "subject_id" not in ESD_data.columns:
         raise ValueError("ESD does not have subject_id column!")
 
-    if verbose:
-        print("Loading config...\n")
+    logger.debug("Loading config...\n")
     cfg = load_config(cfg_path)
 
-    if verbose:
-        print("Generating predicate columns...\n")
+    logger.debug("Generating predicate columns...\n")
     try:
-        ESD_data = generate_predicate_columns(cfg, ESD_data, verbose=verbose)
+        ESD_data = generate_predicate_columns(cfg, ESD_data)
     except Exception as e:
         raise ValueError(
             "Error generating predicate columns from configuration file! Check to make sure the format of "
             "the configuration file is valid."
         ) from e
 
-    if verbose:
-        print("\nBuilding tree...")
+    logger.debug("\nBuilding tree...")
     tree = build_tree_from_config(cfg)
-    if verbose:
-        print_tree(tree, style="const_bold")
-        print("\n")
+    print_tree(tree, style="const_bold")
+    logger.debug("\n")
 
     predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
     if cfg.windows.trigger.includes:
         valid_trigger_exprs = [
-            (ESD_data[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes
+            (ESD_data[f"is_{x['predicate']}"] == 1)
+            for x in cfg.windows.trigger.includes
         ]
     else:
-        valid_trigger_exprs = [
-            (ESD_data[f"is_{cfg.windows.trigger.start}"] == 1)
-        ]
+        valid_trigger_exprs = [(ESD_data[f"is_{cfg.windows.trigger.start}"] == 1)]
     anchor_to_subtree_root_by_subtree_anchor = ESD_data.clone()
     anchor_to_subtree_root_by_subtree_anchor_shape = (
         anchor_to_subtree_root_by_subtree_anchor.shape[0]
@@ -102,15 +99,14 @@ def query_task(cfg_path: str, data: str | pl.DataFrame, verbose=True) -> pl.Data
             anchor_to_subtree_root_by_subtree_anchor.shape[0]
             < anchor_to_subtree_root_by_subtree_anchor_shape
         ):
-            if verbose:
-                if cfg.windows.trigger.includes:
-                    print(
-                        f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
-                    )
-                else:
-                    print(
-                        f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg.windows.trigger.start}."
-                    )
+            if cfg.windows.trigger.includes:
+                logger.debug(
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
+                )
+            else:
+                logger.debug(
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg.windows.trigger.start}."
+                )
             anchor_to_subtree_root_by_subtree_anchor_shape = (
                 anchor_to_subtree_root_by_subtree_anchor.shape[0]
             )
@@ -123,19 +119,16 @@ def query_task(cfg_path: str, data: str | pl.DataFrame, verbose=True) -> pl.Data
         )
     )
 
-    if verbose:
-        print("\n")
-        print("Querying...")
+    logger.debug("\n")
+    logger.debug("Querying...")
     result = query_subtree(
         subtree=tree,
         anchor_to_subtree_root_by_subtree_anchor=anchor_to_subtree_root_by_subtree_anchor,
         predicates_df=ESD_data,
         anchor_offset=timedelta(hours=0),
-        verbose=verbose
     )
-    if verbose:
-        print("\n")
-        print("Done.\n")
+    logger.debug("\n")
+    logger.debug("Done.\n")
 
     output_order = [node for node in preorder_iter(tree)]
 
@@ -145,7 +138,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame, verbose=True) -> pl.Data
         *[f"{c.name}/timestamp" for c in output_order[1:]],
         *[f"{c.name}/window_summary" for c in output_order[1:]],
     ).rename({"timestamp": f"{tree.name}/timestamp"})
-    
+
     label_window = None
     for window in cfg.windows:
         if "label" in cfg.windows[window]:

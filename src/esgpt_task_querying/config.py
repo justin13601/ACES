@@ -26,7 +26,9 @@ class DotAccessibleDict(dict):
         if attr in self:
             return self[attr]
         else:
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr}'")
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{attr}'"
+            )
 
 
 def load_config(config_path: str) -> DotAccessibleDict:
@@ -114,12 +116,18 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
             for each_inclusion in window_info.includes:
                 if each_inclusion["predicate"]:
                     constraints[f"is_{each_inclusion['predicate']}"] = (
-                        int(each_inclusion["min"])
-                        if "min" in each_inclusion and each_inclusion["min"] is not None
-                        else None,
-                        int(each_inclusion["max"])
-                        if "max" in each_inclusion and each_inclusion["max"] is not None
-                        else None,
+                        (
+                            int(each_inclusion["min"])
+                            if "min" in each_inclusion
+                            and each_inclusion["min"] is not None
+                            else None
+                        ),
+                        (
+                            int(each_inclusion["max"])
+                            if "max" in each_inclusion
+                            and each_inclusion["max"] is not None
+                            else None
+                        ),
                     )
         node.constraints = constraints
 
