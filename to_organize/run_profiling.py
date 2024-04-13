@@ -64,7 +64,7 @@ def profile_based_on_num_original_rows(DATA_DIR, output_dir, original_rows):
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = main.query_task(config, df_temp, verbose=False)
+        df_result = main.query_task(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -154,7 +154,7 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
         pr = cProfile.Profile()
         pr.enable()
         df_result = main.query_task(
-            config, df_temp, verbose=False
+            config, df_temp
         )
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
@@ -229,7 +229,7 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
         pr = cProfile.Profile()
         pr.enable()
         df_result = main.query_task(
-            config, df_temp, verbose=False
+            config, df_temp
         )
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
@@ -283,7 +283,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
     )
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
-    preprocess_time = ps.total_tt - load_time
+    preprocess_time = ps.total_tt
     print(f"Preprocess time: {preprocess_time}")
 
     if num_rows:
@@ -304,7 +304,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
         pr = cProfile.Profile()
         pr.enable()
         df_result = main.query_task(
-            config, df_temp, verbose=False
+            config, df_temp
         )
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
@@ -379,7 +379,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
         pr = cProfile.Profile()
         pr.enable()
         df_result = main.query_task(
-            config, df_temp, verbose=False
+            config, df_temp
         )
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
@@ -454,7 +454,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
         pr = cProfile.Profile()
         pr.enable()
         df_result = main.query_task(
-            config, df_temp, verbose=False
+            config, df_temp
         )
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
@@ -532,12 +532,12 @@ if __name__ == "__main__":
 
     ############ Various tasks ############
     tasks = [
-        'inhospital_mortality',
-        'abnormal_lab',
-        'imminent_mortality',
-        'readmission_risk',
-        'long_term_incidence',
-        'intervention_weaning',
+        # 'inhospital_mortality',
+        # 'abnormal_lab',
+        # 'imminent_mortality',
+        # 'readmission_risk',
+        # 'long_term_incidence',
+        # 'intervention_weaning',
     ]
     # profile_based_on_task(DATA_DIR, output_dir, tasks)
 
