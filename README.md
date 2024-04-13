@@ -37,6 +37,7 @@ pip install -e .
 ```
 
 2. Install ESGPT Task Querying:
+
 Clone ESGPT Task Querying
 ```
 git clone https://github.com/justin13601/ESGPTTaskQuerying.git
