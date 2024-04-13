@@ -9,15 +9,15 @@ predicates:
     system: boolean
   diagnosis_1:
     column: drg_code
-    value: 280
+    value: '280'
     system: boolean
   diagnosis_2:
     column: drg_code
-    value: 281
+    value: '281'
     system: boolean
   diagnosis_3:
     column: drg_code
-    value: 282
+    value: '282'
     system: boolean
   myocardial_infarction:
     type: ANY
