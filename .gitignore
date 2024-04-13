@@ -162,3 +162,5 @@ cython_debug/
 /MIMIC_ESD_new_schema_08-31-23-1
 .vscode/
 passwords.txt
+/to_organize/mprofile*
+/to_organize/plot*
