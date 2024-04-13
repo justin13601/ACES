@@ -24,11 +24,42 @@ Provided below are several examples of clinically-meaningful tasks that ESGPT Ta
 - bigtree
 - ruamel.yaml
 
+## Installation
+1. Install EventStreamGPT (https://github.com/mmcdermott/EventStreamGPT):
+
+Clone EventStreamGPT
+```
+git clone https://github.com/mmcdermott/EventStreamGPT.git
+```
+Install package with dependencies from the root directory of the cloned repo
+```
+pip install -e .
+```
+
+2. Install ESGPT Task Querying:
+Clone ESGPT Task Querying
+```
+git clone https://github.com/justin13601/ESGPTTaskQuerying.git
+```
+Install package with dependencies from the root directory of the cloned repo
+```
+pip install . --force-reinstall
+```
+
 ## Instructions for Use
 
 1. **Prepare the YAML Configuration File**: Define your predicates and windows according to your research needs. Please see below for details regarding the configuration language.
 2. **Load ESGPT Task Querying**: Set-up and import ESGPT Task Querying into your environment.
-3. **Run the Query**: Use ESGPT Task Querying with your YAML file to query the dataset (ESD).
+```
+from esgpt_task_querying import main
+```
+3. **Run the Query**: Use ESGPT Task Querying with your YAML file to query a ESGPT dataset.
+```
+df_result = main.query_task(
+            cfg_path='/path/to/config.yaml',
+            data='/path/to/folder/of/ESGPT/dataset/'
+        )
+```
 4. **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your YAML file. Timestamps for an edge of each window specified in the YAML, as well as predicate counts for each window, are also provided.
 
 ## YAML Configuration File
