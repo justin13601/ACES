@@ -3,6 +3,7 @@ TODO:
 - add if to check for window pattern -> not quite correct yet
 - evaluate predicate cols on dynamic measurements first -> boolean is any on readme
 - Fix null value returns
+- Fix tree building gap_11
 
 
 
