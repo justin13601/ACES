@@ -60,10 +60,10 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
     if "subject_id" not in ESD_data.columns:
         raise ValueError("ESD does not have subject_id column!")
 
-    logger.debug("Loading config...\n")
+    logger.debug("Loading config...")
     cfg = load_config(cfg_path)
 
-    logger.debug("Generating predicate columns...\n")
+    logger.debug("Generating predicate columns...")
     try:
         ESD_data = generate_predicate_columns(cfg, ESD_data)
     except Exception as e:
@@ -72,10 +72,9 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
             "the configuration file is valid."
         ) from e
 
-    logger.debug("\nBuilding tree...")
+    logger.debug("Building tree...")
     tree = build_tree_from_config(cfg)
     print_tree(tree, style="const_bold")
-    logger.debug("\n")
 
     predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
@@ -119,7 +118,6 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         )
     )
 
-    logger.debug("\n")
     logger.debug("Querying...")
     result = query_subtree(
         subtree=tree,
@@ -127,8 +125,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         predicates_df=ESD_data,
         anchor_offset=timedelta(hours=0),
     )
-    logger.debug("\n")
-    logger.debug("Done.\n")
+    logger.debug("Done.")
 
     output_order = [node for node in preorder_iter(tree)]
 
