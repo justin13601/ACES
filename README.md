@@ -4,7 +4,7 @@
 
 ## Background
 
-Event Stream GPT (ESGPT) is a library that streamlines the development of generative, pre-trained transformers (i.e., foundation models) over event stream datasets, such as Electronic Health Records (EHR). ESGPT is designed to extract, preprocess, and manage these datasets efficiently, providing a Huggingface-compatible modeling API and introducing critical capabilities for representing complex intra-event causal dependencies and measuring zero-shot performance. For more detailed information, please refer to the ESGPT GitHub repository: [ESGPT GitHub Repo](https://github.com/esgpt).
+EventStreamGPT(ESGPT) is a library that streamlines the development of generative, pre-trained transformers (i.e., foundation models) over event stream datasets, such as Electronic Health Records (EHR). ESGPT is designed to extract, preprocess, and manage these datasets efficiently, providing a Huggingface-compatible modeling API and introducing critical capabilities for representing complex intra-event causal dependencies and measuring zero-shot performance. For more detailed information, please refer to the ESGPT GitHub repository: [ESGPT GitHub Repo](https://github.com/esgpt).
 
 A feature of ESGPT is the ability to query EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML configuration file. This streamlines the process of extracting task-specific cohorts from large time-series datasets, offering a powerful and user-friendly solution to researchers and developers. The use of a human-readable YAML configuration file also eliminates the need for users to be proficient in complex dataframe querying, making the querying process accessible to a broader audience.
 
@@ -128,4 +128,4 @@ A tree structure is constructed based on the windows defined in the configuratio
 
 **Matthew McDermott**, PhD | *Harvard Medical School*
 
-For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding Event Stream GPT, please refer to the ESGPT repository. Contributions are welcome via pull requests.
+For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding EventStreamGPT, please refer to the ESGPT repository. Contributions are welcome via pull requests.
