@@ -61,7 +61,7 @@ def profile_based_on_num_threads(DATA_DIR, config):
 
     pr = cProfile.Profile()
     pr.enable()
-    df_result = main.query_task(config, df_temp, verbose=False)
+    df_result = main.query_task(config, df_temp)
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     query_time = ps.total_tt
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     ############ DIRECTORIES ############
 
     os.makedirs(output_dir, exist_ok=True)
-    config = "profile_based_on_num_threads.yaml"
+    config = "profiling_configs/profile_based_on_num_threads.yaml"
     profiling_result = profile_based_on_num_threads(DATA_DIR, config)
     with open(output_dir / "profiling_result.pkl", "wb") as f:
         pickle.dump(profiling_result, f)
