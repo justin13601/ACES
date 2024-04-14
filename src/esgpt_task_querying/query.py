@@ -24,110 +24,111 @@ def summarize_temporal_window(
     Returns:
         The summarized dataframe.
 
-    >>> import polars as pl
-    >>> import pandas as pd
-    >>> from datetime import timedelta
-    >>> from esgpt_task_querying.query import summarize_temporal_window
-    >>> predicates_df = pl.DataFrame(
-    ...     {
-    ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
-    ...         "timestamp": [1, 10, 26, 33, 81, 88, 89, 122],
-    ...         "is_admission": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...         "is_discharge": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...         "pred_C": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...     }
-    ... )
-    >>> anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
-    ...     {
-    ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
-    ...         "timestamp": [1, 10, 26, 33, 81, 88, 89, 122],
-    ...         "timestamp_at_anchor": [1, 10, 26, 33, 81, 88, 89, 122],
-    ...         "is_admission": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...         "is_discharge": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...         "pred_C": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...     }
-    ... )
-    >>> endpoint_expr = (True, timedelta(days=1), True, timedelta(days=0))
-    >>> predicate_cols = ["is_admission", "is_discharge", "pred_C"]
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
-    >>> endpoint_expr = (True, timedelta(days=1), False, timedelta(days=0))
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
-    >>> endpoint_expr = (False, timedelta(days=1), True, timedelta(days=0))
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
-    >>> endpoint_expr = (False, timedelta(days=1), False, timedelta(days=0))
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
-    >>> endpoint_expr = (True, timedelta(days=-1), True, timedelta(days=0))
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
+    Examples:
+        >>> import polars as pl
+        >>> import pandas as pd
+        >>> from datetime import timedelta
+        >>> from esgpt_task_querying.query import summarize_temporal_window
+        >>> predicates_df = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
+        ...         "timestamp": [1, 10, 26, 33, 81, 88, 89, 122],
+        ...         "is_admission": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "is_discharge": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "pred_C": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...     }
+        ... )
+        >>> anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
+        ...         "timestamp": [1, 10, 26, 33, 81, 88, 89, 122],
+        ...         "timestamp_at_anchor": [1, 10, 26, 33, 81, 88, 89, 122],
+        ...         "is_admission": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "is_discharge": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "pred_C": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...     }
+        ... )
+        >>> endpoint_expr = (True, timedelta(days=1), True, timedelta(days=0))
+        >>> predicate_cols = ["is_admission", "is_discharge", "pred_C"]
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
+        >>> endpoint_expr = (True, timedelta(days=1), False, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
+        >>> endpoint_expr = (False, timedelta(days=1), True, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
+        >>> endpoint_expr = (False, timedelta(days=1), False, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
+        >>> endpoint_expr = (True, timedelta(days=-1), True, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
     """
     st_inclusive, window_size, end_inclusive, offset = endpoint_expr
     if not offset:
@@ -148,10 +149,10 @@ def summarize_temporal_window(
         offset = -period + offset
     else:
         period = window_size
-        offset = timedelta(days=0) + offset
+        offset = offset
 
     # summarize the window using rolling window
-    result = (
+    return (
         predicates_df.rolling(
             index_column="timestamp",
             by="subject_id",
@@ -161,24 +162,12 @@ def summarize_temporal_window(
         )
         .agg([pl.col(c).sum().alias(c) for c in predicate_cols])
         .sort(by=["subject_id", "timestamp"])
-    )
-
-    # set the timestamp at anchor
-    filtered_result = result.join(
-        anchor_to_subtree_root_by_subtree_anchor,
-        on=["subject_id", "timestamp"],
-        suffix="_summary",
-    ).with_columns(pl.col("timestamp").alias("timestamp_at_anchor"))
-
-    filtered_result = filtered_result.select(
-        "subject_id",
-        "timestamp",
-        "timestamp_at_anchor",
-        *[
-            pl.col(c)
-            for c in filtered_result.columns
-            if c not in ["subject_id", "timestamp", "timestamp_at_anchor"]
-        ],
+        .join(
+            anchor_to_subtree_root_by_subtree_anchor,
+            on=["subject_id", "timestamp"],
+            suffix="_summary",
+        )
+        .with_columns(pl.col("timestamp").alias("timestamp_at_anchor"))
     )
 
     return filtered_result
@@ -201,6 +190,112 @@ def summarize_event_bound_window(
 
     Returns:
         The summarized dataframe.
+
+    Examples:
+        >>> import polars as pl
+        >>> import pandas as pd
+        >>> from datetime import timedelta
+        >>> from esgpt_task_querying.query import summarize_temporal_window
+        >>> predicates_df = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
+        ...         "timestamp": [1, 10, 26, 33, 81, 88, 89, 122],
+        ...         "is_admission": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "is_discharge": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "pred_C": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...     }
+        ... )
+        >>> anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
+        ...         "timestamp": [1, 10, 26, 33, 81, 88, 89, 122],
+        ...         "timestamp_at_anchor": [1, 10, 26, 33, 81, 88, 89, 122],
+        ...         "is_admission": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "is_discharge": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "pred_C": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...     }
+        ... )
+        >>> endpoint_expr = (True, timedelta(days=1), True, timedelta(days=0))
+        >>> predicate_cols = ["is_admission", "is_discharge", "pred_C"]
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
+        >>> endpoint_expr = (True, timedelta(days=1), False, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
+        >>> endpoint_expr = (False, timedelta(days=1), True, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
+        >>> endpoint_expr = (False, timedelta(days=1), False, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
+        >>> endpoint_expr = (True, timedelta(days=-1), True, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        0           1          1                    1             0             0       0
+        1           1         10                   10             0             0       0
+        2           1         26                   26             0             0       0
+        3           1         33                   33             0             0       0
+        4           1         81                   81             0             0       0
+        5           1         88                   88             0             0       0
+        6           1         89                   89             0             0       0
+        7           1        122                  122             0             0       0
     """
     st_inclusive, end_event, end_inclusive, offset = endpoint_expr
     if not offset:
