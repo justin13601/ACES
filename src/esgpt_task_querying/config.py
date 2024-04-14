@@ -153,16 +153,16 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
     root = next(iter(nodes.values())).root
 
     # if event_bound window follows temporal window, the st_inclusive parameter is set to True
-    for each_node in preorder_iter(root):
-        if (
-            each_node.parent
-            and isinstance(each_node.parent.endpoint_expr[1], timedelta)
-            and isinstance(each_node.endpoint_expr[1], str)
-        ):
-            each_node.endpoint_expr = (
-                True,
-                each_node.endpoint_expr[1],
-                each_node.endpoint_expr[2],
-                each_node.endpoint_expr[3],
-            )
+    # for each_node in preorder_iter(root):
+    #     if (
+    #         each_node.parent
+    #         and isinstance(each_node.parent.endpoint_expr[1], timedelta)
+    #         and isinstance(each_node.endpoint_expr[1], str)
+    #     ):
+    #         each_node.endpoint_expr = (
+    #             True,
+    #             each_node.endpoint_expr[1],
+    #             each_node.endpoint_expr[2],
+    #             each_node.endpoint_expr[3],
+    #         )
     return root
