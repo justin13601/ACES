@@ -28,10 +28,13 @@ Provided below are several examples of clinically-meaningful tasks that ESGPT Ta
 1. Install EventStreamGPT (https://github.com/mmcdermott/EventStreamGPT):
 
 Clone EventStreamGPT
+
 ```bash
 git clone https://github.com/mmcdermott/EventStreamGPT.git
 ```
+
 Install package with dependencies from the root directory of the cloned repo
+
 ```bash
 pip install -e .
 ```
@@ -39,10 +42,13 @@ pip install -e .
 2. Install ESGPT Task Querying:
 
 Clone ESGPT Task Querying
+
 ```bash
 git clone https://github.com/justin13601/ESGPTTaskQuerying.git
 ```
+
 Install package with dependencies from the root directory of the cloned repo
+
 ```bash
 pip install . --force-reinstall
 ```
