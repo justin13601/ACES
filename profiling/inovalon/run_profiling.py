@@ -52,7 +52,7 @@ def profile_based_on_num_original_rows(DATA_DIR, output_dir, original_rows):
     preprocess_time = ps.total_tt - load_time
     logger.debug(f"Preprocess time: {preprocess_time}")
 
-    config = "profile_based_on_num_original_rows.yaml"
+    config = "../profiling_configs/profile_based_on_num_original_rows.yaml"
 
     profiling_results = []
     for i in original_rows:
@@ -150,7 +150,7 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
         logger.debug(f"Number of rows: {df_temp.shape[0]}")
         logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"profile_based_on_num_predicates_{i}.yaml"
+        config = f"../profiling_configs/profile_based_on_num_predicates_{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -225,7 +225,7 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
         logger.debug(f"Number of rows: {df_temp.shape[0]}")
         logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"profile_based_on_num_criteria_{i}.yaml"
+        config = f"../profiling_configs/profile_based_on_num_criteria_{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -300,7 +300,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
         logger.debug(f"Number of rows: {df_temp.shape[0]}")
         logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"profile_based_on_num_windows_in_series_{i}.yaml"
+        config = f"../profiling_configs/profile_based_on_num_windows_in_series_{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -375,7 +375,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
         logger.debug(f"Number of rows: {df_temp.shape[0]}")
         logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"profile_based_on_num_windows_in_parallel_{i}.yaml"
+        config = f"../profiling_configs/profile_based_on_num_windows_in_parallel_{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -450,7 +450,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
         logger.debug(f"Number of rows: {df_temp.shape[0]}")
         logger.debug(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
-        config = f"{i}.yaml"
+        config = f"../profiling_configs/{i}.yaml"
 
         pr = cProfile.Profile()
         pr.enable()
@@ -489,7 +489,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
 if __name__ == "__main__":
     ############ DIRECTORIES ############
     DATA_DIR = Path("/n/data1/hms/dbmi/zaklab/inovalon_mbm47/processed/12-19-23_InovalonSample1M")
-    output_dir = Path("inovalon_profiling_output")
+    output_dir = Path("profiling_output")
     ############ DIRECTORIES ############
 
     ############ VARIABLES TO CHANGE ############

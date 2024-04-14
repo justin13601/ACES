@@ -88,14 +88,14 @@ def profile_based_on_num_threads(DATA_DIR, config):
 
 if __name__ == "__main__":
     ############ DIRECTORIES ############
-    DATA_DIR = Path("../MIMIC_ESD_new_schema_08-31-23-1")
+    DATA_DIR = Path("../../MIMIC_ESD_new_schema_08-31-23-1")
     output_dir = Path("profiling_output")
     ############ DIRECTORIES ############
 
     os.makedirs(output_dir, exist_ok=True)
     
     ############ Number of threads ############
-    config = "test_configs/profile_based_on_num_threads.yaml"
+    config = "../profiling_configs/profile_based_on_num_threads.yaml"
     profiling_result = profile_based_on_num_threads(DATA_DIR, config)
 
     with open(output_dir / "profiling_result.pkl", "wb") as f:
