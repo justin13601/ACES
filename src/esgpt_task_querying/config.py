@@ -75,7 +75,8 @@ def parse_timedelta(time_str: str) -> timedelta:
 
 def get_max_duration(data: pl.DataFrame) -> pl.DataFrame:
     """Get the maximum duration data for each subject by calculating the delta between the min and max timestamps."""
-
+    
+    # get the start and end timestamps for each subject
     data = data.groupby("subject_id").agg(
         [
             pl.col("timestamp").min().alias("min_timestamp"),
@@ -83,10 +84,12 @@ def get_max_duration(data: pl.DataFrame) -> pl.DataFrame:
         ]
     )
 
+    # calculate the duration for each subject
     data = data.with_columns(
         (pl.col("max_timestamp") - pl.col("min_timestamp")).alias("duration")
     )
 
+    # get the maximum duration
     max_duration = data["duration"].max()
     return max_duration
 
@@ -106,6 +109,7 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
         node = Node(window_name)
         window_info = cfg.windows[window_name]
 
+        # set node end_event
         if window_info.duration:
             if type(window_info.duration) == timedelta:
                 end_event = window_info.duration
@@ -116,6 +120,7 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
         else:
             end_event = f"is_{window_info.end}"
 
+        # set node st_inclusive and end_inclusive
         st_inclusive = False
         end_inclusive = True
         if "st_inclusive" in window_info:
@@ -123,15 +128,18 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
         if "end_inclusive" in window_info:
             end_inclusive = window_info.end_inclusive
 
+        # set node offset
         offset = parse_timedelta(window_info.offset)
         node.endpoint_expr = (st_inclusive, end_event, end_inclusive, offset)
 
+        # set node exclude constraints
         constraints = {}
         if window_info.excludes:
             for each_exclusion in window_info.excludes:
                 if each_exclusion["predicate"]:
                     constraints[f"is_{each_exclusion['predicate']}"] = (None, 0)
 
+        # set node include constraints, using min and max values and None if not specified
         if window_info.includes:
             for each_inclusion in window_info.includes:
                 if each_inclusion["predicate"]:
@@ -151,6 +159,7 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
                     )
         node.constraints = constraints
 
+        # search for the parent node in tree
         if window_info.start:
             root_name = window_info.start.split(".")[0]
             node_root = next(

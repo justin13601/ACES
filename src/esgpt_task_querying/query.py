@@ -144,6 +144,7 @@ def summarize_temporal_window(
     else:
         closed = "none"
 
+    # set parameters for groupby rolling window
     if window_size < timedelta(days=0):
         period = -window_size
         offset = -period + offset
@@ -151,6 +152,7 @@ def summarize_temporal_window(
         period = window_size
         offset = timedelta(days=0) + offset
 
+    # summarize the window using rolling window
     result = (
         predicates_df.rolling(
             index_column="timestamp",
@@ -163,6 +165,7 @@ def summarize_temporal_window(
         .sort(by=["subject_id", "timestamp"])
     )
 
+    # set the timestamp at anchor
     filtered_result = result.join(
         anchor_to_subtree_root_by_subtree_anchor,
         on=["subject_id", "timestamp"],
@@ -209,6 +212,7 @@ def summarize_event_bound_window(
     if not offset:
         offset = timedelta(days=0)
 
+    # overall cumulative sum of predicates
     cumsum_predicates_df = predicates_df.with_columns(
         *[
             pl.col(c).cum_sum().over(pl.col("subject_id")).alias(f"{c}_cumsum")
@@ -216,6 +220,7 @@ def summarize_event_bound_window(
         ],
     )
 
+    # get the counts at the anchor
     cnts_at_anchor = (
         anchor_to_subtree_root_by_subtree_anchor.select("subject_id", "timestamp")
         .join(cumsum_predicates_df, on=["subject_id", "timestamp"], how="left")
@@ -231,13 +236,13 @@ def summarize_event_bound_window(
         )
     )
 
+    # get the counts at the child anchor
     cumsum_predicates_df = cumsum_predicates_df.select(
         "subject_id",
         "timestamp",
         *[pl.col(f"{c}") for c in predicate_cols],
         *[pl.col(f"{c}_cumsum") for c in predicate_cols],
     )
-
     cumsum_predicates_df = cumsum_predicates_df.join(
         cnts_at_anchor, on=["subject_id", "timestamp"], how="left"
     ).with_columns(
@@ -251,7 +256,6 @@ def summarize_event_bound_window(
             for c in predicate_cols
         ],
     )
-
     cumsum_anchor_child = cumsum_predicates_df.with_columns(
         "subject_id",
         "timestamp",
@@ -263,6 +267,7 @@ def summarize_event_bound_window(
         ],
     )
 
+    # st_inclusive and end_inclusive checks (not fully correct yet)
     # patch for case where there are consecutive windows of the same type
     # match prev_endpoint_expr[1]:
     #     case timedelta():
@@ -292,6 +297,7 @@ def summarize_event_bound_window(
             *[(pl.col(f"{c}_final") - pl.col(f"{c}")) for c in predicate_cols],
         )
 
+    # filter and clean up
     at_child_anchor = cumsum_anchor_child.select(
         "subject_id",
         "timestamp",
@@ -350,6 +356,7 @@ def summarize_window(
             with the counts occurring between subtree_root and the child
     """
     match child.endpoint_expr[1]:
+        # if time-bounded window
         case timedelta():
             subtree_anchor_to_child_root_by_child_anchor = summarize_temporal_window(
                 predicates_df,
@@ -357,7 +364,7 @@ def summarize_window(
                 child.endpoint_expr,
                 anchor_to_subtree_root_by_subtree_anchor,
             )
-
+        # if event-bounded window
         case str():
             subtree_anchor_to_child_root_by_child_anchor = summarize_event_bound_window(
                 predicates_df,
@@ -408,6 +415,7 @@ def check_constraints(window_constraints, summary_df):
     if not valid_exprs:
         valid_exprs.append(pl.lit(True))
 
+    # log filtered subjects
     summary_df_shape = summary_df.shape[0]
     for condition in valid_exprs:
         dropped = summary_df.filter(~condition)
@@ -532,7 +540,9 @@ def query_subtree(
 
         # Step 3: Update parameters for recursive step
         match child.endpoint_expr[1]:
+            # if time-bounded window
             case timedelta():
+                # account for offset
                 anchor_offset_branch = (
                     anchor_offset + child.endpoint_expr[1] + child.endpoint_expr[3]
                 )
@@ -546,7 +556,9 @@ def query_subtree(
                     "timestamp",
                     *[pl.col(c) + pl.col(f"{c}_summary") for c in predicate_cols],
                 )
+            # if event-bounded window
             case str():
+                # reset offset
                 anchor_offset_branch = timedelta(days=0) + child.endpoint_expr[3]
                 joined = anchor_to_subtree_root_by_subtree_anchor.join(
                     subtree_root_to_child_root_by_child_anchor,
@@ -568,6 +580,8 @@ def query_subtree(
                     )
                 )
 
+        # Can try to move some joins before recursive call to reduce memory for Inovalon but stable for MIMIC for some reason
+
         # Step 4: Recurse
         recursive_result = query_subtree(
             child,
@@ -576,6 +590,7 @@ def query_subtree(
             anchor_offset_branch,
         )
 
+        # Update timestamp for recursive result
         match child.endpoint_expr[1]:
             case timedelta():
                 recursive_result = recursive_result.with_columns(

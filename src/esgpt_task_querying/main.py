@@ -28,6 +28,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
     Returns:
         polars.DataFrame: The result of the task query.
     """
+    # load data if path is provided, else data is already loaded
     match data:
         case str():
             DATA_DIR = Path(data)
@@ -46,6 +47,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         case pl.DataFrame():
             ESD_data = data
 
+    # check if timestamp is in the correct format
     if ESD_data["timestamp"].dtype != pl.Datetime:
         ESD_data = ESD_data.with_columns(
             pl.col("timestamp")
@@ -53,6 +55,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
             .cast(pl.Datetime)
         )
 
+    # check if ESD is empty
     if ESD_data.shape[0] == 0:
         raise ValueError("Empty ESD!")
     if "timestamp" not in ESD_data.columns:
@@ -71,6 +74,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
             "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
         ) from e
 
+    # checking for "Beginning of record" in the configuration file
     starts = [window.start for window in cfg.windows.values()]
     if None in starts:
         max_duration = -get_max_duration(ESD_data)
@@ -87,17 +91,20 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
     logger.debug("Beginning query...")
     predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
+    # filter out subjects that do not have the trigger event if specified in inclusion criteria
     if cfg.windows.trigger.includes:
         valid_trigger_exprs = [
             (ESD_data[f"is_{x['predicate']}"] == 1)
             for x in cfg.windows.trigger.includes
         ]
+    # filter out subjects that do not have the trigger event if specified as the start
     else:
         valid_trigger_exprs = [(ESD_data[f"is_{cfg.windows.trigger.start}"] == 1)]
     anchor_to_subtree_root_by_subtree_anchor = ESD_data.clone()
     anchor_to_subtree_root_by_subtree_anchor_shape = (
         anchor_to_subtree_root_by_subtree_anchor.shape[0]
     )
+    # log filtered subjects
     for i, condition in enumerate(valid_trigger_exprs):
         dropped = anchor_to_subtree_root_by_subtree_anchor.filter(~condition)
         anchor_to_subtree_root_by_subtree_anchor = (
@@ -119,6 +126,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
                 anchor_to_subtree_root_by_subtree_anchor.shape[0]
             )
 
+    # prepare anchor_to_subtree_root_by_subtree_anchor for query_subtree
     anchor_to_subtree_root_by_subtree_anchor = (
         anchor_to_subtree_root_by_subtree_anchor.select(
             "subject_id", "timestamp", *[pl.col(c) for c in predicate_cols]
@@ -127,6 +135,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         )
     )
 
+    # recursively query the tree
     result = query_subtree(
         subtree=tree,
         anchor_to_subtree_root_by_subtree_anchor=anchor_to_subtree_root_by_subtree_anchor,
@@ -135,8 +144,8 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
     )
     logger.debug("Done.")
 
+    # reorder columns in output dataframe
     output_order = [node for node in preorder_iter(tree)]
-
     result = result.select(
         "subject_id",
         "timestamp",
@@ -144,6 +153,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         *[f"{c.name}/window_summary" for c in output_order[1:]],
     ).rename({"timestamp": f"{tree.name}/timestamp"})
 
+    # replace timestamps for windows that start at the beginning of the record
     if None in starts:
         record_starts = ESD_data.groupby("subject_id").agg(
             [
@@ -161,13 +171,13 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
             ]
         ).drop(["start_of_record"])
 
+    # add label column if specified
     label_window = None
     for window in cfg.windows:
         if "label" in cfg.windows[window]:
             if cfg.windows[window].label:
                 label_window = window
                 break
-
     if label_window:
         label = cfg.windows[label_window].label
         result = result.with_columns(
