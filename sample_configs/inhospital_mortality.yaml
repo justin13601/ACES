@@ -54,8 +54,8 @@ windows:
     end_inclusive: True
     label: death
   input:
-    start:
-    duration: -30 days
+    start: NULL
+    duration: 
     offset:
     end: trigger.start
     excludes:  

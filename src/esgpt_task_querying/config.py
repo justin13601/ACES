@@ -4,6 +4,7 @@ dictionary and subsequently building a tree structure from the configuration."""
 import re
 from datetime import timedelta
 
+import polars as pl
 import ruamel.yaml
 from bigtree import Node, preorder_iter
 
@@ -72,6 +73,24 @@ def parse_timedelta(time_str: str) -> timedelta:
     )
 
 
+def get_max_duration(data: pl.DataFrame) -> pl.DataFrame:
+    """Get the maximum duration data for each subject by calculating the delta between the min and max timestamps."""
+
+    data = data.groupby("subject_id").agg(
+        [
+            pl.col("timestamp").min().alias("min_timestamp"),
+            pl.col("timestamp").max().alias("max_timestamp"),
+        ]
+    )
+
+    data = data.with_columns(
+        (pl.col("max_timestamp") - pl.col("min_timestamp")).alias("duration")
+    )
+
+    max_duration = data["duration"].max()
+    return max_duration
+
+
 def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
     """Build a tree structure from the given configuration.
 
@@ -88,7 +107,9 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
         window_info = cfg.windows[window_name]
 
         if window_info.duration:
-            if "-" in window_info.duration:
+            if type(window_info.duration) == timedelta:
+                end_event = window_info.duration
+            elif "-" in window_info.duration:
                 end_event = -parse_timedelta(window_info.duration)
             else:
                 end_event = parse_timedelta(window_info.duration)

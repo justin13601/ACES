@@ -11,7 +11,7 @@ from bigtree import preorder_iter, print_tree
 
 from EventStream.data.dataset_polars import Dataset
 
-from .config import build_tree_from_config, load_config
+from .config import build_tree_from_config, load_config, get_max_duration
 from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
@@ -71,10 +71,20 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
             "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
         ) from e
 
+    starts = [window.start for window in cfg.windows.values()]
+    if None in starts:
+        max_duration = -get_max_duration(ESD_data)
+        for each_window in cfg.windows:
+            if cfg.windows[each_window].start is None:
+                logger.debug(f"Setting start of the {each_window} window to the beginning of the record.")
+                cfg.windows[each_window].start = None
+                cfg.windows[each_window].duration = max_duration
+
     logger.debug("Building tree...")
     tree = build_tree_from_config(cfg)
     print_tree(tree, style="const_bold")
 
+    logger.debug("Beginning query...")
     predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
     if cfg.windows.trigger.includes:
@@ -117,7 +127,6 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         )
     )
 
-    logger.debug("Querying...")
     result = query_subtree(
         subtree=tree,
         anchor_to_subtree_root_by_subtree_anchor=anchor_to_subtree_root_by_subtree_anchor,
@@ -134,6 +143,23 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         *[f"{c.name}/timestamp" for c in output_order[1:]],
         *[f"{c.name}/window_summary" for c in output_order[1:]],
     ).rename({"timestamp": f"{tree.name}/timestamp"})
+
+    if None in starts:
+        record_starts = ESD_data.groupby("subject_id").agg(
+            [
+                pl.col("timestamp").min().alias("start_of_record"),
+            ]
+        )
+        result = result.join(
+            record_starts,
+            on="subject_id",
+            how="left",
+        ).with_columns(
+            *[
+                pl.col("start_of_record").alias(f"{each_window}/timestamp")
+                for each_window in cfg.windows if cfg.windows[each_window].start is None
+            ]
+        ).drop(["start_of_record"])
 
     label_window = None
     for window in cfg.windows:
