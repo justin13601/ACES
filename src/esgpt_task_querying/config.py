@@ -13,7 +13,7 @@ def load_config(config_path: str) -> dict[str, Any]:
     """Load a configuration file from the given path and return it as a dict.
 
     Args:
-        config_path (str): The path to the configuration file.
+        config_path: The path to the configuration file.
     """
     yaml = ruamel.yaml.YAML()
     with open(config_path) as file:
@@ -23,11 +23,19 @@ def load_config(config_path: str) -> dict[str, Any]:
 def parse_timedelta(time_str: str) -> timedelta:
     """Parse a time string and return a timedelta object.
 
+    TODO(justin): Consider using https://dateutil.readthedocs.io/en/stable/examples.html#parse-examples
+
     Args:
-        time_str (str): The time string to parse.
+        time_str: The time string to parse.
 
     Returns:
         timedelta: The parsed timedelta object.
+
+    Examples:
+        >>> parse_timedelta("1 days")
+        datetime.timedelta(days=1)
+        >>> parse_timedelta("1 days 2 hours 3 minutes 4 seconds")
+        datetime.timedelta(days=1, seconds=7384)
     """
     if not time_str:
         return timedelta(days=0)
@@ -46,24 +54,34 @@ def parse_timedelta(time_str: str) -> timedelta:
     )
 
 
-def get_max_duration(data: pl.DataFrame) -> pl.DataFrame:
-    """Get the maximum duration data for each subject by calculating the delta between the min and max
-    timestamps."""
+def get_max_duration(data: pl.DataFrame) -> timedelta:
+    """Get the maximum duration for each subject timestamps.
 
-    # get the start and end timestamps for each subject
-    data = data.groupby("subject_id").agg(
-        [
-            pl.col("timestamp").min().alias("min_timestamp"),
-            pl.col("timestamp").max().alias("max_timestamp"),
-        ]
+    Args:
+        data: The data containing the events for each subject. The timestamps of the events are in the 
+        column ``"timestamp"`` and the subject IDs are in the column ``"subject_id"``.
+
+    Returns:
+        The maximum duration between the latest timestamp and the earliest timestamp over all subjects.
+
+    Examples:
+        >>> from datetime import datetime
+        >>> data = pl.DataFrame({
+        ...     "subject_id": [1, 1, 2, 2],
+        ...     "timestamp": [
+        ...         datetime(2021, 1, 1), datetime(2021, 1, 2), datetime(2021, 1, 1), datetime(2021, 1, 3)
+        ...     ]
+        ... })
+        >>> get_max_duration(data)
+        datetime.timedelta(days=2)
+    """
+
+    return (
+        data.groupby("subject_id")
+        .agg((pl.col("timestamp").max() - pl.col("timestamp").min()).alias("duration"))
+        .get_column("duration")
+        .max()
     )
-
-    # calculate the duration for each subject
-    data = data.with_columns((pl.col("max_timestamp") - pl.col("min_timestamp")).alias("duration"))
-
-    # get the maximum duration
-    max_duration = data["duration"].max()
-    return max_duration
 
 
 def build_tree_from_config(cfg: dict[str, Any]) -> Node:
@@ -74,6 +92,29 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
 
     Returns:
         Node: The root node of the built tree.
+
+    Examples:
+        >>> cfg = {
+        ...     "windows": {
+        ...         "window1": {
+        ...             "start": None,
+        ...             "end": "window2",
+        ...             "duration": "1 day",
+        ...             "offset": "0 seconds",
+        ...             "st_inclusive": False,
+        ...             "end_inclusive": True,
+        ...             "excludes": [],
+        ...             "includes": []
+        ...         },
+        ...         "window2": {
+        ...             "start": "window1",
+        ...             "end": None,
+        ...             "duration": "1 day",
+        ...         },
+        ...     }
+        ... }
+        >>> build_tree_from_config(cfg)
+        TODO(justin): Add expected output and correct config
     """
     nodes = {}
     for window_name, window_info in cfg['windows'].items():
