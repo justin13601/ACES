@@ -48,7 +48,7 @@ windows:
     duration:
     offset:
     end: admission
-    includes: 
+    includes:
     excludes:
     st_inclusive: False
     end_inclusive: True
@@ -58,7 +58,7 @@ windows:
     offset:
     end: discharge
     excludes:
-    includes: 
+    includes:
       - predicate: discharge
         min: 1
         max: 1
@@ -70,7 +70,7 @@ windows:
     offset:
     end:
     excludes:
-    includes: 
+    includes:
     st_inclusive: False
     end_inclusive: True
     label: admission

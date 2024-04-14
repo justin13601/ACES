@@ -49,7 +49,19 @@ predicates:
     system: boolean
   myocardial_infarction:
     type: ANY
-    predicates: [diagnosis_1, diagnosis_2, diagnosis_3, diagnosis_4, diagnosis_5, diagnosis_6, diagnosis_7, diagnosis_8, diagnosis_9, diagnosis_10]
+    predicates:
+      [
+        diagnosis_1,
+        diagnosis_2,
+        diagnosis_3,
+        diagnosis_4,
+        diagnosis_5,
+        diagnosis_6,
+        diagnosis_7,
+        diagnosis_8,
+        diagnosis_9,
+        diagnosis_10,
+      ]
     system: boolean
   any:
     type: special
@@ -61,7 +73,7 @@ windows:
     offset:
     end: discharge
     excludes:
-    includes: 
+    includes:
     st_inclusive: False
     end_inclusive: True
   gap:
@@ -81,7 +93,7 @@ windows:
     offset:
     end:
     excludes:
-    includes: 
+    includes:
     st_inclusive: False
     end_inclusive: True
     label: myocardial_infarction
@@ -90,8 +102,8 @@ windows:
     duration:
     offset:
     end: trigger.start
-    excludes:  
-    includes: 
+    excludes:
+    includes:
       - predicate: discharge
         min: 1
         max: 1

@@ -27,9 +27,7 @@ class DotAccessibleDict(dict):
         if attr in self:
             return self[attr]
         else:
-            raise AttributeError(
-                f"'{type(self).__name__}' object has no attribute '{attr}'"
-            )
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr}'")
 
 
 def load_config(config_path: str) -> DotAccessibleDict:
@@ -74,8 +72,9 @@ def parse_timedelta(time_str: str) -> timedelta:
 
 
 def get_max_duration(data: pl.DataFrame) -> pl.DataFrame:
-    """Get the maximum duration data for each subject by calculating the delta between the min and max timestamps."""
-    
+    """Get the maximum duration data for each subject by calculating the delta between the min and max
+    timestamps."""
+
     # get the start and end timestamps for each subject
     data = data.groupby("subject_id").agg(
         [
@@ -85,9 +84,7 @@ def get_max_duration(data: pl.DataFrame) -> pl.DataFrame:
     )
 
     # calculate the duration for each subject
-    data = data.with_columns(
-        (pl.col("max_timestamp") - pl.col("min_timestamp")).alias("duration")
-    )
+    data = data.with_columns((pl.col("max_timestamp") - pl.col("min_timestamp")).alias("duration"))
 
     # get the maximum duration
     max_duration = data["duration"].max()
@@ -146,14 +143,12 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
                     constraints[f"is_{each_inclusion['predicate']}"] = (
                         (
                             int(each_inclusion["min"])
-                            if "min" in each_inclusion
-                            and each_inclusion["min"] is not None
+                            if "min" in each_inclusion and each_inclusion["min"] is not None
                             else None
                         ),
                         (
                             int(each_inclusion["max"])
-                            if "max" in each_inclusion
-                            and each_inclusion["max"] is not None
+                            if "max" in each_inclusion and each_inclusion["max"] is not None
                             else None
                         ),
                     )

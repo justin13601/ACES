@@ -61,16 +61,14 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
     for predicate_name, predicate_info in cfg.predicates.items():
         if predicate_name == "any":
             continue
-        
+
         # 1 or 0 for boolean predicates or count for count predicates
         if predicate_info.system == "boolean":
             boolean_cols.append(f"is_{predicate_name}")
         elif predicate_info.system == "count":
             count_cols.append(f"is_{predicate_name}")
         else:
-            raise ValueError(
-                f"Invalid predicate system {predicate_info.system} for {predicate_name}."
-            )
+            raise ValueError(f"Invalid predicate system {predicate_info.system} for {predicate_name}.")
 
         # if value of predicate is specified with min and max
         if "value" in predicate_info:
@@ -110,9 +108,7 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
                     )
                 else:
                     ESD = ESD.with_columns(
-                        pl.when(
-                            pl.col(predicate_info.column) == str(predicate_info["value"])
-                        )
+                        pl.when(pl.col(predicate_info.column) == str(predicate_info["value"]))
                         .then(1)
                         .otherwise(0)
                         .alias(f"is_{predicate_name}")
@@ -134,29 +130,17 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
                 ESD = ESD.with_columns(all_expr.alias(f"is_{predicate_name}"))
                 logger.debug(f"Added predicate column is_{predicate_name}.")
             else:
-                raise ValueError(
-                    f"Invalid predicate type {predicate_info.type} for {predicate_name}."
-                )
+                raise ValueError(f"Invalid predicate type {predicate_info.type} for {predicate_name}.")
         else:
             raise ValueError(f"Invalid predicate specification for {predicate_name}.")
 
     # add a column for any predicate
-    ESD = ESD.with_columns(
-        pl.when(pl.col("event_type").is_not_null()).then(1).otherwise(0).alias("is_any")
-    )
+    ESD = ESD.with_columns(pl.when(pl.col("event_type").is_not_null()).then(1).otherwise(0).alias("is_any"))
 
     # aggregate for unique subject_id and timestamp
     ESD = ESD.groupby(["subject_id", "timestamp"]).agg(
-        *[
-            pl.col(c).sum().alias(f"{c}_count").cast(pl.Int32)
-            for c in ESD.columns
-            if c.startswith("is_")
-        ],
-        *[
-            pl.col(c).max().alias(f"{c}_boolean").cast(pl.Int32)
-            for c in ESD.columns
-            if c.startswith("is_")
-        ],
+        *[pl.col(c).sum().alias(f"{c}_count").cast(pl.Int32) for c in ESD.columns if c.startswith("is_")],
+        *[pl.col(c).max().alias(f"{c}_boolean").cast(pl.Int32) for c in ESD.columns if c.startswith("is_")],
     )
 
     # select and rename columns

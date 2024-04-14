@@ -33,7 +33,7 @@ windows:
     offset:
     end: discharge
     excludes:
-    includes: 
+    includes:
     st_inclusive: False
     end_inclusive: True
   gap:
@@ -53,7 +53,7 @@ windows:
     offset:
     end:
     excludes:
-    includes: 
+    includes:
     st_inclusive: False
     end_inclusive: True
     label: myocardial_infarction
@@ -62,8 +62,8 @@ windows:
     duration:
     offset:
     end: trigger.start
-    excludes:  
-    includes: 
+    excludes:
+    includes:
       - predicate: discharge
         min: 1
         max: 1

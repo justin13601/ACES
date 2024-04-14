@@ -35,7 +35,7 @@ predicates:
     type: ALL
     predicates: [hemoglobin, normal_range]
     system: boolean
-  any: 
+  any:
     type: special
 
 windows:
@@ -54,16 +54,16 @@ windows:
     offset:
     end:
     excludes:
-    includes: 
+    includes:
     st_inclusive: False
     end_inclusive: True
   target:
     start: gap.end
     duration: 7 days
     offset:
-    end: 
+    end:
     excludes:
-    includes: 
+    includes:
       - predicate: hemoglobin
         min: 1
     st_inclusive: False

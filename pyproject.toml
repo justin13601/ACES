@@ -18,15 +18,15 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "polars == 0.20.18", 
-    "bigtree", 
+    "polars == 0.20.18",
+    "bigtree",
     "ruamel.yaml",
     "pandas",
     "loguru"
 ]
 
 [project.optional-dependencies]
-dev = ["pre-commit", "pytest"]
+dev = ["pre-commit", "pytest", "pytest-cov", ]
 
 [project.urls]
 Homepage = "https://github.com/justin13601/ESGPTTaskQueryingPublic"

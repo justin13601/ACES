@@ -1,17 +1,17 @@
-from json import load
+import cProfile
 import os
-import pandas as pd
-
-import polars as pl
-from pathlib import Path
 import pickle
-
 import platform
+import pstats
+import sys
+from pathlib import Path
+
+import pandas as pd
+import polars as pl
 import psutil
-import cProfile, pstats, sys
+from EventStream.data.dataset_polars import Dataset
 
 from esgpt_task_querying import main
-from EventStream.data.dataset_polars import Dataset
 
 
 def get_machine_details():
@@ -42,9 +42,7 @@ def profile_based_on_num_threads(DATA_DIR, config):
 
     pr.enable()
     events_df = events_df.filter(~pl.all_horizontal(pl.all().is_null()))
-    dynamic_measurements_df = dynamic_measurements_df.filter(
-        ~pl.all_horizontal(pl.all().is_null())
-    )
+    dynamic_measurements_df = dynamic_measurements_df.filter(~pl.all_horizontal(pl.all().is_null()))
     df_data = (
         events_df.join(dynamic_measurements_df, on="event_id", how="left")
         .drop(["event_id"])
@@ -93,7 +91,7 @@ if __name__ == "__main__":
     ############ DIRECTORIES ############
 
     os.makedirs(output_dir, exist_ok=True)
-    
+
     ############ Number of threads ############
     config = "profiling_configs/profile_based_on_num_threads.yaml"
     profiling_result = profile_based_on_num_threads(DATA_DIR, config)
