@@ -11,6 +11,7 @@ subject_id,timestamp,event_type,dx,lab_test,lab_value
 1,1/27/1991 23:46,LAB,,SpO2,95
 1,1/28/1991 3:18,LAB,,HR,120
 1,1/28/1991 4:36,LAB,,SpO2,99
+1,1/29/1991 23:32,LAB,,SpO2,99
 1,1/30/1991 5:00,LAB,,Temp,99
 1,1/30/1991 8:00,LAB,Heart Rate (bpm),SpO2,970000
 1,1/30/1991 11:00,LAB,,SpO2,99
