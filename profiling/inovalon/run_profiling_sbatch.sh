@@ -6,7 +6,7 @@
 #SBATCH -o %j_sbatch.out  # File to which STDOUT will be written, including job ID (%j)
 #SBATCH -e %j_sbatch.err  # File to which STDERR will be written, including job ID (%j)
 
-cd /n/data1/hms/dbmi/zaklab/mmd/ESGPTTaskQuerying/profiling/inovalon
+cd /n/data1/hms/dbmi/zaklab/mmd/ESGPTTaskQuerying/profiling/inovalon || exit
 
 module load miniconda3/4.10.3
 
