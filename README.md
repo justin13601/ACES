@@ -51,7 +51,7 @@ git clone https://github.com/justin13601/ESGPTTaskQuerying.git
 Install package with dependencies from the root directory of the cloned repo
 
 ```bash
-pip install . --force-reinstall
+pip install . --upgrade
 ```
 
 ## Instructions for Use
