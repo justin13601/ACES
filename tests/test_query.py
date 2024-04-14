@@ -21,6 +21,7 @@ from esgpt_task_querying.query import (
 
 class TestQueryFunctions(unittest.TestCase):
     def setUp(self):
+
         self.addTypeEqualityFunc(
             pl.DataFrame, lambda a, b, msg: assert_frame_equal(a, b, check_column_order=False)
         )
