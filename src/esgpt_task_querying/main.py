@@ -71,14 +71,15 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         ) from e
 
     # checking for "Beginning of record" in the configuration file
+    # TODO(mmd): This doesn't look right to me.
     starts = [window.start for window in cfg.windows.values()]
     if None in starts:
         max_duration = -get_max_duration(ESD_data)
-        for each_window in cfg.windows:
-            if cfg.windows[each_window].start is None:
+        for each_window, window_info in cfg["windows"].items():
+            if window_info["start"] is None:
                 logger.debug(f"Setting start of the {each_window} window to the beginning of the record.")
-                cfg.windows[each_window].start = None
-                cfg.windows[each_window].duration = max_duration
+                window_info["start"] = None
+                window_info["duration"] = max_duration
 
     logger.debug("Building tree...")
     tree = build_tree_from_config(cfg)
@@ -87,12 +88,13 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
     logger.debug("Beginning query...")
     predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
+    trigger = cfg["windows"]["trigger"]
     # filter out subjects that do not have the trigger event if specified in inclusion criteria
-    if cfg.windows.trigger.includes:
-        valid_trigger_exprs = [(ESD_data[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes]
+    if trigger["includes"]:
+        valid_trigger_exprs = [(ESD_data[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]]
     # filter out subjects that do not have the trigger event if specified as the start
     else:
-        valid_trigger_exprs = [(ESD_data[f"is_{cfg.windows.trigger.start}"] == 1)]
+        valid_trigger_exprs = [(ESD_data[f"is_{trigger['start']}"] == 1)]
     anchor_to_subtree_root_by_subtree_anchor = ESD_data.clone()
     anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
     # log filtered subjects
@@ -100,7 +102,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         dropped = anchor_to_subtree_root_by_subtree_anchor.filter(~condition)
         anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(condition)
         if anchor_to_subtree_root_by_subtree_anchor.shape[0] < anchor_to_subtree_root_by_subtree_anchor_shape:
-            if cfg.windows.trigger.includes:
+            if trigger["includes"]:
                 logger.debug(
                     f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
                 )
@@ -151,8 +153,8 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
             .with_columns(
                 *[
                     pl.col("start_of_record").alias(f"{each_window}/timestamp")
-                    for each_window in cfg.windows
-                    if cfg.windows[each_window].start is None
+                    for each_window, window_info in cfg["windows"].items()
+                    if window_info["start"] is None
                 ]
             )
             .drop(["start_of_record"])
@@ -160,13 +162,12 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     # add label column if specified
     label_window = None
-    for window in cfg.windows:
-        if "label" in cfg.windows[window]:
-            if cfg.windows[window].label:
-                label_window = window
-                break
+    for window, window_info in cfg["windows"].items():
+        if window_info.get("label", None):
+            label_window = window
+            break
     if label_window:
-        label = cfg.windows[label_window].label
+        label = cfg["windows"][label_window]["label"]
         result = result.with_columns(
             pl.col(f"{label_window}/window_summary").struct.field(f"is_{label}").alias("label")
         )
