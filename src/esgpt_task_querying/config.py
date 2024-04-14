@@ -83,7 +83,6 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
     """
     nodes = {}
     windows = [x for x, y in cfg.windows.items()]
-
     for window_name in windows:
         node = Node(window_name)
         window_info = cfg.windows[window_name]
@@ -132,13 +131,15 @@ def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
         node.constraints = constraints
 
         if window_info.start:
+            root_name = window_info.start.split(".")[0]
             node_root = next(
-                (substring for substring in windows if substring in window_info.start),
+                (substring for substring in windows if substring == root_name),
                 None,
             )
         elif window_info.end:
+            root_name = window_info.end.split(".")[0]
             node_root = next(
-                (substring for substring in windows if substring in window_info.end),
+                (substring for substring in windows if substring == root_name),
                 None,
             )
 
