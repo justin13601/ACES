@@ -1,3 +1,10 @@
+try:
+    import stackprinter
+
+    stackprinter.set_excepthook(style="darkbg2")
+except ImportError:
+    pass  # no need to fail because of missing dev dependency
+
 import cProfile
 import os
 import pickle
@@ -12,6 +19,31 @@ import psutil
 from EventStream.data.dataset_polars import Dataset
 
 from esgpt_task_querying import main
+
+import dataclasses
+from collections import defaultdict
+from pathlib import Path
+from typing import Any
+
+import hydra
+import inflect
+from loguru import logger
+from omegaconf import DictConfig, OmegaConf
+
+from EventStream.data.config import (
+    DatasetConfig,
+    DatasetSchema,
+    InputDFSchema,
+    MeasurementConfig,
+)
+from EventStream.data.dataset_polars import Dataset, Query
+from EventStream.data.types import (
+    DataModality,
+    InputDataType,
+    InputDFType,
+    TemporalityType,
+)
+from EventStream.logger import hydra_loguru_init
 
 
 def get_machine_details():
@@ -86,12 +118,15 @@ def profile_based_on_num_threads(DATA_DIR, config):
 
 if __name__ == "__main__":
     ############ DIRECTORIES ############
-    DATA_DIR = Path("/n/data1/hms/dbmi/zaklab/inovalon_mbm47/processed/12-19-23_InovalonSample1M")
-    output_dir = Path("inovalon_profiling_output")
+    DATA_DIR = Path("../../MIMIC_ESD_new_schema_08-31-23-1")
+    output_dir = Path("profiling_output")
     ############ DIRECTORIES ############
 
     os.makedirs(output_dir, exist_ok=True)
+
+    ############ Number of threads ############
     config = "profiling_configs/profile_based_on_num_threads.yaml"
     profiling_result = profile_based_on_num_threads(DATA_DIR, config)
+
     with open(output_dir / "profiling_result.pkl", "wb") as f:
         pickle.dump(profiling_result, f)

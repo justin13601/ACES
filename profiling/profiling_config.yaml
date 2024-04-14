@@ -1,0 +1,29 @@
+data_dir: ???
+
+# Configs will live in `experiment_dir/configs/` and
+# results in `experiment_dir/results/`
+experiment_dir: ???
+
+num_rows:
+  - 10
+  - 50
+  - 100
+  - 500
+  - 1000
+  - 5000
+  - 10000
+  - 50000
+  - 100000
+  - 500000
+  - 1000000
+  - 5000000
+  - 10000000
+  - 50000000
+  - 100000000
+  - 150000000
+
+num_predicates: [0, 1, 2, 4, 8, 16]
+num_critera: [0, 1, 2, 4, 8, 16]
+num_windows_series: [0, 1, 2, 4, 8, 16]
+num_windows_parallel: [0, 1, 2, 4, 8, 16]
+num_threads: [1, 2, 4, 8, 12, 16, 20, 24, 28, 32, 36]

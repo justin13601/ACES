@@ -22,7 +22,8 @@ dependencies = [
     "bigtree",
     "ruamel.yaml",
     "pandas",
-    "loguru"
+    "loguru",
+    "hydra-core"
 ]
 
 [project.optional-dependencies]
