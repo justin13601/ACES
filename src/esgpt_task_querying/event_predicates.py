@@ -101,14 +101,14 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
             else:
                 if predicate_info.column == "event_type":
                     ESD = ESD.with_columns(
-                        has_event_type(predicate_info["value"])
+                        has_event_type(str(predicate_info["value"]))
                         .alias(f"is_{predicate_name}")
                         .cast(pl.Int32)
                     )
                 else:
                     ESD = ESD.with_columns(
                         pl.when(
-                            pl.col(predicate_info.column) == predicate_info["value"]
+                            pl.col(predicate_info.column) == str(predicate_info["value"])
                         )
                         .then(1)
                         .otherwise(0)
