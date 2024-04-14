@@ -264,27 +264,27 @@ def summarize_event_bound_window(
     )
 
     # patch for case where there are consecutive windows of the same type
-    match prev_endpoint_expr[1]:
-        case timedelta():
-            if not st_inclusive:
-                cumsum_anchor_child = cumsum_anchor_child.with_columns(
-                    "subject_id",
-                    "timestamp",
-                    *[
-                        (pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor"))
-                        for c in predicate_cols
-                    ],
-                )
-        case str():
-            if st_inclusive:
-                cumsum_anchor_child = cumsum_anchor_child.with_columns(
-                    "subject_id",
-                    "timestamp",
-                    *[
-                        (pl.col(f"{c}_final") + pl.col(f"{c}_at_anchor"))
-                        for c in predicate_cols
-                    ],
-                )
+    # match prev_endpoint_expr[1]:
+    #     case timedelta():
+    #         if not st_inclusive:
+    #             cumsum_anchor_child = cumsum_anchor_child.with_columns(
+    #                 "subject_id",
+    #                 "timestamp",
+    #                 *[
+    #                     (pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor"))
+    #                     for c in predicate_cols
+    #                 ],
+    #             )
+    #     case str():
+    if st_inclusive:
+        cumsum_anchor_child = cumsum_anchor_child.with_columns(
+            "subject_id",
+            "timestamp",
+            *[
+                (pl.col(f"{c}_final") + pl.col(f"{c}_at_anchor"))
+                for c in predicate_cols
+            ],
+        )
     if not end_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
             "subject_id",

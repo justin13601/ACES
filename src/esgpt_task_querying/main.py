@@ -68,8 +68,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         ESD_data = generate_predicate_columns(cfg, ESD_data)
     except Exception as e:
         raise ValueError(
-            "Error generating predicate columns from configuration file! Check to make sure the format of "
-            "the configuration file is valid."
+            "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
         ) from e
 
     logger.debug("Building tree...")

@@ -18,7 +18,7 @@ windows:
     end_inclusive: True
   target:
     start: trigger.end
-    duration: 48 hours
+    duration: 24 hours
     offset:
     end: 
     excludes:
