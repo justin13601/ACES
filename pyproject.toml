@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ESGPTTaskQuerying"
-version = "0.0.1"
+version = "0.1.1"
 authors = [
   { name="Justin Xu", email="justin13601@hotmail.com" },
   { name="Matthew McDermott", email="mattmcdermott8@gmail.com" },
 ]
-description = "Automatic task extraction for ESGPT data"
+description = "Automatic task extraction for ESGPT datasets"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
