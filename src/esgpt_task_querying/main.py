@@ -80,7 +80,9 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         max_duration = -get_max_duration(ESD_data)
         for each_window in cfg.windows:
             if cfg.windows[each_window].start is None:
-                logger.debug(f"Setting start of the {each_window} window to the beginning of the record.")
+                logger.debug(
+                    f"Setting start of the {each_window} window to the beginning of the record."
+                )
                 cfg.windows[each_window].start = None
                 cfg.windows[each_window].duration = max_duration
 
@@ -153,6 +155,8 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         *[f"{c.name}/window_summary" for c in output_order[1:]],
     ).rename({"timestamp": f"{tree.name}/timestamp"})
 
+    # TODO: need to check if struct in window_summary has any null values and set them to 0
+
     # replace timestamps for windows that start at the beginning of the record
     if None in starts:
         record_starts = ESD_data.groupby("subject_id").agg(
@@ -160,16 +164,21 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
                 pl.col("timestamp").min().alias("start_of_record"),
             ]
         )
-        result = result.join(
-            record_starts,
-            on="subject_id",
-            how="left",
-        ).with_columns(
-            *[
-                pl.col("start_of_record").alias(f"{each_window}/timestamp")
-                for each_window in cfg.windows if cfg.windows[each_window].start is None
-            ]
-        ).drop(["start_of_record"])
+        result = (
+            result.join(
+                record_starts,
+                on="subject_id",
+                how="left",
+            )
+            .with_columns(
+                *[
+                    pl.col("start_of_record").alias(f"{each_window}/timestamp")
+                    for each_window in cfg.windows
+                    if cfg.windows[each_window].start is None
+                ]
+            )
+            .drop(["start_of_record"])
+        )
 
     # add label column if specified
     label_window = None
