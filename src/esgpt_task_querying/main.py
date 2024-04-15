@@ -72,7 +72,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     # checking for "Beginning of record" in the configuration file
     # TODO(mmd): This doesn't look right to me.
-    starts = [window.start for window in cfg.windows.values()]
+    starts = [window.start for window in cfg['windows'].values()]
     if None in starts:
         max_duration = -get_max_duration(ESD_data)
         for each_window, window_info in cfg["windows"].items():
@@ -104,11 +104,11 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         if anchor_to_subtree_root_by_subtree_anchor.shape[0] < anchor_to_subtree_root_by_subtree_anchor_shape:
             if trigger["includes"]:
                 logger.debug(
-                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg['windows']['trigger']['includes'][i]}."
                 )
             else:
                 logger.debug(
-                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg.windows.trigger.start}."
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg['windows']['trigger']['start']}."
                 )
             anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
 
