@@ -4,7 +4,7 @@ from pathlib import Path
 import polars as pl
 from loguru import logger
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from esgpt_task_querying import main
 
