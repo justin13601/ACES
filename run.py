@@ -34,7 +34,7 @@ def run(cfg: DictConfig) -> None:
             .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
             .cast(pl.Datetime)
         )
-        result = main.query_task(cfg, df_data)
+        result = main.query_task(config_path, df_data)
     
     result = result.with_columns(
         *[
