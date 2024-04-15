@@ -15,7 +15,7 @@ def run(cfg: DictConfig) -> None:
 
     config_path = Path(cfg["config_path"])
     data_path = Path(cfg["data_path"])
-    if not cfg["output_path"] or "output_path" not in cfg:
+    if "output_path" not in cfg or not cfg["output_path"]:
         output_path = Path.cwd()
     else:
         output_path = Path(cfg["output_path"])
