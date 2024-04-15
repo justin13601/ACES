@@ -3,7 +3,6 @@ from pathlib import Path
 
 import polars as pl
 from loguru import logger
-from EventStream.data.dataset_polars import Dataset
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
