@@ -77,7 +77,7 @@ def get_max_duration(data: pl.DataFrame) -> timedelta:
     """
 
     return (
-        data.groupby("subject_id")
+        data.group_by("subject_id")
         .agg((pl.col("timestamp").max() - pl.col("timestamp").min()).alias("duration"))
         .get_column("duration")
         .max()
@@ -97,26 +97,32 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         >>> cfg = {
         ...     "windows": {
         ...         "window1": {
-        ...             "start": None,
-        ...             "end": "window2",
-        ...             "duration": "1 day",
-        ...             "offset": "0 seconds",
+        ...             "start": 'event1',
+        ...             "duration": "24 hours",
+        ...             "end": None,
+        ...             "offset": None,
+        ...             "excludes": [],
+        ...             "includes": [],
         ...             "st_inclusive": False,
         ...             "end_inclusive": True,
-        ...             "excludes": [],
-        ...             "includes": []
         ...         },
         ...         "window2": {
-        ...             "start": "window1",
+        ...             "start": "window1.end",
+        ...             "duration": "24 hours",
         ...             "end": None,
-        ...             "duration": "1 day",
+        ...             "offset": None,
+        ...             "excludes": [],
+        ...             "includes": [],
+        ...             "st_inclusive": False,
+        ...             "end_inclusive": True,
         ...         },
         ...     }
         ... }
         >>> build_tree_from_config(cfg)
-        TODO(justin): Add expected output and correct config
+        Node(/window1, constraints={}, endpoint_expr=(False, datetime.timedelta(days=1), True, datetime.timedelta(0)))
     """
     nodes = {}
+    windows = [x for x, y in cfg['windows'].items()]
     for window_name, window_info in cfg['windows'].items():
         node = Node(window_name)
 
@@ -138,7 +144,10 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         end_inclusive = window_info.get("end_inclusive", True)
 
         # set node offset
-        offset = parse_timedelta(window_info["offset"])
+        if 'offset' in window_info:
+            offset = parse_timedelta(window_info["offset"])
+        else:
+            offset = timedelta(days=0)
         node.endpoint_expr = (st_inclusive, end_event, end_inclusive, offset)
 
         # set node exclude constraints
@@ -180,13 +189,13 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
             )
 
         if node_root:
-            node.parent = node_root
+            node.parent = nodes[node_root]
 
         nodes[window_name] = node
 
     for node in nodes.values():
         if node.parent:
-            node.parent = nodes[node.parent]
+            node.parent = nodes[node.parent.name]
 
     root = next(iter(nodes.values())).root
 
