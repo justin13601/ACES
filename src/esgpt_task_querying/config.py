@@ -3,6 +3,7 @@ dictionary and subsequently building a tree structure from the configuration."""
 
 import re
 from datetime import timedelta
+from pytimeparse import parse
 
 import polars as pl
 import ruamel.yaml
@@ -23,7 +24,7 @@ def load_config(config_path: str) -> dict[str, Any]:
 def parse_timedelta(time_str: str) -> timedelta:
     """Parse a time string and return a timedelta object.
 
-    TODO(justin): Consider using https://dateutil.readthedocs.io/en/stable/examples.html#parse-examples
+    Using time expression parser: https://github.com/wroberts/pytimeparse
 
     Args:
         time_str: The time string to parse.
@@ -34,24 +35,32 @@ def parse_timedelta(time_str: str) -> timedelta:
     Examples:
         >>> parse_timedelta("1 days")
         datetime.timedelta(days=1)
+        >>> parse_timedelta("1 day")
+        datetime.timedelta(days=1)
         >>> parse_timedelta("1 days 2 hours 3 minutes 4 seconds")
         datetime.timedelta(days=1, seconds=7384)
+        >>> parse_timedelta('1 day, 14:20:16')
+        datetime.timedelta(days=1, seconds=51616)
+        >>> parse_timedelta('365 days')
+        datetime.timedelta(days=365)
     """
     if not time_str:
         return timedelta(days=0)
 
-    units = {"days": 0, "hours": 0, "minutes": 0, "seconds": 0}
-    pattern = r"(\d+)\s*(seconds|minutes|hours|days)"
-    matches = re.findall(pattern, time_str.lower())
-    for value, unit in matches:
-        units[unit] = int(value)
+    return timedelta(seconds=parse(time_str))
 
-    return timedelta(
-        days=units["days"],
-        hours=units["hours"],
-        minutes=units["minutes"],
-        seconds=units["seconds"],
-    )
+    # units = {"day": 0, "hour": 0, "minute": 0, "second": 0}
+    # pattern = r"(\d+)\s*(second|minute|hour|day)"
+    # matches = re.findall(pattern, time_str.lower())
+    # for value, unit in matches:
+    #     units[unit] = int(value)
+
+    # return timedelta(
+    #     days=units["day"],
+    #     hours=units["hour"],
+    #     minutes=units["minute"],
+    #     seconds=units["second"],
+    # )
 
 
 def get_max_duration(data: pl.DataFrame) -> timedelta:
