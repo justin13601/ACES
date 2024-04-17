@@ -16,18 +16,18 @@ def has_event_type(type_str: str) -> pl.Expr:
         pl.Expr: A Polars expression representing the check for the event type.
 
     >>> import polars as pl
-    >>> has_event_type("A").evaluate(pl.DataFrame({"event_type": ["A", "B", "C"]}))
-    shape: (3,)
-    Series: 'event_type' [str]
-    [
-        "A"
-        "A&B"
-        "C"
-    ]
-    0    True
-    1    True
-    2   False
-    dtype: bool
+    >>> data = pl.DataFrame({"event_type": ["A&B&C", "A&B", "C"]})
+    >>> data.with_columns(has_event_type("A").alias("has_A"))  
+    shape: (3, 2)
+    ┌────────────┬───────┐
+    │ event_type ┆ has_A │
+    │ ---        ┆ ---   │
+    │ str        ┆ bool  │
+    ╞════════════╪═══════╡
+    │ A&B&C      ┆ true  │
+    │ A&B        ┆ true  │
+    │ C          ┆ false │
+    └────────────┴───────┘
     """
     has_event_type = pl.col("event_type").cast(pl.Utf8).str.contains(type_str)
     return has_event_type

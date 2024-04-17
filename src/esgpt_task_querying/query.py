@@ -56,7 +56,7 @@ def summarize_temporal_window(
         ...     endpoint_expr,
         ...     anchor_to_subtree_root_by_subtree_anchor,
         ... )
-           subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
+        subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
         0           1          1                    1             0             0       0
         1           1         10                   10             0             0       0
         2           1         26                   26             0             0       0
