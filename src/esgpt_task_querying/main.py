@@ -26,49 +26,54 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
     Returns:
         polars.DataFrame: The result of the task query.
     """
-    # load data if path is provided, else data is already loaded
-    match data:
-        case str():
-            DATA_DIR = Path(data)
-            ESD = Dataset.load(DATA_DIR)
-
-            events_df = ESD.events_df.filter(~pl.all_horizontal(pl.all().is_null()))
-            dynamic_measurements_df = ESD.dynamic_measurements_df.filter(
-                ~pl.all_horizontal(pl.all().is_null())
-            )
-
-            ESD_data = (
-                events_df.join(dynamic_measurements_df, on="event_id", how="left")
-                .drop(["event_id"])
-                .sort(by=["subject_id", "timestamp", "event_type"])
-            )
-        case pl.DataFrame():
-            ESD_data = data
-
-    # check if timestamp is in the correct format
-    if ESD_data["timestamp"].dtype != pl.Datetime:
-        ESD_data = ESD_data.with_columns(
-            pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
-        )
-
-    # check if ESD is empty
-    if ESD_data.shape[0] == 0:
-        raise ValueError("Empty ESD!")
-    if "timestamp" not in ESD_data.columns:
-        raise ValueError("ESD does not have timestamp column!")
-    if "subject_id" not in ESD_data.columns:
-        raise ValueError("ESD does not have subject_id column!")
-
+    # load configuration
     logger.debug("Loading config...")
     cfg = load_config(cfg_path)
 
-    logger.debug("Generating predicate columns...")
-    try:
-        ESD_data = generate_predicate_columns(cfg, ESD_data)
-    except Exception as e:
-        raise ValueError(
-            "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
-        ) from e
+    # load data if path is provided and compute predicate columns, else compute predicate columns on provided data
+    match data:
+        case str():
+            logger.debug("Data path provided, loading using ESGPT...")
+            DATA_DIR = Path(data)
+            try:
+                ESD = Dataset.load(DATA_DIR)
+            except Exception as e:
+                raise ValueError(
+                    "Error loading data using ESGPT! Please ensure the path provided is a valid for ESGPT."
+                ) from e
+
+            events_df = ESD.events_df
+            dynamic_measurements_df = ESD.dynamic_measurements_df
+
+            logger.debug("Generating predicate columns...")
+            try:
+                ESD_data = generate_predicate_columns(cfg, [events_df, dynamic_measurements_df])
+            except Exception as e:
+                raise ValueError(
+                    "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
+                ) from e
+        case pl.DataFrame():            
+            # check if data is in correct format
+            if data.shape[0] == 0:
+                raise ValueError("Provided dataset is empty!")
+            if "subject_id" not in data.columns:
+                raise ValueError("Provided dataset does not have subject_id column!")
+            if "timestamp" not in data.columns:
+                raise ValueError("Provided dataset does not have timestamp column!")
+
+            # check if timestamp is in the correct format
+            if data["timestamp"].dtype != pl.Datetime:
+                data = data.with_columns(
+                    pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
+                )
+            
+            logger.debug("Generating predicate columns...")
+            try:
+                ESD_data = generate_predicate_columns(cfg, data)
+            except Exception as e:
+                raise ValueError(
+                    "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
+                ) from e
 
     # checking for "Beginning of record" in the configuration file
     # TODO(mmd): This doesn't look right to me.
