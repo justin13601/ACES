@@ -77,7 +77,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     # checking for "Beginning of record" in the configuration file
     # TODO(mmd): This doesn't look right to me.
-    starts = [window.start for window in cfg['windows'].values()]
+    starts = [window['start'] for window in cfg['windows'].values()]
     if None in starts:
         max_duration = -get_max_duration(ESD_data)
         for each_window, window_info in cfg["windows"].items():

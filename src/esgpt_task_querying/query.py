@@ -170,8 +170,6 @@ def summarize_temporal_window(
         .with_columns(pl.col("timestamp").alias("timestamp_at_anchor"))
     )
 
-    return filtered_result
-
 
 def summarize_event_bound_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
