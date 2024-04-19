@@ -76,6 +76,7 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         Node: The root node of the built tree.
     """
     nodes = {}
+    windows = [x for x, y in cfg['windows'].items()]
     for window_name, window_info in cfg['windows'].items():
         node = Node(window_name)
 
