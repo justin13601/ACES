@@ -3,6 +3,7 @@ dictionary and subsequently building a tree structure from the configuration."""
 
 import re
 from datetime import timedelta
+from pytimeparse import parse
 
 import polars as pl
 import ruamel.yaml
@@ -23,47 +24,73 @@ def load_config(config_path: str) -> dict[str, Any]:
 def parse_timedelta(time_str: str) -> timedelta:
     """Parse a time string and return a timedelta object.
 
+    Using time expression parser: https://github.com/wroberts/pytimeparse
+
     Args:
-        time_str (str): The time string to parse.
+        time_str: The time string to parse.
 
     Returns:
         timedelta: The parsed timedelta object.
+
+    Examples:
+        >>> parse_timedelta("1 days")
+        datetime.timedelta(days=1)
+        >>> parse_timedelta("1 day")
+        datetime.timedelta(days=1)
+        >>> parse_timedelta("1 days 2 hours 3 minutes 4 seconds")
+        datetime.timedelta(days=1, seconds=7384)
+        >>> parse_timedelta('1 day, 14:20:16')
+        datetime.timedelta(days=1, seconds=51616)
+        >>> parse_timedelta('365 days')
+        datetime.timedelta(days=365)
     """
     if not time_str:
         return timedelta(days=0)
 
-    units = {"days": 0, "hours": 0, "minutes": 0, "seconds": 0}
-    pattern = r"(\d+)\s*(seconds|minutes|hours|days)"
-    matches = re.findall(pattern, time_str.lower())
-    for value, unit in matches:
-        units[unit] = int(value)
+    return timedelta(seconds=parse(time_str))
 
-    return timedelta(
-        days=units["days"],
-        hours=units["hours"],
-        minutes=units["minutes"],
-        seconds=units["seconds"],
+    # units = {"day": 0, "hour": 0, "minute": 0, "second": 0}
+    # pattern = r"(\d+)\s*(second|minute|hour|day)"
+    # matches = re.findall(pattern, time_str.lower())
+    # for value, unit in matches:
+    #     units[unit] = int(value)
+
+    # return timedelta(
+    #     days=units["day"],
+    #     hours=units["hour"],
+    #     minutes=units["minute"],
+    #     seconds=units["second"],
+    # )
+
+
+def get_max_duration(data: pl.DataFrame) -> timedelta:
+    """Get the maximum duration for each subject timestamps.
+
+    Args:
+        data: The data containing the events for each subject. The timestamps of the events are in the 
+        column ``"timestamp"`` and the subject IDs are in the column ``"subject_id"``.
+
+    Returns:
+        The maximum duration between the latest timestamp and the earliest timestamp over all subjects.
+
+    Examples:
+        >>> from datetime import datetime
+        >>> data = pl.DataFrame({
+        ...     "subject_id": [1, 1, 2, 2],
+        ...     "timestamp": [
+        ...         datetime(2021, 1, 1), datetime(2021, 1, 2), datetime(2021, 1, 1), datetime(2021, 1, 3)
+        ...     ]
+        ... })
+        >>> get_max_duration(data)
+        datetime.timedelta(days=2)
+    """
+
+    return (
+        data.group_by("subject_id")
+        .agg((pl.col("timestamp").max() - pl.col("timestamp").min()).alias("duration"))
+        .get_column("duration")
+        .max()
     )
-
-
-def get_max_duration(data: pl.DataFrame) -> pl.DataFrame:
-    """Get the maximum duration data for each subject by calculating the delta between the min and max
-    timestamps."""
-
-    # get the start and end timestamps for each subject
-    data = data.groupby("subject_id").agg(
-        [
-            pl.col("timestamp").min().alias("min_timestamp"),
-            pl.col("timestamp").max().alias("max_timestamp"),
-        ]
-    )
-
-    # calculate the duration for each subject
-    data = data.with_columns((pl.col("max_timestamp") - pl.col("min_timestamp")).alias("duration"))
-
-    # get the maximum duration
-    max_duration = data["duration"].max()
-    return max_duration
 
 
 def build_tree_from_config(cfg: dict[str, Any]) -> Node:
@@ -74,6 +101,34 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
 
     Returns:
         Node: The root node of the built tree.
+
+    Examples:
+        >>> cfg = {
+        ...     "windows": {
+        ...         "window1": {
+        ...             "start": 'event1',
+        ...             "duration": "24 hours",
+        ...             "end": None,
+        ...             "offset": None,
+        ...             "excludes": [],
+        ...             "includes": [],
+        ...             "st_inclusive": False,
+        ...             "end_inclusive": True,
+        ...         },
+        ...         "window2": {
+        ...             "start": "window1.end",
+        ...             "duration": "24 hours",
+        ...             "end": None,
+        ...             "offset": None,
+        ...             "excludes": [],
+        ...             "includes": [],
+        ...             "st_inclusive": False,
+        ...             "end_inclusive": True,
+        ...         },
+        ...     }
+        ... }
+        >>> build_tree_from_config(cfg)
+        Node(/window1, constraints={}, endpoint_expr=(False, datetime.timedelta(days=1), True, datetime.timedelta(0)))
     """
     nodes = {}
     windows = [x for x, y in cfg['windows'].items()]
@@ -98,7 +153,9 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         end_inclusive = window_info.get("end_inclusive", True)
 
         # set node offset
-        offset = parse_timedelta(window_info["offset"])
+        offset = window_info.get("offset", None)
+        offset = parse_timedelta(offset)
+        
         node.endpoint_expr = (st_inclusive, end_event, end_inclusive, offset)
 
         # set node exclude constraints
@@ -140,13 +197,14 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
             )
 
         if node_root:
-            node.parent = node_root
+            node.parent = nodes[node_root]
 
         nodes[window_name] = node
 
     for node in nodes.values():
         if node.parent:
-            node.parent = nodes[node.parent]
+            node.parent = nodes[node.parent.name]
+
 
     root = next(iter(nodes.values())).root
 
