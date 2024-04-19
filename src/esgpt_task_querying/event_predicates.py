@@ -1,6 +1,5 @@
 """This module contains functions for generating predicate columns for event sequences."""
 
-import numpy as np
 import polars as pl
 from loguru import logger
 from functools import reduce
@@ -170,7 +169,7 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
                 raise ValueError(
                     f"Invalid predicate system '{invalid}' for '{predicate_name}'."
                 )
-
+                
         value = predicate_info.get("value", None)
         predicate_type = predicate_info.get("type", None)
         if not (value or predicate_type):

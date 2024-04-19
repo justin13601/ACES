@@ -14,7 +14,7 @@ def load_config(config_path: str) -> dict[str, Any]:
     """Load a configuration file from the given path and return it as a dict.
 
     Args:
-        config_path: The path to the configuration file.
+        config_path (str): The path to the configuration file.
     """
     yaml = ruamel.yaml.YAML()
     with open(config_path) as file:
@@ -153,10 +153,9 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         end_inclusive = window_info.get("end_inclusive", True)
 
         # set node offset
-        if 'offset' in window_info:
-            offset = parse_timedelta(window_info["offset"])
-        else:
-            offset = timedelta(days=0)
+        offset = window_info.get("offset", None)
+        offset = parse_timedelta(offset)
+        
         node.endpoint_expr = (st_inclusive, end_event, end_inclusive, offset)
 
         # set node exclude constraints
@@ -205,6 +204,7 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
     for node in nodes.values():
         if node.parent:
             node.parent = nodes[node.parent.name]
+
 
     root = next(iter(nodes.values())).root
 
