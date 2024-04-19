@@ -1,8 +1,8 @@
 """This module contains functions for generating predicate columns for event sequences."""
 
-import numpy as np
 import polars as pl
 from loguru import logger
+from functools import reduce
 
 
 def has_event_type(type_str: str) -> pl.Expr:
@@ -58,105 +58,77 @@ def generate_predicate_columns(cfg: dict, ESD: pl.DataFrame) -> pl.DataFrame:
     """
     boolean_cols = []
     count_cols = []
-    for predicate_name, predicate_info in cfg.predicates.items():
+    for predicate_name, predicate_info in cfg["predicates"].items():
         if predicate_name == "any":
             continue
-        
+
+        predicate_col = f"is_{predicate_name}"
+
         # 1 or 0 for boolean predicates or count for count predicates
-        if predicate_info.system == "boolean":
-            boolean_cols.append(f"is_{predicate_name}")
-        elif predicate_info.system == "count":
-            count_cols.append(f"is_{predicate_name}")
-        else:
+        match predicate_info["system"]:
+            case "boolean":
+                boolean_cols.append(predicate_col)
+            case "count":
+                count_cols.append(predicate_col)
+            case _ as invalid:
+                raise ValueError(f"Invalid predicate system {invalid} for {predicate_name}.")
+
+        value = predicate_info.get("value", None)
+        predicate_type = predicate_info.get("type", None)
+        if not (value or predicate_type):
             raise ValueError(
-                f"Invalid predicate system {predicate_info.system} for {predicate_name}."
+                f"Invalid predicate specification for {predicate_name}: Must specify value or type. "
+                f"Got value={value} and type={predicate_type}."
+            )
+        elif value and predicate_type:
+            raise ValueError(
+                f"Invalid predicate specification for {predicate_name}: Can't specify both value and type. "
+                f"Got value={value} and type={predicate_type}."
             )
 
-        # if value of predicate is specified with min and max
-        if "value" in predicate_info:
-            if isinstance(predicate_info["value"], list):
-                ESD = ESD.with_columns(
+        match value:
+            case dict() if {"min", "max"}.issuperset(value.keys()):
+                # if value of predicate is specified with min and max
+                predicate_col = (
                     pl.when(
-                        (
-                            pl.col(predicate_info.column)
-                            >= (
-                                float(predicate_info["value"][0]["min"] or -np.inf)
-                                if "min" in predicate_info["value"][0]
-                                else float(-np.inf)
-                            )
-                        )
-                        & (
-                            pl.col(predicate_info.column)
-                            <= (
-                                float(predicate_info["value"][0]["max"] or np.inf)
-                                if "max" in predicate_info["value"][0]
-                                else float(np.inf)
-                            )
-                        )
+                        (pl.col(predicate_info.column) >= float(value.get("min", -float('inf')))) &
+                        (pl.col(predicate_info.column) <= float(value.get("max", float('inf'))))
                     )
                     .then(1)
                     .otherwise(0)
-                    .alias(f"is_{predicate_name}")
-                    .cast(pl.Int32)
                 )
-                logger.debug(f"Added predicate column is_{predicate_name}.")
-            # if value of predicate is specified with a single string value in event_type
-            else:
-                if predicate_info.column == "event_type":
-                    ESD = ESD.with_columns(
-                        has_event_type(str(predicate_info["value"]))
-                        .alias(f"is_{predicate_name}")
-                        .cast(pl.Int32)
-                    )
-                else:
-                    ESD = ESD.with_columns(
-                        pl.when(
-                            pl.col(predicate_info.column) == str(predicate_info["value"])
-                        )
-                        .then(1)
-                        .otherwise(0)
-                        .alias(f"is_{predicate_name}")
-                        .cast(pl.Int32)
-                    )
-                logger.debug(f"Added predicate column is_{predicate_name}.")
+            case str() if predicate_info["column"] == "event_type":
+                predicate_col = has_event_type(value)
+            case str() if value:
+                predicate_col = pl.when(pl.col(predicate_info.column) == value).then(1).otherwise(0)
+            case None | "":
+                pass
+            case _:
+                raise ValueError(f"Invalid value {value} for {predicate_name}.")
+
         # complex predicates specified with AND/ALL or OR/ANY
-        elif "type" in predicate_info:
-            if predicate_info.type == "ANY":
-                any_expr = pl.col(f"is_{predicate_info.predicates[0]}")
-                for predicate in predicate_info.predicates[1:]:
-                    any_expr = any_expr | pl.col(f"is_{predicate}")
-                ESD = ESD.with_columns(any_expr.alias(f"is_{predicate_name}"))
-                logger.debug(f"Added predicate column is_{predicate_name}.")
-            elif predicate_info.type == "ALL":
-                all_expr = pl.col(f"is_{predicate_info.predicates[0]}")
-                for predicate in predicate_info.predicates[1:]:
-                    all_expr = all_expr & pl.col(f"is_{predicate}")
-                ESD = ESD.with_columns(all_expr.alias(f"is_{predicate_name}"))
-                logger.debug(f"Added predicate column is_{predicate_name}.")
-            else:
-                raise ValueError(
-                    f"Invalid predicate type {predicate_info.type} for {predicate_name}."
-                )
-        else:
-            raise ValueError(f"Invalid predicate specification for {predicate_name}.")
+        subpredicate_cols = [pl.col(f"is_{predicate}") for predicate in predicate_info["predicates"]]
+        match predicate_type:
+            case "ANY":
+                predicate_col = reduce(lambda x, y: x | y, subpredicate_cols)
+            case "ALL":
+                predicate_col = reduce(lambda x, y: x & y, subpredicate_cols)
+            case None | "":
+                pass
+            case _:
+                raise ValueError(f"Invalid predicate type {predicate_type} for {predicate_name}.")
+
+        ESD = ESD.with_columns(predicate_col.alias(predicate_col).cast(pl.Int32))
+        logger.debug(f"Added predicate column {predicate_col}")
 
     # add a column for any predicate
-    ESD = ESD.with_columns(
-        pl.when(pl.col("event_type").is_not_null()).then(1).otherwise(0).alias("is_any")
-    )
+    ESD = ESD.with_columns(pl.when(pl.col("event_type").is_not_null()).then(1).otherwise(0).alias("is_any"))
 
     # aggregate for unique subject_id and timestamp
+    # TODO(justin): this is not the cleanest:
     ESD = ESD.groupby(["subject_id", "timestamp"]).agg(
-        *[
-            pl.col(c).sum().alias(f"{c}_count").cast(pl.Int32)
-            for c in ESD.columns
-            if c.startswith("is_")
-        ],
-        *[
-            pl.col(c).max().alias(f"{c}_boolean").cast(pl.Int32)
-            for c in ESD.columns
-            if c.startswith("is_")
-        ],
+        *[pl.col(c).sum().alias(f"{c}_count").cast(pl.Int32) for c in ESD.columns if c.startswith("is_")],
+        *[pl.col(c).max().alias(f"{c}_boolean").cast(pl.Int32) for c in ESD.columns if c.startswith("is_")],
     )
 
     # select and rename columns

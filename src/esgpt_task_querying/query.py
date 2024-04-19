@@ -10,9 +10,7 @@ from loguru import logger
 def summarize_temporal_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
     predicate_cols: list[str],
-    endpoint_expr: (
-        tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]
-    ),
+    endpoint_expr: (tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]),
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
 ) -> pl.LazyFrame | pl.DataFrame:
     """Summarizes the temporal window based on the given predicates and anchor-to-subtree-root mapping.
@@ -189,13 +187,9 @@ def summarize_temporal_window(
 def summarize_event_bound_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
     predicate_cols: list[str],
-    endpoint_expr: (
-        tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]
-    ),
+    endpoint_expr: (tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]),
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
-    prev_endpoint_expr: (
-        tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]
-    ),
+    prev_endpoint_expr: (tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]),
 ) -> pl.LazyFrame | pl.DataFrame:
     """Summarizes the event-bound window based on the given predicates and anchor-to-subtree-root mapping.
 
@@ -214,10 +208,7 @@ def summarize_event_bound_window(
 
     # overall cumulative sum of predicates
     cumsum_predicates_df = predicates_df.with_columns(
-        *[
-            pl.col(c).cum_sum().over(pl.col("subject_id")).alias(f"{c}_cumsum")
-            for c in predicate_cols
-        ],
+        *[pl.col(c).cum_sum().over(pl.col("subject_id")).alias(f"{c}_cumsum") for c in predicate_cols],
     )
 
     # get the counts at the anchor
@@ -229,10 +220,7 @@ def summarize_event_bound_window(
             "timestamp",
             pl.col("timestamp").alias("timestamp_at_anchor"),
             *[pl.col(c).alias(f"{c}_at_anchor") for c in predicate_cols],
-            *[
-                pl.col(f"{c}_cumsum").alias(f"{c}_cumsum_at_anchor")
-                for c in predicate_cols
-            ],
+            *[pl.col(f"{c}_cumsum").alias(f"{c}_cumsum_at_anchor") for c in predicate_cols],
         )
     )
 
@@ -247,22 +235,14 @@ def summarize_event_bound_window(
         cnts_at_anchor, on=["subject_id", "timestamp"], how="left"
     ).with_columns(
         pl.col("timestamp_at_anchor").forward_fill().over("subject_id"),
-        *[
-            pl.col(f"{c}_at_anchor").forward_fill().over("subject_id")
-            for c in predicate_cols
-        ],
-        *[
-            pl.col(f"{c}_cumsum_at_anchor").forward_fill().over("subject_id")
-            for c in predicate_cols
-        ],
+        *[pl.col(f"{c}_at_anchor").forward_fill().over("subject_id") for c in predicate_cols],
+        *[pl.col(f"{c}_cumsum_at_anchor").forward_fill().over("subject_id") for c in predicate_cols],
     )
     cumsum_anchor_child = cumsum_predicates_df.with_columns(
         "subject_id",
         "timestamp",
         *[
-            (pl.col(f"{c}_cumsum") - pl.col(f"{c}_cumsum_at_anchor")).alias(
-                f"{c}_final"
-            )
+            (pl.col(f"{c}_cumsum") - pl.col(f"{c}_cumsum_at_anchor")).alias(f"{c}_final")
             for c in predicate_cols
         ],
     )
@@ -285,10 +265,7 @@ def summarize_event_bound_window(
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
             "subject_id",
             "timestamp",
-            *[
-                (pl.col(f"{c}_final") + pl.col(f"{c}_at_anchor"))
-                for c in predicate_cols
-            ],
+            *[(pl.col(f"{c}_final") + pl.col(f"{c}_at_anchor")) for c in predicate_cols],
         )
     if not end_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
@@ -306,10 +283,7 @@ def summarize_event_bound_window(
     )
 
     at_child_anchor = at_child_anchor.with_columns(
-        *[
-            pl.when(pl.col(c) < 0).then(0).otherwise(pl.col(c)).alias(c)
-            for c in predicate_cols
-        ]
+        *[pl.when(pl.col(c) < 0).then(0).otherwise(pl.col(c)).alias(c) for c in predicate_cols]
     )
 
     filtered_by_end_event_at_child_anchor = (
@@ -374,13 +348,11 @@ def summarize_window(
                 child.parent.endpoint_expr,
             )
 
-    subtree_root_to_child_root_by_child_anchor = (
-        subtree_anchor_to_child_root_by_child_anchor.select(
-            "subject_id",
-            "timestamp",
-            "timestamp_at_anchor",
-            *[pl.col(c) - pl.col(f"{c}_summary") for c in predicate_cols],
-        )
+    subtree_root_to_child_root_by_child_anchor = subtree_anchor_to_child_root_by_child_anchor.select(
+        "subject_id",
+        "timestamp",
+        "timestamp_at_anchor",
+        *[pl.col(c) - pl.col(f"{c}_summary") for c in predicate_cols],
     )
 
     return subtree_root_to_child_root_by_child_anchor
@@ -543,9 +515,7 @@ def query_subtree(
             # if time-bounded window
             case timedelta():
                 # account for offset
-                anchor_offset_branch = (
-                    anchor_offset + child.endpoint_expr[1] + child.endpoint_expr[3]
-                )
+                anchor_offset_branch = anchor_offset + child.endpoint_expr[1] + child.endpoint_expr[3]
                 joined = anchor_to_subtree_root_by_subtree_anchor.join(
                     subtree_root_to_child_root_by_child_anchor,
                     on=["subject_id", "timestamp"],
@@ -594,9 +564,7 @@ def query_subtree(
         match child.endpoint_expr[1]:
             case timedelta():
                 recursive_result = recursive_result.with_columns(
-                    (pl.col("timestamp") + anchor_offset_branch).alias(
-                        f"{child.name}/timestamp"
-                    )
+                    (pl.col("timestamp") + anchor_offset_branch).alias(f"{child.name}/timestamp")
                 )
             case str():
                 recursive_result = recursive_result.with_columns(
@@ -604,12 +572,8 @@ def query_subtree(
                 )
 
         # Step 5: Push results back to subtree anchor
-        subtree_root_to_child_root_by_child_anchor = (
-            subtree_root_to_child_root_by_child_anchor.with_columns(
-                pl.struct([pl.col(c).alias(c) for c in predicate_cols]).alias(
-                    f"{child.name}/window_summary"
-                )
-            )
+        subtree_root_to_child_root_by_child_anchor = subtree_root_to_child_root_by_child_anchor.with_columns(
+            pl.struct([pl.col(c).alias(c) for c in predicate_cols]).alias(f"{child.name}/window_summary")
         )
 
         match child.endpoint_expr[1]:
@@ -645,14 +609,10 @@ def query_subtree(
 
     # Step 6: Join children recursive results where all children find a valid realization
     if not recursive_results:
-        all_children = anchor_to_subtree_root_by_subtree_anchor.select(
-            "subject_id", "timestamp"
-        )
+        all_children = anchor_to_subtree_root_by_subtree_anchor.select("subject_id", "timestamp")
     else:
         all_children = recursive_results[0]
         for df in recursive_results[1:]:
-            all_children = all_children.join(
-                df, on=["subject_id", "timestamp"], how="inner"
-            )
+            all_children = all_children.join(df, on=["subject_id", "timestamp"], how="inner")
 
     return all_children

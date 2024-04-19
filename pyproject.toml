@@ -27,7 +27,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pre-commit", "pytest"]
+dev = ["pre-commit", "pytest", "pytest-cov", ]
 
 [project.urls]
 Homepage = "https://github.com/justin13601/ESGPTTaskQueryingPublic"

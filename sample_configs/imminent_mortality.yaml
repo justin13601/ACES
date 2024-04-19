@@ -3,7 +3,7 @@ predicates:
     column: event_type
     value: DEATH
     system: boolean
-  any: 
+  any:
     type: special
 
 windows:
@@ -20,7 +20,7 @@ windows:
     start: trigger.end
     duration: 24 hours
     offset:
-    end: 
+    end:
     excludes:
     includes:
     st_inclusive: False
