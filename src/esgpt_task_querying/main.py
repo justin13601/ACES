@@ -95,7 +95,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     trigger = cfg["windows"]["trigger"]
     # filter out subjects that do not have the trigger event if specified in inclusion criteria
-    if trigger["includes"]:
+    if trigger.get("includes", []):
         valid_trigger_exprs = [(ESD_data[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]]
     # filter out subjects that do not have the trigger event if specified as the start
     else:
@@ -107,7 +107,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         dropped = anchor_to_subtree_root_by_subtree_anchor.filter(~condition)
         anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(condition)
         if anchor_to_subtree_root_by_subtree_anchor.shape[0] < anchor_to_subtree_root_by_subtree_anchor_shape:
-            if trigger["includes"]:
+            if trigger.get("includes", []):
                 logger.debug(
                     f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg['windows']['trigger']['includes'][i]}."
                 )

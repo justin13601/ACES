@@ -136,7 +136,7 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         node = Node(window_name)
 
         # set node end_event
-        match window_info['duration']:
+        match window_info.get("duration", None):
             case timedelta():
                 end_event = window_info['duration']
             case str() if "-" in window_info['duration']:
