@@ -69,41 +69,25 @@ predicates:
 windows:
   trigger:
     start: discharge
-    duration:
-    offset:
     end: discharge
-    excludes:
-    includes:
     st_inclusive: False
     end_inclusive: True
   gap:
     start: trigger.end
     duration: 365 days
-    offset:
-    end:
     excludes:
       - predicate: myocardial_infarction
-    includes:
     st_inclusive: False
     end_inclusive: True
-    label:
   target:
     start: gap.end
     duration: 1095 days
-    offset:
-    end:
-    excludes:
-    includes:
     st_inclusive: False
     end_inclusive: True
     label: myocardial_infarction
   input:
     start: admission
-    duration:
-    offset:
     end: trigger.start
-    excludes:
-    includes:
       - predicate: discharge
         min: 1
         max: 1
