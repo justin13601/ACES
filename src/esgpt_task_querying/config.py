@@ -137,6 +137,7 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
 
         # set node end_event
         match window_info.get("duration", None):
+                raise ValueError(f"Invalid duration in {window_name}: {window_info['duration']}")
             case timedelta():
                 end_event = window_info['duration']
             case str():
