@@ -575,7 +575,7 @@ def query_subtree(
     recursive_results = []
 
     for child in subtree.children:
-        logger.debug(f"Querying subtree rooted at {child.name}...")
+        logger.debug(f"Querying subtree rooted at '{child.name}'...")
 
         # Added to reset anchor_offset and anchor_to_subtree_root_by_subtree_anchor for diverging subtrees
         # if len(child.parent.children) > 1:

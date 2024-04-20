@@ -77,12 +77,12 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     # checking for "Beginning of record" in the configuration file
     # TODO(mmd): This doesn't look right to me.
-    starts = [window['start'] for window in cfg['windows'].values()]
+    starts = [window.get('start', '') for window in cfg['windows'].values()]
     if None in starts:
         max_duration = -get_max_duration(ESD_data)
         for each_window, window_info in cfg["windows"].items():
-            if window_info["start"] is None:
-                logger.debug(f"Setting start of the {each_window} window to the beginning of the record.")
+            if window_info.get("start", "") is None:
+                logger.debug(f"Setting start of the '{each_window}' window to the beginning of the record.")
                 window_info["start"] = None
                 window_info["duration"] = max_duration
 
@@ -159,7 +159,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
                 *[
                     pl.col("start_of_record").alias(f"{each_window}/timestamp")
                     for each_window, window_info in cfg["windows"].items()
-                    if window_info["start"] is None
+                    if window_info.get("start", "") is None
                 ]
             )
             .drop(["start_of_record"])

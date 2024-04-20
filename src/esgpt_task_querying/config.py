@@ -7,7 +7,7 @@ from pytimeparse import parse
 
 import polars as pl
 import ruamel.yaml
-from bigtree import Node, preorder_iter
+from bigtree import Node
 from typing import Any
 
 def load_config(config_path: str) -> dict[str, Any]:
@@ -183,13 +183,13 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         node.constraints = constraints
 
         # search for the parent node in tree
-        if window_info["start"]:
+        if window_info.get("start"):
             root_name = window_info["start"].split(".")[0]
             node_root = next(
                 (substring for substring in windows if substring == root_name),
                 None,
             )
-        elif window_info["end"]:
+        elif window_info.get("end"):
             root_name = window_info["end"].split(".")[0]
             node_root = next(
                 (substring for substring in windows if substring == root_name),
