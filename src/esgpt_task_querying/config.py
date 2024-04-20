@@ -94,7 +94,7 @@ def get_max_duration(data: pl.DataFrame) -> timedelta:
 
 
 def build_tree_from_config(cfg: dict[str, Any]) -> Node:
-    """Build a tree structure from the given configuration.
+    """Build a tree structure from the given configuration. Note: the parse_timedelta function handles negative durations already if duration is specified with "-".
 
     Args:
         cfg: The configuration object.
@@ -139,8 +139,6 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         match window_info.get("duration", None):
             case timedelta():
                 end_event = window_info['duration']
-            case str() if "-" in window_info['duration']:
-                end_event = -parse_timedelta(window_info['duration'])
             case str():
                 end_event = parse_timedelta(window_info['duration'])
             case False | None:
@@ -204,7 +202,6 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
     for node in nodes.values():
         if node.parent:
             node.parent = nodes[node.parent.name]
-
 
     root = next(iter(nodes.values())).root
 
