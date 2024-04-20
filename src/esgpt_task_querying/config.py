@@ -1,7 +1,6 @@
 """This module contains functions for loading and parsing the configuration file into a dot accessible
 dictionary and subsequently building a tree structure from the configuration."""
 
-import re
 from datetime import timedelta
 from pytimeparse import parse
 
@@ -137,7 +136,6 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
 
         # set node end_event
         match window_info.get("duration", None):
-                raise ValueError(f"Invalid duration in {window_name}: {window_info['duration']}")
             case timedelta():
                 end_event = window_info['duration']
             case str():
@@ -145,7 +143,7 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
             case False | None:
                 end_event = f"is_{window_info['end']}"
             case _:
-                raise ValueError(f"Invalid duration: {window_info['duration']}")
+                raise ValueError(f"Invalid duration in '{window_name}': {window_info['duration']}")
 
         # set node st_inclusive and end_inclusive
         st_inclusive = window_info.get("st_inclusive", False)
