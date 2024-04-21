@@ -363,7 +363,6 @@ def summarize_window(
                 predicate_cols,
                 child.endpoint_expr,
                 anchor_to_subtree_root_by_subtree_anchor,
-                child.parent.endpoint_expr,
             )
 
     subtree_root_to_child_root_by_child_anchor = subtree_anchor_to_child_root_by_child_anchor.select(

@@ -27,8 +27,13 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         polars.DataFrame: The result of the task query.
     """
     # load configuration
-    logger.debug("Loading config...")
-    cfg = load_config(cfg_path)
+    match cfg_path:
+        case str():
+            logger.debug("Loading config...")
+            cfg = load_config(cfg_path)
+        case dict():
+            logger.debug("Config already loaded.")
+            cfg = cfg_path
 
     # load data if path is provided and compute predicate columns, else compute predicate columns on provided data
     match data:
