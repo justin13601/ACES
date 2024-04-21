@@ -204,7 +204,7 @@ def summarize_temporal_window(
     rolling_results = (
         predicates_df.rolling(
             index_column="timestamp",
-            by="subject_id",
+            group_by="subject_id",
             closed=closed,
             period=period,
             offset=offset,
@@ -232,19 +232,7 @@ def summarize_event_bound_window(
     predicate_cols: list[str],
     endpoint_expr: (tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]),
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
-    prev_endpoint_expr: (tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]),
 ) -> pl.LazyFrame | pl.DataFrame:
-    """Summarizes the event-bound window based on the given predicates and anchor-to-subtree-root mapping.
-
-    Args:
-        predicates_df: The dataframe containing the predicates.
-        predicate_cols: The list of predicate columns.
-        endpoint_expr: The expression defining the event-bound window endpoints.
-        anchor_to_subtree_root_by_subtree_anchor: The mapping of anchor to subtree root.
-
-    Returns:
-        The summarized dataframe.
-    """
     st_inclusive, end_event, end_inclusive, offset = endpoint_expr
     if not offset:
         offset = timedelta(days=0)
@@ -290,20 +278,7 @@ def summarize_event_bound_window(
         ],
     )
 
-    # st_inclusive and end_inclusive checks (not fully correct yet)
-    # patch for case where there are consecutive windows of the same type
-    # match prev_endpoint_expr[1]:
-    #     case timedelta():
-    #         if not st_inclusive:
-    #             cumsum_anchor_child = cumsum_anchor_child.with_columns(
-    #                 "subject_id",
-    #                 "timestamp",
-    #                 *[
-    #                     (pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor"))
-    #                     for c in predicate_cols
-    #                 ],
-    #             )
-    #     case str():
+    # st_inclusive and end_inclusive handling
     if st_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
             "subject_id",
