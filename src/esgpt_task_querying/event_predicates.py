@@ -162,14 +162,14 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
         # 1 or 0 for boolean predicates or count for count predicates
         match predicate_info["system"]:
             case "boolean":
-                boolean_cols.append(predicate_name)
+                boolean_cols.append(f"is_{predicate_name}")
             case "count":
-                count_cols.append(predicate_name)
+                count_cols.append(f"is_{predicate_name}")
             case _ as invalid:
                 raise ValueError(
                     f"Invalid predicate system '{invalid}' for '{predicate_name}'."
                 )
-                
+
         value = predicate_info.get("value", None)
         predicate_type = predicate_info.get("type", None)
         if not (value or predicate_type):
@@ -188,57 +188,66 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
             complex_predicates.append(predicate_name)
 
     match data:
-        case list():
-            for predicate_name in simple_predicates:
-                if cfg["predicates"][predicate_name]["column"] == "event_type":
-                    data[0] = generate_simple_predicates(
-                        predicate_name, cfg["predicates"][predicate_name], data[0]
-                    )
-                else:
-                    data[1] = generate_simple_predicates(
-                        predicate_name, cfg["predicates"][predicate_name], data[1]
-                    )
-
-            # aggregate data[1] by summing columns that are in count_cols, and taking the max for columns in boolean_cols
-            data[1] = (
-                data[1]
-                .groupby(["event_id"])
-                .agg(
-                    *[
-                        pl.col(c).sum().cast(pl.Int32)
-                        for c in data[1].columns
-                        if c in count_cols
-                    ],
-                    *[
-                        pl.col(c).max().cast(pl.Int32)
-                        for c in data[1].columns
-                        if c in boolean_cols
-                    ],
-                )
+        case pl.DataFrame():
+            # populate event_id column
+            data = data.with_row_count("event_id").select(
+                *data.columns,
+                pl.first("event_id").over(["subject_id", "timestamp"]).rank("dense")
+                - 1,
             )
-
-            data = data[0].join(data[1], on="event_id", how="left")
-            data = data.select(
+            events = data.select(
                 "subject_id",
                 "timestamp",
-                *[pl.col(c) for c in data.columns if c.startswith("is_")],
+                "event_id",
+                "event_type",
             )
-        case pl.DataFrame():
-            # group by subject_id and timestamp, combine event_type by adding the strings together with &
-            data = data.group_by(["subject_id", "timestamp"]).agg(
+            measurements = data.select(
+                "event_id",
+                *[pl.col(c) for c in data.columns if c not in events.columns],
+            )
+
+            events = events.group_by(["subject_id", "timestamp"]).agg(
+                pl.col("event_id").first(),
                 *[pl.col("event_type").flatten()],
             )
-            data = data.with_columns(event_type=data["event_type"].list.join("&"))
+            events = events.with_columns(event_type=events["event_type"].list.join("&"))
 
-            for predicate_name in simple_predicates:
-                data = generate_simple_predicates(
-                    predicate_name, cfg["predicates"][predicate_name], data
-                )
-            data = data.select(
-                "subject_id",
-                "timestamp",
-                *[pl.col(c) for c in data.columns if c.startswith("is_")],
+            data = [events, measurements]
+
+    for predicate_name in simple_predicates:
+        if cfg["predicates"][predicate_name]["column"] == "event_type":
+            data[0] = generate_simple_predicates(
+                predicate_name, cfg["predicates"][predicate_name], data[0]
             )
+        else:
+            data[1] = generate_simple_predicates(
+                predicate_name, cfg["predicates"][predicate_name], data[1]
+            )
+
+    # aggregate measurements (data[1]) by summing columns that are in count_cols, and taking the max for columns in boolean_cols
+    data[1] = (
+        data[1]
+        .groupby(["event_id"])
+        .agg(
+            *[
+                pl.col(c).sum().cast(pl.Int32)
+                for c in data[1].columns
+                if c in count_cols
+            ],
+            *[
+                pl.col(c).max().cast(pl.Int32)
+                for c in data[1].columns
+                if c in boolean_cols
+            ],
+        )
+    )
+
+    data = data[0].join(data[1], on="event_id", how="left")
+    data = data.select(
+        "subject_id",
+        "timestamp",
+        *[pl.col(c) for c in data.columns if c.startswith("is_")],
+    )
 
     # if complex predicates specified with ALL (AND) or ANY (OR)
     for predicate_name in complex_predicates:
