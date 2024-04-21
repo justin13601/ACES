@@ -132,6 +132,9 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
     nodes = {}
     windows = [x for x, y in cfg['windows'].items()]
     for window_name, window_info in cfg['windows'].items():
+        if "start" not in window_info or not (window_info.get("end") or window_info.get("duration")):
+            raise ValueError(f"Window '{window_name}' must have a 'start' field and either an 'end' field or a 'duration' field.")
+        
         node = Node(window_name)
 
         # set node end_event

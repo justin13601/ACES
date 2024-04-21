@@ -274,7 +274,7 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
     # add a column of 1s representing any predicate
     if "any" in cfg["predicates"]:
         data = data.with_columns(pl.lit(1).alias("is_any").cast(pl.Int32))
-        logger.debug(f"Added predicate column 'is_any'.")
+        logger.debug("Added predicate column 'is_any'.")
 
     data = data.sort(by=["subject_id", "timestamp"])
 
