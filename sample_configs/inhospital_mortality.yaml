@@ -21,31 +21,21 @@ predicates:
 windows:
   trigger:
     start: admission
-    duration:
-    offset:
     end: admission
-    excludes:
-    includes:
     st_inclusive: False
     end_inclusive: True
   gap:
     start: trigger.end
     duration: 48 hours
-    offset:
-    end:
     excludes:
       - predicate: admission
       - predicate: discharge
       - predicate: death
-    includes:
     st_inclusive: False
     end_inclusive: True
   target:
     start: gap.end
-    duration:
-    offset:
     end: discharge_or_death
-    excludes:
     includes:
       - predicate: discharge_or_death
         min: 1
@@ -54,11 +44,7 @@ windows:
     end_inclusive: True
     label: death
   input:
-    start: NULL
-    duration:
-    offset:
+    duration: -48 hours
     end: trigger.start
-    excludes:
-    includes:
     st_inclusive: False
     end_inclusive: True

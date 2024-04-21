@@ -1,13 +1,12 @@
 """This module contains functions for loading and parsing the configuration file into a dot accessible
 dictionary and subsequently building a tree structure from the configuration."""
 
-import re
 from datetime import timedelta
 from pytimeparse import parse
 
 import polars as pl
 import ruamel.yaml
-from bigtree import Node, preorder_iter
+from bigtree import Node
 from typing import Any
 
 def load_config(config_path: str) -> dict[str, Any]:
@@ -94,7 +93,7 @@ def get_max_duration(data: pl.DataFrame) -> timedelta:
 
 
 def build_tree_from_config(cfg: dict[str, Any]) -> Node:
-    """Build a tree structure from the given configuration.
+    """Build a tree structure from the given configuration. Note: the parse_timedelta function handles negative durations already if duration is specified with "-".
 
     Args:
         cfg: The configuration object.
@@ -133,20 +132,22 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
     nodes = {}
     windows = [x for x, y in cfg['windows'].items()]
     for window_name, window_info in cfg['windows'].items():
+        if "start" not in window_info or not (window_info.get("end") or window_info.get("duration")):
+            raise ValueError(f"Window '{window_name}' must have a 'start' field and either an 'end' field or a 'duration' field.")
+        
         node = Node(window_name)
 
         # set node end_event
-        match window_info['duration']:
+        duration = window_info.get("duration", None)
+        match duration:
             case timedelta():
                 end_event = window_info['duration']
-            case str() if "-" in window_info['duration']:
-                end_event = -parse_timedelta(window_info['duration'])
             case str():
                 end_event = parse_timedelta(window_info['duration'])
             case False | None:
                 end_event = f"is_{window_info['end']}"
             case _:
-                raise ValueError(f"Invalid duration: {window_info['duration']}")
+                raise ValueError(f"Invalid duration in '{window_name}': {window_info['duration']}")
 
         # set node st_inclusive and end_inclusive
         st_inclusive = window_info.get("st_inclusive", False)
@@ -183,13 +184,13 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         node.constraints = constraints
 
         # search for the parent node in tree
-        if window_info["start"]:
+        if window_info.get("start"):
             root_name = window_info["start"].split(".")[0]
             node_root = next(
                 (substring for substring in windows if substring == root_name),
                 None,
             )
-        elif window_info["end"]:
+        elif window_info.get("end"):
             root_name = window_info["end"].split(".")[0]
             node_root = next(
                 (substring for substring in windows if substring == root_name),
@@ -204,7 +205,6 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
     for node in nodes.values():
         if node.parent:
             node.parent = nodes[node.parent.name]
-
 
     root = next(iter(nodes.values())).root
 

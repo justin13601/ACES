@@ -27,8 +27,13 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         polars.DataFrame: The result of the task query.
     """
     # load configuration
-    logger.debug("Loading config...")
-    cfg = load_config(cfg_path)
+    match cfg_path:
+        case str():
+            logger.debug("Loading config...")
+            cfg = load_config(cfg_path)
+        case dict():
+            logger.debug("Config already loaded.")
+            cfg = cfg_path
 
     # load data if path is provided and compute predicate columns, else compute predicate columns on provided data
     match data:
@@ -77,12 +82,12 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     # checking for "Beginning of record" in the configuration file
     # TODO(mmd): This doesn't look right to me.
-    starts = [window.start for window in cfg['windows'].values()]
+    starts = [window.get('start', '') for window in cfg['windows'].values()]
     if None in starts:
         max_duration = -get_max_duration(ESD_data)
         for each_window, window_info in cfg["windows"].items():
-            if window_info["start"] is None:
-                logger.debug(f"Setting start of the {each_window} window to the beginning of the record.")
+            if window_info.get("start", "") is None:
+                logger.debug(f"Setting start of the '{each_window}' window to the beginning of the record.")
                 window_info["start"] = None
                 window_info["duration"] = max_duration
 
@@ -95,7 +100,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     trigger = cfg["windows"]["trigger"]
     # filter out subjects that do not have the trigger event if specified in inclusion criteria
-    if trigger["includes"]:
+    if trigger.get("includes", []):
         valid_trigger_exprs = [(ESD_data[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]]
     # filter out subjects that do not have the trigger event if specified as the start
     else:
@@ -107,7 +112,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         dropped = anchor_to_subtree_root_by_subtree_anchor.filter(~condition)
         anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(condition)
         if anchor_to_subtree_root_by_subtree_anchor.shape[0] < anchor_to_subtree_root_by_subtree_anchor_shape:
-            if trigger["includes"]:
+            if trigger.get("includes", []):
                 logger.debug(
                     f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg['windows']['trigger']['includes'][i]}."
                 )
@@ -159,7 +164,7 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
                 *[
                     pl.col("start_of_record").alias(f"{each_window}/timestamp")
                     for each_window, window_info in cfg["windows"].items()
-                    if window_info["start"] is None
+                    if window_info.get("start", "") is None
                 ]
             )
             .drop(["start_of_record"])

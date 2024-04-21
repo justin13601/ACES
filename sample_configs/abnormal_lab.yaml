@@ -6,18 +6,18 @@ predicates:
   abnormal_min_value:
     column: valuenum
     value:
-      - min: 17.2
+      min: 17.2
     system: boolean
   abnormal_max_value:
     column: valuenum
     value:
-      - max: 13.8
+      max: 13.8
     system: boolean
   normal_range:
     column: valuenum
     value:
-      - min: 13.8
-      - max: 17.2
+      min: 13.8
+      max: 17.2
     system: boolean
   abnormal_min_hemoglobin:
     type: ALL
@@ -41,28 +41,17 @@ predicates:
 windows:
   trigger:
     start: normal_hemoglobin
-    duration:
-    offset:
     end: normal_hemoglobin
-    excludes:
-    includes:
     st_inclusive: False
     end_inclusive: True
   gap:
     start: trigger.end
     duration: 24 hours
-    offset:
-    end:
-    excludes:
-    includes:
     st_inclusive: False
     end_inclusive: True
   target:
     start: gap.end
     duration: 7 days
-    offset:
-    end:
-    excludes:
     includes:
       - predicate: hemoglobin
         min: 1
@@ -70,11 +59,7 @@ windows:
     end_inclusive: True
     label: abnormal_hemoglobin
   input:
-    start:
     duration: -30 days
-    offset:
     end: trigger.start
-    excludes:
-    includes:
     st_inclusive: False
     end_inclusive: True
