@@ -16,35 +16,41 @@ from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
 
-def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
+def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
     """Query a task using the provided configuration file and event stream data.
 
     Args:
-        cfg_path: The path to the configuration file.
+        config: The path to the configuration file.
         ESD: The event stream data.
 
     Returns:
         polars.DataFrame: The result of the task query.
     """
     # load configuration
-    match cfg_path:
+    match config:
         case str():
             logger.debug("Loading config...")
-            cfg = load_config(cfg_path)
+            cfg = load_config(config)
+        case Path():
+            logger.debug("Loading config...")
+            cfg = load_config(config.absolute().as_posix())
         case dict():
             logger.debug("Config already loaded.")
-            cfg = cfg_path
+            cfg = config
 
     # load data if path is provided and compute predicate columns, else compute predicate columns on provided data
     match data:
-        case str():
+        case str() | Path():
             logger.debug("Data path provided, loading using ESGPT...")
-            DATA_DIR = Path(data)
+
+            if isinstance(data, str):
+                data = Path(data)
+
             try:
-                ESD = Dataset.load(DATA_DIR)
+                ESD = Dataset.load(data)
             except Exception as e:
                 raise ValueError(
-                    "Error loading data using ESGPT! Please ensure the path provided is a valid for ESGPT."
+                    "Error loading data using ESGPT! Please ensure the path provided is a valid ESGPT dataset directory."
                 ) from e
 
             events_df = ESD.events_df
