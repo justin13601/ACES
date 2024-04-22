@@ -15,6 +15,6 @@ windows:
   target:
     start: trigger.end
     duration: 24 hours
-    st_inclusive: False
+    st_inclusive: True
     end_inclusive: True
     label: death
