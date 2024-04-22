@@ -9,20 +9,12 @@ predicates:
 windows:
   trigger: # triggers on any event
     start: any
-    duration:
-    offset:
     end: any
-    excludes:
-    includes:
     st_inclusive: False
     end_inclusive: True
   target:
     start: trigger.end
     duration: 24 hours
-    offset:
-    end:
-    excludes:
-    includes:
-    st_inclusive: False
+    st_inclusive: True
     end_inclusive: True
     label: death

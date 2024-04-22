@@ -16,69 +16,86 @@ from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
 
-def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
+def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
     """Query a task using the provided configuration file and event stream data.
 
     Args:
-        cfg_path: The path to the configuration file.
+        config: The path to the configuration file.
         ESD: The event stream data.
 
     Returns:
         polars.DataFrame: The result of the task query.
     """
-    # load data if path is provided, else data is already loaded
-    match data:
+    # load configuration
+    match config:
         case str():
-            DATA_DIR = Path(data)
-            ESD = Dataset.load(DATA_DIR)
+            logger.debug("Loading config...")
+            cfg = load_config(config)
+        case Path():
+            logger.debug("Loading config...")
+            cfg = load_config(config.absolute().as_posix())
+        case dict():
+            logger.debug("Config already loaded.")
+            cfg = config
 
-            events_df = ESD.events_df.filter(~pl.all_horizontal(pl.all().is_null()))
-            dynamic_measurements_df = ESD.dynamic_measurements_df.filter(
-                ~pl.all_horizontal(pl.all().is_null())
-            )
+    # load data if path is provided and compute predicate columns, else compute predicate columns on provided data
+    match data:
+        case str() | Path():
+            logger.debug("Data path provided, loading using ESGPT...")
 
-            ESD_data = (
-                events_df.join(dynamic_measurements_df, on="event_id", how="left")
-                .drop(["event_id"])
-                .sort(by=["subject_id", "timestamp", "event_type"])
-            )
-        case pl.DataFrame():
-            ESD_data = data
+            if isinstance(data, str):
+                data = Path(data)
 
-    # check if timestamp is in the correct format
-    if ESD_data["timestamp"].dtype != pl.Datetime:
-        ESD_data = ESD_data.with_columns(
-            pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
-        )
+            try:
+                ESD = Dataset.load(data)
+            except Exception as e:
+                raise ValueError(
+                    "Error loading data using ESGPT! Please ensure the path provided is a valid ESGPT dataset directory."
+                ) from e
 
-    # check if ESD is empty
-    if ESD_data.shape[0] == 0:
-        raise ValueError("Empty ESD!")
-    if "timestamp" not in ESD_data.columns:
-        raise ValueError("ESD does not have timestamp column!")
-    if "subject_id" not in ESD_data.columns:
-        raise ValueError("ESD does not have subject_id column!")
+            events_df = ESD.events_df
+            dynamic_measurements_df = ESD.dynamic_measurements_df
 
-    logger.debug("Loading config...")
-    cfg = load_config(cfg_path)
+            logger.debug("Generating predicate columns...")
+            try:
+                ESD_data = generate_predicate_columns(cfg, [events_df, dynamic_measurements_df])
+            except Exception as e:
+                raise ValueError(
+                    "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
+                ) from e
+        case pl.DataFrame():            
+            # check if data is in correct format
+            if data.shape[0] == 0:
+                raise ValueError("Provided dataset is empty!")
+            if "subject_id" not in data.columns:
+                raise ValueError("Provided dataset does not have subject_id column!")
+            if "timestamp" not in data.columns:
+                raise ValueError("Provided dataset does not have timestamp column!")
 
-    logger.debug("Generating predicate columns...")
-    try:
-        ESD_data = generate_predicate_columns(cfg, ESD_data)
-    except Exception as e:
-        raise ValueError(
-            "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
-        ) from e
+            # check if timestamp is in the correct format
+            if data["timestamp"].dtype != pl.Datetime:
+                data = data.with_columns(
+                    pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
+                )
+            
+            logger.debug("Generating predicate columns...")
+            try:
+                ESD_data = generate_predicate_columns(cfg, data)
+            except Exception as e:
+                raise ValueError(
+                    "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
+                ) from e
 
     # checking for "Beginning of record" in the configuration file
-    starts = [window.start for window in cfg.windows.values()]
+    # TODO(mmd): This doesn't look right to me.
+    starts = [window.get('start', '') for window in cfg['windows'].values()]
     if None in starts:
         max_duration = -get_max_duration(ESD_data)
-        for each_window in cfg.windows:
-            if cfg.windows[each_window].start is None:
-                logger.debug(f"Setting start of the {each_window} window to the beginning of the record.")
-                cfg.windows[each_window].start = None
-                cfg.windows[each_window].duration = max_duration
+        for each_window, window_info in cfg["windows"].items():
+            if window_info.get("start", "") is None:
+                logger.debug(f"Setting start of the '{each_window}' window to the beginning of the record.")
+                window_info["start"] = None
+                window_info["duration"] = max_duration
 
     logger.debug("Building tree...")
     tree = build_tree_from_config(cfg)
@@ -87,12 +104,13 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
     logger.debug("Beginning query...")
     predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
 
+    trigger = cfg["windows"]["trigger"]
     # filter out subjects that do not have the trigger event if specified in inclusion criteria
-    if cfg.windows.trigger.includes:
-        valid_trigger_exprs = [(ESD_data[f"is_{x['predicate']}"] == 1) for x in cfg.windows.trigger.includes]
+    if trigger.get("includes", []):
+        valid_trigger_exprs = [(ESD_data[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]]
     # filter out subjects that do not have the trigger event if specified as the start
     else:
-        valid_trigger_exprs = [(ESD_data[f"is_{cfg.windows.trigger.start}"] == 1)]
+        valid_trigger_exprs = [(ESD_data[f"is_{trigger['start']}"] == 1)]
     anchor_to_subtree_root_by_subtree_anchor = ESD_data.clone()
     anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
     # log filtered subjects
@@ -100,13 +118,13 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
         dropped = anchor_to_subtree_root_by_subtree_anchor.filter(~condition)
         anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(condition)
         if anchor_to_subtree_root_by_subtree_anchor.shape[0] < anchor_to_subtree_root_by_subtree_anchor_shape:
-            if cfg.windows.trigger.includes:
+            if trigger.get("includes", []):
                 logger.debug(
-                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg.windows.trigger.includes[i]}."
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg['windows']['trigger']['includes'][i]}."
                 )
             else:
                 logger.debug(
-                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg.windows.trigger.start}."
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg['windows']['trigger']['start']}."
                 )
             anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
 
@@ -151,8 +169,8 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
             .with_columns(
                 *[
                     pl.col("start_of_record").alias(f"{each_window}/timestamp")
-                    for each_window in cfg.windows
-                    if cfg.windows[each_window].start is None
+                    for each_window, window_info in cfg["windows"].items()
+                    if window_info.get("start", "") is None
                 ]
             )
             .drop(["start_of_record"])
@@ -160,13 +178,12 @@ def query_task(cfg_path: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     # add label column if specified
     label_window = None
-    for window in cfg.windows:
-        if "label" in cfg.windows[window]:
-            if cfg.windows[window].label:
-                label_window = window
-                break
+    for window, window_info in cfg["windows"].items():
+        if window_info.get("label", None):
+            label_window = window
+            break
     if label_window:
-        label = cfg.windows[label_window].label
+        label = cfg["windows"][label_window]["label"]
         result = result.with_columns(
             pl.col(f"{label_window}/window_summary").struct.field(f"is_{label}").alias("label")
         )

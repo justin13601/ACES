@@ -1,0 +1,65 @@
+predicates:
+  spo2:
+    column: lab_name
+    value: SpO2
+    system: count
+  abnormal_min_value:
+    column: lab_value
+    value:
+      min: 121
+    system: boolean
+  abnormal_max_value:
+    column: lab_value
+    value:
+      max: 89
+    system: boolean
+  normal_range:
+    column: lab_value
+    value:
+      min: 90
+      max: 120
+    system: boolean
+  abnormal_min_spo2:
+    type: ALL
+    predicates: [spo2, abnormal_min_value]
+    system: boolean
+  abnormal_max_spo2:
+    type: ALL
+    predicates: [spo2, abnormal_max_value]
+    system: boolean
+  abnormal_spo2:
+    type: ANY
+    predicates: [abnormal_min_spo2, abnormal_max_spo2]
+    system: boolean
+  normal_spo2:
+    type: ALL
+    predicates: [spo2, normal_range]
+    system: boolean
+  any:
+    type: special
+
+windows:
+  trigger:
+    start: normal_spo2
+    end: normal_spo2
+    st_inclusive: False
+    end_inclusive: True
+  gap:
+    start: trigger.end
+    duration: 24 hours
+    st_inclusive: False
+    end_inclusive: True
+  target:
+    start: gap.end
+    duration: 7 days
+    includes:
+      - predicate: spo2
+        min: 1
+    st_inclusive: False
+    end_inclusive: True
+    label: abnormal_spo2
+  input:
+    start: NULL
+    end: trigger.start
+    st_inclusive: False
+    end_inclusive: True

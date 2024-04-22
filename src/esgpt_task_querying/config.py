@@ -1,194 +1,214 @@
 """This module contains functions for loading and parsing the configuration file into a dot accessible
 dictionary and subsequently building a tree structure from the configuration."""
 
-import re
 from datetime import timedelta
+from pytimeparse import parse
 
 import polars as pl
 import ruamel.yaml
-from bigtree import Node, preorder_iter
+from bigtree import Node
+from typing import Any
 
-
-class DotAccessibleDict(dict):
-    """A dictionary subclass that allows accessing values using dot notation.
-
-    Example:
-        >>> config = DotAccessibleDict({'key': 'value'})
-        print(config.key)  # Output: 'value'
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for key, value in self.items():
-            if isinstance(value, dict):
-                self[key] = DotAccessibleDict(value)
-
-    def __getattr__(self, attr):
-        if attr in self:
-            return self[attr]
-        else:
-            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{attr}'")
-
-
-def load_config(config_path: str) -> DotAccessibleDict:
-    """Load a configuration file from the given path and return it as a DotAccessibleDict.
+def load_config(config_path: str) -> dict[str, Any]:
+    """Load a configuration file from the given path and return it as a dict.
 
     Args:
         config_path (str): The path to the configuration file.
-
-    Returns:
-        DotAccessibleDict: The loaded configuration as a DotAccessibleDict.
     """
     yaml = ruamel.yaml.YAML()
     with open(config_path) as file:
-        config_dict = yaml.load(file)
-    return DotAccessibleDict(config_dict)
+        return yaml.load(file)
 
 
 def parse_timedelta(time_str: str) -> timedelta:
     """Parse a time string and return a timedelta object.
 
+    Using time expression parser: https://github.com/wroberts/pytimeparse
+
     Args:
-        time_str (str): The time string to parse.
+        time_str: The time string to parse.
 
     Returns:
         timedelta: The parsed timedelta object.
+
+    Examples:
+        >>> parse_timedelta("1 days")
+        datetime.timedelta(days=1)
+        >>> parse_timedelta("1 day")
+        datetime.timedelta(days=1)
+        >>> parse_timedelta("1 days 2 hours 3 minutes 4 seconds")
+        datetime.timedelta(days=1, seconds=7384)
+        >>> parse_timedelta('1 day, 14:20:16')
+        datetime.timedelta(days=1, seconds=51616)
+        >>> parse_timedelta('365 days')
+        datetime.timedelta(days=365)
     """
     if not time_str:
         return timedelta(days=0)
 
-    units = {"days": 0, "hours": 0, "minutes": 0, "seconds": 0}
-    pattern = r"(\d+)\s*(seconds|minutes|hours|days)"
-    matches = re.findall(pattern, time_str.lower())
-    for value, unit in matches:
-        units[unit] = int(value)
+    return timedelta(seconds=parse(time_str))
 
-    return timedelta(
-        days=units["days"],
-        hours=units["hours"],
-        minutes=units["minutes"],
-        seconds=units["seconds"],
+    # units = {"day": 0, "hour": 0, "minute": 0, "second": 0}
+    # pattern = r"(\d+)\s*(second|minute|hour|day)"
+    # matches = re.findall(pattern, time_str.lower())
+    # for value, unit in matches:
+    #     units[unit] = int(value)
+
+    # return timedelta(
+    #     days=units["day"],
+    #     hours=units["hour"],
+    #     minutes=units["minute"],
+    #     seconds=units["second"],
+    # )
+
+
+def get_max_duration(data: pl.DataFrame) -> timedelta:
+    """Get the maximum duration for each subject timestamps.
+
+    Args:
+        data: The data containing the events for each subject. The timestamps of the events are in the 
+        column ``"timestamp"`` and the subject IDs are in the column ``"subject_id"``.
+
+    Returns:
+        The maximum duration between the latest timestamp and the earliest timestamp over all subjects.
+
+    Examples:
+        >>> from datetime import datetime
+        >>> data = pl.DataFrame({
+        ...     "subject_id": [1, 1, 2, 2],
+        ...     "timestamp": [
+        ...         datetime(2021, 1, 1), datetime(2021, 1, 2), datetime(2021, 1, 1), datetime(2021, 1, 3)
+        ...     ]
+        ... })
+        >>> get_max_duration(data)
+        datetime.timedelta(days=2)
+    """
+
+    return (
+        data.group_by("subject_id")
+        .agg((pl.col("timestamp").max() - pl.col("timestamp").min()).alias("duration"))
+        .get_column("duration")
+        .max()
     )
 
 
-def get_max_duration(data: pl.DataFrame) -> pl.DataFrame:
-    """Get the maximum duration data for each subject by calculating the delta between the min and max
-    timestamps."""
-
-    # get the start and end timestamps for each subject
-    data = data.groupby("subject_id").agg(
-        [
-            pl.col("timestamp").min().alias("min_timestamp"),
-            pl.col("timestamp").max().alias("max_timestamp"),
-        ]
-    )
-
-    # calculate the duration for each subject
-    data = data.with_columns((pl.col("max_timestamp") - pl.col("min_timestamp")).alias("duration"))
-
-    # get the maximum duration
-    max_duration = data["duration"].max()
-    return max_duration
-
-
-def build_tree_from_config(cfg: DotAccessibleDict) -> Node:
-    """Build a tree structure from the given configuration.
+def build_tree_from_config(cfg: dict[str, Any]) -> Node:
+    """Build a tree structure from the given configuration. Note: the parse_timedelta function handles negative durations already if duration is specified with "-".
 
     Args:
         cfg: The configuration object.
 
     Returns:
         Node: The root node of the built tree.
+
+    Examples:
+        >>> cfg = {
+        ...     "windows": {
+        ...         "window1": {
+        ...             "start": 'event1',
+        ...             "duration": "24 hours",
+        ...             "end": None,
+        ...             "offset": None,
+        ...             "excludes": [],
+        ...             "includes": [],
+        ...             "st_inclusive": False,
+        ...             "end_inclusive": True,
+        ...         },
+        ...         "window2": {
+        ...             "start": "window1.end",
+        ...             "duration": "24 hours",
+        ...             "end": None,
+        ...             "offset": None,
+        ...             "excludes": [],
+        ...             "includes": [],
+        ...             "st_inclusive": False,
+        ...             "end_inclusive": True,
+        ...         },
+        ...     }
+        ... }
+        >>> build_tree_from_config(cfg)
+        Node(/window1, constraints={}, endpoint_expr=(False, datetime.timedelta(days=1), True, datetime.timedelta(0)))
     """
     nodes = {}
-    windows = [x for x, y in cfg.windows.items()]
-    for window_name in windows:
+    windows = [name for name, _ in cfg['windows'].items()]
+    for window_name, window_info in cfg['windows'].items():
+        if sum(key in window_info for key in ['start', 'end', 'duration']) < 2:
+            raise ValueError(
+                f"Invalid window specification for '{window_name}': must specify two fields out of ['start', 'end', 'duration']. "
+                f"Got {[key for key in window_info if key in ['start', 'end', 'duration']]}."
+            )
+        
         node = Node(window_name)
-        window_info = cfg.windows[window_name]
 
         # set node end_event
-        if window_info.duration:
-            if type(window_info.duration) == timedelta:
-                end_event = window_info.duration
-            elif "-" in window_info.duration:
-                end_event = -parse_timedelta(window_info.duration)
-            else:
-                end_event = parse_timedelta(window_info.duration)
-        else:
-            end_event = f"is_{window_info.end}"
+        duration = window_info.get("duration", None)
+        match duration:
+            case timedelta():
+                end_event = window_info['duration']
+            case str():
+                end_event = parse_timedelta(window_info['duration'])
+            case False | None:
+                end_event = f"is_{window_info['end']}"
+            case _:
+                raise ValueError(f"Invalid duration in '{window_name}': {window_info['duration']}")
 
         # set node st_inclusive and end_inclusive
-        st_inclusive = False
-        end_inclusive = True
-        if "st_inclusive" in window_info:
-            st_inclusive = window_info.st_inclusive
-        if "end_inclusive" in window_info:
-            end_inclusive = window_info.end_inclusive
+        st_inclusive = window_info.get("st_inclusive", False)
+        end_inclusive = window_info.get("end_inclusive", True)
 
         # set node offset
-        offset = parse_timedelta(window_info.offset)
+        offset = window_info.get("offset", None)
+        offset = parse_timedelta(offset)
+        
         node.endpoint_expr = (st_inclusive, end_event, end_inclusive, offset)
 
         # set node exclude constraints
         constraints = {}
-        if window_info.excludes:
-            for each_exclusion in window_info.excludes:
-                if each_exclusion["predicate"]:
-                    constraints[f"is_{each_exclusion['predicate']}"] = (None, 0)
+        for each_exclusion in window_info.get("excludes", []):
+            if each_exclusion["predicate"]:
+                constraints[f"is_{each_exclusion['predicate']}"] = (None, 0)
 
         # set node include constraints, using min and max values and None if not specified
-        if window_info.includes:
-            for each_inclusion in window_info.includes:
-                if each_inclusion["predicate"]:
-                    constraints[f"is_{each_inclusion['predicate']}"] = (
-                        (
-                            int(each_inclusion["min"])
-                            if "min" in each_inclusion and each_inclusion["min"] is not None
-                            else None
-                        ),
-                        (
-                            int(each_inclusion["max"])
-                            if "max" in each_inclusion and each_inclusion["max"] is not None
-                            else None
-                        ),
-                    )
+        for each_inclusion in window_info.get("includes", []):
+            if each_inclusion["predicate"]:
+                constraints[f"is_{each_inclusion['predicate']}"] = (
+                    (
+                        int(each_inclusion["min"])
+                        if "min" in each_inclusion and each_inclusion["min"] is not None
+                        else None
+                    ),
+                    (
+                        int(each_inclusion["max"])
+                        if "max" in each_inclusion and each_inclusion["max"] is not None
+                        else None
+                    ),
+                )
+
         node.constraints = constraints
 
         # search for the parent node in tree
-        if window_info.start:
-            root_name = window_info.start.split(".")[0]
+        if window_info.get("start"):
+            root_name = window_info["start"].split(".")[0]
             node_root = next(
                 (substring for substring in windows if substring == root_name),
                 None,
             )
-        elif window_info.end:
-            root_name = window_info.end.split(".")[0]
+        elif window_info.get("end"):
+            root_name = window_info["end"].split(".")[0]
             node_root = next(
                 (substring for substring in windows if substring == root_name),
                 None,
             )
 
-        if not node_root:
-            nodes[window_name] = node
-        elif node_root not in nodes:
-            windows.append(window_name)
-        else:
+        if node_root:
             node.parent = nodes[node_root]
-            nodes[window_name] = node
+
+        nodes[window_name] = node
+
+    for node in nodes.values():
+        if node.parent:
+            node.parent = nodes[node.parent.name]
 
     root = next(iter(nodes.values())).root
 
-    # if event_bound window follows temporal window, the st_inclusive parameter is set to True
-    # for each_node in preorder_iter(root):
-    #     if (
-    #         each_node.parent
-    #         and isinstance(each_node.parent.endpoint_expr[1], timedelta)
-    #         and isinstance(each_node.endpoint_expr[1], str)
-    #     ):
-    #         each_node.endpoint_expr = (
-    #             True,
-    #             each_node.endpoint_expr[1],
-    #             each_node.endpoint_expr[2],
-    #             each_node.endpoint_expr[3],
-    #         )
     return root

@@ -24,110 +24,160 @@ def summarize_temporal_window(
     Returns:
         The summarized dataframe.
 
-    >>> import polars as pl
-    >>> import pandas as pd
-    >>> from datetime import timedelta
-    >>> from esgpt_task_querying.query import summarize_temporal_window
-    >>> predicates_df = pl.DataFrame(
-    ...     {
-    ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
-    ...         "timestamp": [1, 10, 26, 33, 81, 88, 89, 122],
-    ...         "is_admission": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...         "is_discharge": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...         "pred_C": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...     }
-    ... )
-    >>> anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
-    ...     {
-    ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
-    ...         "timestamp": [1, 10, 26, 33, 81, 88, 89, 122],
-    ...         "timestamp_at_anchor": [1, 10, 26, 33, 81, 88, 89, 122],
-    ...         "is_admission": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...         "is_discharge": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...         "pred_C": [0, 0, 0, 0, 0, 0, 0, 0],
-    ...     }
-    ... )
-    >>> endpoint_expr = (True, timedelta(days=1), True, timedelta(days=0))
-    >>> predicate_cols = ["is_admission", "is_discharge", "pred_C"]
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
-    >>> endpoint_expr = (True, timedelta(days=1), False, timedelta(days=0))
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
-    >>> endpoint_expr = (False, timedelta(days=1), True, timedelta(days=0))
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
-    >>> endpoint_expr = (False, timedelta(days=1), False, timedelta(days=0))
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
-    >>> endpoint_expr = (True, timedelta(days=-1), True, timedelta(days=0))
-    >>> summarize_temporal_window(
-    ...     predicates_df,
-    ...     predicate_cols,
-    ...     endpoint_expr,
-    ...     anchor_to_subtree_root_by_subtree_anchor,
-    ... )
-       subject_id  timestamp  timestamp_at_anchor  is_admission  is_discharge  pred_C
-    0           1          1                    1             0             0       0
-    1           1         10                   10             0             0       0
-    2           1         26                   26             0             0       0
-    3           1         33                   33             0             0       0
-    4           1         81                   81             0             0       0
-    5           1         88                   88             0             0       0
-    6           1         89                   89             0             0       0
-    7           1        122                  122             0             0       0
+    Examples:
+        >>> import polars as pl
+        >>> from datetime import timedelta
+        >>> predicates_df = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
+        ...         "timestamp": ["12/1/1989 12:03", "12/1/1989 13:14", "12/1/1989 15:17", "12/1/1989 16:17", "12/2/1989 3:00", "1/27/1991 23:32", "1/27/1991 23:46", "1/28/1991 3:18"],
+        ...         "is_A": [1, 0, 0, 1, 1, 0, 0, 1],
+        ...         "is_B": [0, 1, 0, 1, 0, 1, 0, 1],
+        ...         "is_C": [0, 0, 1, 0, 0, 0, 1, 1],
+        ...     }
+        ... ).with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime))
+        >>> anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 1, 1, 1, 1, 1, 1, 1],
+        ...         "timestamp": ["12/1/1989 12:03", "12/1/1989 13:14", "12/1/1989 15:17", "12/1/1989 16:17", "12/2/1989 3:00", "1/27/1991 23:32", "1/27/1991 23:46", "1/28/1991 3:18"],
+        ...         "timestamp_at_anchor": ["12/1/1989 12:03", "12/1/1989 13:14", "12/1/1989 15:17", "12/1/1989 16:17", "12/2/1989 3:00", "1/27/1991 23:32", "1/27/1991 23:46", "1/28/1991 3:18"],
+        ...         "is_A": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "is_B": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "is_C": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...     }
+        ... ).with_columns(
+        ...     pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime), 
+        ...     pl.col("timestamp_at_anchor").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
+        ... )
+        >>> predicate_cols = ["is_A", "is_B", "is_C"]
+        >>> endpoint_expr = (True, timedelta(days=1), True, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+        shape: (8, 9)
+        ┌────────────┬─────────────┬──────┬──────┬───┬─────────────┬─────────────┬────────────┬────────────┐
+        │ subject_id ┆ timestamp   ┆ is_A ┆ is_B ┆ … ┆ timestamp_a ┆ is_A_summar ┆ is_B_summa ┆ is_C_summa │
+        │ ---        ┆ ---         ┆ ---  ┆ ---  ┆   ┆ t_anchor    ┆ y           ┆ ry         ┆ ry         │
+        │ i64        ┆ datetime[μs ┆ i64  ┆ i64  ┆   ┆ ---         ┆ ---         ┆ ---        ┆ ---        │
+        │            ┆ ]           ┆      ┆      ┆   ┆ datetime[μs ┆ i64         ┆ i64        ┆ i64        │
+        │            ┆             ┆      ┆      ┆   ┆ ]           ┆             ┆            ┆            │
+        ╞════════════╪═════════════╪══════╪══════╪═══╪═════════════╪═════════════╪════════════╪════════════╡
+        │ 1          ┆ 1989-12-01  ┆ 3    ┆ 2    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 12:03:00    ┆      ┆      ┆   ┆ 12:03:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 2    ┆ 2    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 13:14:00    ┆      ┆      ┆   ┆ 13:14:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 2    ┆ 1    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 15:17:00    ┆      ┆      ┆   ┆ 15:17:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 2    ┆ 1    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 16:17:00    ┆      ┆      ┆   ┆ 16:17:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-02  ┆ 1    ┆ 0    ┆ … ┆ 1989-12-02  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 03:00:00    ┆      ┆      ┆   ┆ 03:00:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-27  ┆ 1    ┆ 2    ┆ … ┆ 1991-01-27  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 23:32:00    ┆      ┆      ┆   ┆ 23:32:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-27  ┆ 1    ┆ 1    ┆ … ┆ 1991-01-27  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 23:46:00    ┆      ┆      ┆   ┆ 23:46:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-28  ┆ 1    ┆ 1    ┆ … ┆ 1991-01-28  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 03:18:00    ┆      ┆      ┆   ┆ 03:18:00    ┆             ┆            ┆            │
+        └────────────┴─────────────┴──────┴──────┴───┴─────────────┴─────────────┴────────────┴────────────┘
+        >>> endpoint_expr = (False, timedelta(days=1), True, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+        shape: (8, 9)
+        ┌────────────┬─────────────┬──────┬──────┬───┬─────────────┬─────────────┬────────────┬────────────┐
+        │ subject_id ┆ timestamp   ┆ is_A ┆ is_B ┆ … ┆ timestamp_a ┆ is_A_summar ┆ is_B_summa ┆ is_C_summa │
+        │ ---        ┆ ---         ┆ ---  ┆ ---  ┆   ┆ t_anchor    ┆ y           ┆ ry         ┆ ry         │
+        │ i64        ┆ datetime[μs ┆ i64  ┆ i64  ┆   ┆ ---         ┆ ---         ┆ ---        ┆ ---        │
+        │            ┆ ]           ┆      ┆      ┆   ┆ datetime[μs ┆ i64         ┆ i64        ┆ i64        │
+        │            ┆             ┆      ┆      ┆   ┆ ]           ┆             ┆            ┆            │
+        ╞════════════╪═════════════╪══════╪══════╪═══╪═════════════╪═════════════╪════════════╪════════════╡
+        │ 1          ┆ 1989-12-01  ┆ 2    ┆ 2    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 12:03:00    ┆      ┆      ┆   ┆ 12:03:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 2    ┆ 1    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 13:14:00    ┆      ┆      ┆   ┆ 13:14:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 2    ┆ 1    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 15:17:00    ┆      ┆      ┆   ┆ 15:17:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 1    ┆ 0    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 16:17:00    ┆      ┆      ┆   ┆ 16:17:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-02  ┆ 0    ┆ 0    ┆ … ┆ 1989-12-02  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 03:00:00    ┆      ┆      ┆   ┆ 03:00:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-27  ┆ 1    ┆ 1    ┆ … ┆ 1991-01-27  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 23:32:00    ┆      ┆      ┆   ┆ 23:32:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-27  ┆ 1    ┆ 1    ┆ … ┆ 1991-01-27  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 23:46:00    ┆      ┆      ┆   ┆ 23:46:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-28  ┆ 0    ┆ 0    ┆ … ┆ 1991-01-28  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 03:18:00    ┆      ┆      ┆   ┆ 03:18:00    ┆             ┆            ┆            │
+        └────────────┴─────────────┴──────┴──────┴───┴─────────────┴─────────────┴────────────┴────────────┘
+        >>> endpoint_expr = (False, timedelta(days=1), True, timedelta(days=1))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+        shape: (8, 9)
+        ┌────────────┬─────────────┬──────┬──────┬───┬─────────────┬─────────────┬────────────┬────────────┐
+        │ subject_id ┆ timestamp   ┆ is_A ┆ is_B ┆ … ┆ timestamp_a ┆ is_A_summar ┆ is_B_summa ┆ is_C_summa │
+        │ ---        ┆ ---         ┆ ---  ┆ ---  ┆   ┆ t_anchor    ┆ y           ┆ ry         ┆ ry         │
+        │ i64        ┆ datetime[μs ┆ i64  ┆ i64  ┆   ┆ ---         ┆ ---         ┆ ---        ┆ ---        │
+        │            ┆ ]           ┆      ┆      ┆   ┆ datetime[μs ┆ i64         ┆ i64        ┆ i64        │
+        │            ┆             ┆      ┆      ┆   ┆ ]           ┆             ┆            ┆            │
+        ╞════════════╪═════════════╪══════╪══════╪═══╪═════════════╪═════════════╪════════════╪════════════╡
+        │ 1          ┆ 1989-12-01  ┆ 0    ┆ 0    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 12:03:00    ┆      ┆      ┆   ┆ 12:03:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 0    ┆ 0    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 13:14:00    ┆      ┆      ┆   ┆ 13:14:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 0    ┆ 0    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 15:17:00    ┆      ┆      ┆   ┆ 15:17:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 0    ┆ 0    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 16:17:00    ┆      ┆      ┆   ┆ 16:17:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-02  ┆ 0    ┆ 0    ┆ … ┆ 1989-12-02  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 03:00:00    ┆      ┆      ┆   ┆ 03:00:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-27  ┆ 0    ┆ 0    ┆ … ┆ 1991-01-27  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 23:32:00    ┆      ┆      ┆   ┆ 23:32:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-27  ┆ 0    ┆ 0    ┆ … ┆ 1991-01-27  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 23:46:00    ┆      ┆      ┆   ┆ 23:46:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-28  ┆ 0    ┆ 0    ┆ … ┆ 1991-01-28  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 03:18:00    ┆      ┆      ┆   ┆ 03:18:00    ┆             ┆            ┆            │
+        └────────────┴─────────────┴──────┴──────┴───┴─────────────┴─────────────┴────────────┴────────────┘
+        >>> endpoint_expr = (False, timedelta(days=-1), False, timedelta(days=0))
+        >>> summarize_temporal_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+        shape: (8, 9)
+        ┌────────────┬─────────────┬──────┬──────┬───┬─────────────┬─────────────┬────────────┬────────────┐
+        │ subject_id ┆ timestamp   ┆ is_A ┆ is_B ┆ … ┆ timestamp_a ┆ is_A_summar ┆ is_B_summa ┆ is_C_summa │
+        │ ---        ┆ ---         ┆ ---  ┆ ---  ┆   ┆ t_anchor    ┆ y           ┆ ry         ┆ ry         │
+        │ i64        ┆ datetime[μs ┆ i64  ┆ i64  ┆   ┆ ---         ┆ ---         ┆ ---        ┆ ---        │
+        │            ┆ ]           ┆      ┆      ┆   ┆ datetime[μs ┆ i64         ┆ i64        ┆ i64        │
+        │            ┆             ┆      ┆      ┆   ┆ ]           ┆             ┆            ┆            │
+        ╞════════════╪═════════════╪══════╪══════╪═══╪═════════════╪═════════════╪════════════╪════════════╡
+        │ 1          ┆ 1989-12-01  ┆ 0    ┆ 0    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 12:03:00    ┆      ┆      ┆   ┆ 12:03:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 1    ┆ 0    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 13:14:00    ┆      ┆      ┆   ┆ 13:14:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 1    ┆ 1    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 15:17:00    ┆      ┆      ┆   ┆ 15:17:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-01  ┆ 1    ┆ 1    ┆ … ┆ 1989-12-01  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 16:17:00    ┆      ┆      ┆   ┆ 16:17:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1989-12-02  ┆ 2    ┆ 2    ┆ … ┆ 1989-12-02  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 03:00:00    ┆      ┆      ┆   ┆ 03:00:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-27  ┆ 0    ┆ 0    ┆ … ┆ 1991-01-27  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 23:32:00    ┆      ┆      ┆   ┆ 23:32:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-27  ┆ 0    ┆ 1    ┆ … ┆ 1991-01-27  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 23:46:00    ┆      ┆      ┆   ┆ 23:46:00    ┆             ┆            ┆            │
+        │ 1          ┆ 1991-01-28  ┆ 0    ┆ 1    ┆ … ┆ 1991-01-28  ┆ 0           ┆ 0          ┆ 0          │
+        │            ┆ 03:18:00    ┆      ┆      ┆   ┆ 03:18:00    ┆             ┆            ┆            │
+        └────────────┴─────────────┴──────┴──────┴───┴─────────────┴─────────────┴────────────┴────────────┘
     """
     st_inclusive, window_size, end_inclusive, offset = endpoint_expr
     if not offset:
@@ -148,40 +198,33 @@ def summarize_temporal_window(
         offset = -period + offset
     else:
         period = window_size
-        offset = timedelta(days=0) + offset
+        offset = offset
 
     # summarize the window using rolling window
-    result = (
+    rolling_results = (
         predicates_df.rolling(
             index_column="timestamp",
-            by="subject_id",
+            group_by="subject_id",
             closed=closed,
             period=period,
             offset=offset,
         )
         .agg([pl.col(c).sum().alias(c) for c in predicate_cols])
         .sort(by=["subject_id", "timestamp"])
+        .join(
+            anchor_to_subtree_root_by_subtree_anchor,
+            on=["subject_id", "timestamp"],
+            suffix="_summary",
+        )
     )
 
-    # set the timestamp at anchor
-    filtered_result = result.join(
-        anchor_to_subtree_root_by_subtree_anchor,
-        on=["subject_id", "timestamp"],
-        suffix="_summary",
-    ).with_columns(pl.col("timestamp").alias("timestamp_at_anchor"))
-
-    filtered_result = filtered_result.select(
-        "subject_id",
-        "timestamp",
-        "timestamp_at_anchor",
-        *[
-            pl.col(c)
-            for c in filtered_result.columns
-            if c not in ["subject_id", "timestamp", "timestamp_at_anchor"]
-        ],
-    )
-
-    return filtered_result
+    # fill nulls with 0 and reorder columns
+    return rolling_results.with_columns(
+            "subject_id",
+            "timestamp",
+            pl.col("timestamp").alias("timestamp_at_anchor"),
+            *[pl.col(c).fill_null(strategy="zero") for c in rolling_results.columns if c.startswith("is_")],
+        )
 
 
 def summarize_event_bound_window(
@@ -189,19 +232,7 @@ def summarize_event_bound_window(
     predicate_cols: list[str],
     endpoint_expr: (tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]),
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
-    prev_endpoint_expr: (tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]),
 ) -> pl.LazyFrame | pl.DataFrame:
-    """Summarizes the event-bound window based on the given predicates and anchor-to-subtree-root mapping.
-
-    Args:
-        predicates_df: The dataframe containing the predicates.
-        predicate_cols: The list of predicate columns.
-        endpoint_expr: The expression defining the event-bound window endpoints.
-        anchor_to_subtree_root_by_subtree_anchor: The mapping of anchor to subtree root.
-
-    Returns:
-        The summarized dataframe.
-    """
     st_inclusive, end_event, end_inclusive, offset = endpoint_expr
     if not offset:
         offset = timedelta(days=0)
@@ -247,20 +278,7 @@ def summarize_event_bound_window(
         ],
     )
 
-    # st_inclusive and end_inclusive checks (not fully correct yet)
-    # patch for case where there are consecutive windows of the same type
-    # match prev_endpoint_expr[1]:
-    #     case timedelta():
-    #         if not st_inclusive:
-    #             cumsum_anchor_child = cumsum_anchor_child.with_columns(
-    #                 "subject_id",
-    #                 "timestamp",
-    #                 *[
-    #                     (pl.col(f"{c}_final") - pl.col(f"{c}_at_anchor"))
-    #                     for c in predicate_cols
-    #                 ],
-    #             )
-    #     case str():
+    # st_inclusive and end_inclusive handling
     if st_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
             "subject_id",
@@ -345,7 +363,6 @@ def summarize_window(
                 predicate_cols,
                 child.endpoint_expr,
                 anchor_to_subtree_root_by_subtree_anchor,
-                child.parent.endpoint_expr,
             )
 
     subtree_root_to_child_root_by_child_anchor = subtree_anchor_to_child_root_by_child_anchor.select(
@@ -482,7 +499,7 @@ def query_subtree(
     recursive_results = []
 
     for child in subtree.children:
-        logger.debug(f"Querying subtree rooted at {child.name}...")
+        logger.debug(f"Querying subtree rooted at '{child.name}'...")
 
         # Added to reset anchor_offset and anchor_to_subtree_root_by_subtree_anchor for diverging subtrees
         # if len(child.parent.children) > 1:

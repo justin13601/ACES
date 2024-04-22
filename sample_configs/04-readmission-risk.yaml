@@ -13,19 +13,12 @@ predicates:
 windows:
   trigger:
     start: admission
-    duration:
-    offset:
     end: admission
-    includes:
-    excludes:
     st_inclusive: False
     end_inclusive: True
   input:
     start: trigger.end
-    duration:
-    offset:
     end: discharge
-    excludes:
     includes:
       - predicate: discharge
         min: 1
@@ -35,10 +28,6 @@ windows:
   target:
     start: input.end
     duration: 30 days
-    offset:
-    end:
-    excludes:
-    includes:
     st_inclusive: False
     end_inclusive: True
     label: admission
