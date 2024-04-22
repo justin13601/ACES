@@ -38,7 +38,7 @@ windows:
     st_inclusive: False
     end_inclusive: True
   input:
-    duration: -30 days
+    start: NULL
     end: trigger.start
     st_inclusive: False
     end_inclusive: True

@@ -1,47 +1,47 @@
 predicates:
-  hemoglobin:
-    column: lab
-    value: Hemoglobin (g/dl)
+  spo2:
+    column: lab_name
+    value: SpO2
     system: count
   abnormal_min_value:
-    column: valuenum
+    column: lab_value
     value:
-      min: 17.2
+      min: 121
     system: boolean
   abnormal_max_value:
-    column: valuenum
+    column: lab_value
     value:
-      max: 13.8
+      max: 89
     system: boolean
   normal_range:
-    column: valuenum
+    column: lab_value
     value:
-      min: 13.8
-      max: 17.2
+      min: 90
+      max: 120
     system: boolean
-  abnormal_min_hemoglobin:
+  abnormal_min_spo2:
     type: ALL
-    predicates: [hemoglobin, abnormal_min_value]
+    predicates: [spo2, abnormal_min_value]
     system: boolean
-  abnormal_max_hemoglobin:
+  abnormal_max_spo2:
     type: ALL
-    predicates: [hemoglobin, abnormal_max_value]
+    predicates: [spo2, abnormal_max_value]
     system: boolean
-  abnormal_hemoglobin:
+  abnormal_spo2:
     type: ANY
-    predicates: [abnormal_min_hemoglobin, abnormal_max_hemoglobin]
+    predicates: [abnormal_min_spo2, abnormal_max_spo2]
     system: boolean
-  normal_hemoglobin:
+  normal_spo2:
     type: ALL
-    predicates: [hemoglobin, normal_range]
+    predicates: [spo2, normal_range]
     system: boolean
   any:
     type: special
 
 windows:
   trigger:
-    start: normal_hemoglobin
-    end: normal_hemoglobin
+    start: normal_spo2
+    end: normal_spo2
     st_inclusive: False
     end_inclusive: True
   gap:
@@ -53,13 +53,13 @@ windows:
     start: gap.end
     duration: 7 days
     includes:
-      - predicate: hemoglobin
+      - predicate: spo2
         min: 1
     st_inclusive: False
     end_inclusive: True
-    label: abnormal_hemoglobin
+    label: abnormal_spo2
   input:
-    duration: -30 days
+    start: NULL
     end: trigger.start
     st_inclusive: False
     end_inclusive: True

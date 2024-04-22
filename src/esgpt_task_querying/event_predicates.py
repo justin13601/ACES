@@ -174,12 +174,12 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
         predicate_type = predicate_info.get("type", None)
         if not (value or predicate_type):
             raise ValueError(
-                f"Invalid predicate specification for '{predicate_name}': must specify value or type."
+                f"Invalid predicate specification for '{predicate_name}': must specify value or type. "
                 f"Got value={value} and type={predicate_type}."
             )
         elif value and predicate_type:
             raise ValueError(
-                f"Invalid predicate specification for '{predicate_name}': can't specify both value and type."
+                f"Invalid predicate specification for '{predicate_name}': can't specify both value and type. "
                 f"Got value={value} and type={predicate_type}."
             )
         elif value:
