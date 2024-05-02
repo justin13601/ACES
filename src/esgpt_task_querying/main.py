@@ -11,7 +11,7 @@ from bigtree import preorder_iter, print_tree
 from EventStream.data.dataset_polars import Dataset
 from loguru import logger
 
-from .config import build_tree_from_config, get_max_duration, load_config
+from .config import build_tree_from_config, get_max_duration, load_config, get_config
 from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
@@ -58,12 +58,14 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
             logger.debug("Generating predicate columns...")
             try:
-                ESD_data = generate_predicate_columns(cfg, [events_df, dynamic_measurements_df])
+                ESD_data = generate_predicate_columns(
+                    cfg, [events_df, dynamic_measurements_df]
+                )
             except Exception as e:
                 raise ValueError(
                     "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
                 ) from e
-        case pl.DataFrame():            
+        case pl.DataFrame():
             # check if data is in correct format
             if data.shape[0] == 0:
                 raise ValueError("Provided dataset is empty!")
@@ -75,9 +77,11 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
             # check if timestamp is in the correct format
             if data["timestamp"].dtype != pl.Datetime:
                 data = data.with_columns(
-                    pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
+                    pl.col("timestamp")
+                    .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
+                    .cast(pl.Datetime)
                 )
-            
+
             logger.debug("Generating predicate columns...")
             try:
                 ESD_data = generate_predicate_columns(cfg, data)
@@ -88,12 +92,14 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     # checking for "Beginning of record" in the configuration file
     # TODO(mmd): This doesn't look right to me.
-    starts = [window.get('start', '') for window in cfg['windows'].values()]
+    starts = [get_config(window, "start", "") for window in cfg["windows"].values()]
     if None in starts:
         max_duration = -get_max_duration(ESD_data)
         for each_window, window_info in cfg["windows"].items():
-            if window_info.get("start", "") is None:
-                logger.debug(f"Setting start of the '{each_window}' window to the beginning of the record.")
+            if get_config(window_info, "start", "") is None:
+                logger.debug(
+                    f"Setting start of the '{each_window}' window to the beginning of the record."
+                )
                 window_info["start"] = None
                 window_info["duration"] = max_duration
 
@@ -106,19 +112,28 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     trigger = cfg["windows"]["trigger"]
     # filter out subjects that do not have the trigger event if specified in inclusion criteria
-    if trigger.get("includes", []):
-        valid_trigger_exprs = [(ESD_data[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]]
+    if get_config(trigger, "includes", []):
+        valid_trigger_exprs = [
+            (ESD_data[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]
+        ]
     # filter out subjects that do not have the trigger event if specified as the start
     else:
         valid_trigger_exprs = [(ESD_data[f"is_{trigger['start']}"] == 1)]
     anchor_to_subtree_root_by_subtree_anchor = ESD_data.clone()
-    anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
+    anchor_to_subtree_root_by_subtree_anchor_shape = (
+        anchor_to_subtree_root_by_subtree_anchor.shape[0]
+    )
     # log filtered subjects
     for i, condition in enumerate(valid_trigger_exprs):
         dropped = anchor_to_subtree_root_by_subtree_anchor.filter(~condition)
-        anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(condition)
-        if anchor_to_subtree_root_by_subtree_anchor.shape[0] < anchor_to_subtree_root_by_subtree_anchor_shape:
-            if trigger.get("includes", []):
+        anchor_to_subtree_root_by_subtree_anchor = (
+            anchor_to_subtree_root_by_subtree_anchor.filter(condition)
+        )
+        if (
+            anchor_to_subtree_root_by_subtree_anchor.shape[0]
+            < anchor_to_subtree_root_by_subtree_anchor_shape
+        ):
+            if get_config(trigger, "includes", []):
                 logger.debug(
                     f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg['windows']['trigger']['includes'][i]}."
                 )
@@ -126,12 +141,18 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
                 logger.debug(
                     f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg['windows']['trigger']['start']}."
                 )
-            anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
+            anchor_to_subtree_root_by_subtree_anchor_shape = (
+                anchor_to_subtree_root_by_subtree_anchor.shape[0]
+            )
 
     # prepare anchor_to_subtree_root_by_subtree_anchor for query_subtree
-    anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.select(
-        "subject_id", "timestamp", *[pl.col(c) for c in predicate_cols]
-    ).with_columns("subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols])
+    anchor_to_subtree_root_by_subtree_anchor = (
+        anchor_to_subtree_root_by_subtree_anchor.select(
+            "subject_id", "timestamp", *[pl.col(c) for c in predicate_cols]
+        ).with_columns(
+            "subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols]
+        )
+    )
 
     # recursively query the tree
     result = query_subtree(
@@ -170,7 +191,7 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
                 *[
                     pl.col("start_of_record").alias(f"{each_window}/timestamp")
                     for each_window, window_info in cfg["windows"].items()
-                    if window_info.get("start", "") is None
+                    if get_config(window_info, "start", "") is None
                 ]
             )
             .drop(["start_of_record"])
@@ -179,12 +200,14 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
     # add label column if specified
     label_window = None
     for window, window_info in cfg["windows"].items():
-        if window_info.get("label", None):
+        if get_config(window_info, "label", None):
             label_window = window
             break
     if label_window:
         label = cfg["windows"][label_window]["label"]
         result = result.with_columns(
-            pl.col(f"{label_window}/window_summary").struct.field(f"is_{label}").alias("label")
+            pl.col(f"{label_window}/window_summary")
+            .struct.field(f"is_{label}")
+            .alias("label")
         )
     return result

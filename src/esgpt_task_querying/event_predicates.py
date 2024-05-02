@@ -3,6 +3,13 @@
 import polars as pl
 from loguru import logger
 from functools import reduce
+from typing import Any
+
+
+def get_config(cfg: dict, key: str, default: Any) -> Any:
+    if key not in cfg or cfg[key] is None:
+        return default
+    return cfg[key]
 
 
 def has_event_type(type_str: str) -> pl.Expr:
@@ -81,11 +88,11 @@ def generate_simple_predicates(
                 pl.when(
                     (
                         pl.col(predicate_info["column"])
-                        >= float(value.get("min", -float("inf")))
+                        >= float(get_config(value, "min", float("-inf")))
                     )
                     & (
                         pl.col(predicate_info["column"])
-                        <= float(value.get("max", float("inf")))
+                        <= float(get_config(value, "max", float("inf")))
                     )
                 )
                 .then(1)
@@ -170,8 +177,8 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
                     f"Invalid predicate system '{invalid}' for '{predicate_name}'."
                 )
 
-        value = predicate_info.get("value", None)
-        predicate_type = predicate_info.get("type", None)
+        value = get_config(predicate_info, "value", None)
+        predicate_type = get_config(predicate_info, "type", None)
         if not (value or predicate_type):
             raise ValueError(
                 f"Invalid predicate specification for '{predicate_name}': must specify value or type. "

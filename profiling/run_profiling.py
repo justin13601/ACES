@@ -471,7 +471,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
     )
 
 
-@hydra.main(version_base=None, config_path="../configs", config_name="dataset_base")
+@hydra.main(version_base=None, config_path="configs/", config_name="profiling_config")
 def main(cfg: DictConfig):
     hydra_loguru_init()
 
