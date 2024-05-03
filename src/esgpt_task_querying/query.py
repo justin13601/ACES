@@ -1,7 +1,5 @@
-"""This module contains the main function for querying a task.
-
-It generates the predicate columns, builds the tree, and recursively queries the tree.
-"""
+"""This module contains the main function for querying a task. It accepts the configuration file and 
+predicate columns, builds the tree, and recursively queries the tree."""
 
 from datetime import timedelta
 
@@ -29,15 +27,19 @@ def query(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
         raise TypeError("Predicates dataframe type is not polars.DataFrame.")
 
     # checking for "Beginning of record" in the configuration file
-    null_starts = {window: get_config(cfg['windows'][window], "start", "") for window in cfg['windows'] if get_config(cfg['windows'][window], "start", "") == "None"}
+    null_starts = {
+        window: get_config(cfg["windows"][window], "start", "")
+        for window in cfg["windows"]
+        if get_config(cfg["windows"][window], "start", "") == "None"
+    }
     if null_starts:
         max_duration = -get_max_duration(df_predicates)
         for each_window in null_starts:
             logger.debug(
                 f"Setting start of the '{each_window}' window to the beginning of the record."
             )
-            cfg['windows'][each_window].pop("start")
-            cfg['windows'][each_window]["duration"] = max_duration
+            cfg["windows"][each_window].pop("start")
+            cfg["windows"][each_window]["duration"] = max_duration
 
     logger.debug("Building tree...")
     tree = build_tree_from_config(cfg)

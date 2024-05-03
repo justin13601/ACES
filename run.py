@@ -1,3 +1,5 @@
+"""Main script for end-to-end task querying."""
+
 import os
 from pathlib import Path
 
