@@ -11,7 +11,6 @@ from polars.testing import assert_frame_equal
 from esgpt_task_querying.predicates import (
     get_config,
     has_event_type,
-    generate_simple_predicates,
     generate_predicate_columns
 )
 
