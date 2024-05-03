@@ -15,7 +15,7 @@ def load_using_esgpt(cfg, path):
         ESD = Dataset.load(path)
     except Exception as e:
         raise ValueError(
-            "Error loading data using ESGPT! Please ensure the path provided is a valid ESGPT dataset directory."
+            f"Error loading data using ESGPT: {e}. Please ensure the path provided is a valid ESGPT dataset directory."
         ) from e
 
     events_df = ESD.events_df
