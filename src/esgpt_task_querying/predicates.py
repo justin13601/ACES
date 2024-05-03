@@ -21,6 +21,7 @@ def has_event_type(type_str: str) -> pl.Expr:
     Returns:
         pl.Expr: A Polars expression representing the check for the event type.
 
+    Examples:
     >>> import polars as pl
     >>> data = pl.DataFrame({"event_type": ["A&B&C", "A&B", "C"]})
     >>> data.with_columns(has_event_type("A").alias("has_A"))
@@ -55,6 +56,8 @@ def generate_simple_predicates(
 
     Raises:
         ValueError: If an invalid value is specified for the predicate.
+    
+    Examples:
     >>> predicate_name = "A"
     >>> predicate_info = {"column": "event_type", "value": "A", "system": "boolean"}
     >>> data = pl.DataFrame(
@@ -107,7 +110,7 @@ def generate_simple_predicates(
         case _:
             raise ValueError(f"Invalid value '{value}' for '{predicate_name}'.")
 
-    df = df.with_columns(predicate_col.alias(f"is_{predicate_name}").cast(pl.Int32))
+    df = df.with_columns(predicate_col.alias(f"is_{predicate_name}").cast(pl.Int64))
     logger.debug(f"Added predicate column 'is_{predicate_name}'.")
     return df
 
@@ -125,6 +128,7 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
     Raises:
         ValueError: If an invalid predicate type is specified in the configuration.
 
+    Examples:
     >>> cfg = {
     ...     "predicates": {
     ...         "A": {"column": "event_type", "value": "A", "system": "boolean"},
