@@ -158,6 +158,7 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
     │ 3          ┆ 3         ┆ 0    ┆ 0    ┆ … ┆ 0    ┆ 0         ┆ 0                ┆ 1      │
     └────────────┴───────────┴──────┴──────┴───┴──────┴───────────┴──────────────────┴────────┘
     """
+    logger.debug("Generating predicate columns...")
     boolean_cols = []
     count_cols = []
     simple_predicates = []
@@ -197,7 +198,7 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
     match data:
         case pl.DataFrame():
             # populate event_id column
-            data = data.with_row_count("event_id").select(
+            data = data.with_row_index("event_id").select(
                 *data.columns,
                 pl.first("event_id").over(["subject_id", "timestamp"]).rank("dense")
                 - 1,
@@ -234,7 +235,7 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
     # aggregate measurements (data[1]) by summing columns that are in count_cols, and taking the max for columns in boolean_cols
     data[1] = (
         data[1]
-        .groupby(["event_id"])
+        .group_by(["event_id"])
         .agg(
             *[
                 pl.col(c).sum().cast(pl.Int32)
