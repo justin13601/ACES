@@ -16,109 +16,49 @@ from .event_predicates import generate_predicate_columns
 from .query import query_subtree
 
 
-def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
-    """Query a task using the provided configuration file and event stream data.
+def query_task(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
+    """Query a task using the provided configuration file and predicates dataframe.
 
     Args:
-        config: The path to the configuration file.
-        ESD: The event stream data.
+        cfg: dictionary representation of the configuration file.
+        df_predicates: predicates dataframe.
 
     Returns:
         polars.DataFrame: The result of the task query.
     """
-    # load configuration
-    match config:
-        case str():
-            logger.debug("Loading config...")
-            cfg = load_config(config)
-        case Path():
-            logger.debug("Loading config...")
-            cfg = load_config(config.absolute().as_posix())
-        case dict():
-            logger.debug("Config already loaded.")
-            cfg = config
-
-    # load data if path is provided and compute predicate columns, else compute predicate columns on provided data
-    match data:
-        case str() | Path():
-            logger.debug("Data path provided, loading using ESGPT...")
-
-            if isinstance(data, str):
-                data = Path(data)
-
-            try:
-                ESD = Dataset.load(data)
-            except Exception as e:
-                raise ValueError(
-                    "Error loading data using ESGPT! Please ensure the path provided is a valid ESGPT dataset directory."
-                ) from e
-
-            events_df = ESD.events_df
-            dynamic_measurements_df = ESD.dynamic_measurements_df
-
-            logger.debug("Generating predicate columns...")
-            try:
-                ESD_data = generate_predicate_columns(
-                    cfg, [events_df, dynamic_measurements_df]
-                )
-            except Exception as e:
-                raise ValueError(
-                    "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
-                ) from e
-        case pl.DataFrame():
-            # check if data is in correct format
-            if data.shape[0] == 0:
-                raise ValueError("Provided dataset is empty!")
-            if "subject_id" not in data.columns:
-                raise ValueError("Provided dataset does not have subject_id column!")
-            if "timestamp" not in data.columns:
-                raise ValueError("Provided dataset does not have timestamp column!")
-
-            # check if timestamp is in the correct format
-            if data["timestamp"].dtype != pl.Datetime:
-                data = data.with_columns(
-                    pl.col("timestamp")
-                    .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
-                    .cast(pl.Datetime)
-                )
-
-            logger.debug("Generating predicate columns...")
-            try:
-                ESD_data = generate_predicate_columns(cfg, data)
-            except Exception as e:
-                raise ValueError(
-                    "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
-                ) from e
+    if type(cfg) != dict:
+        raise TypeError("Config type is not dict.")
+    if type(df_predicates) != pl.DataFrame:
+        raise TypeError("Predicates dataframe type is not polars.DataFrame.")
 
     # checking for "Beginning of record" in the configuration file
-    starts = [get_config(window, "start", "") for window in cfg["windows"].values()]
-    if "None" in starts:
-        max_duration = -get_max_duration(ESD_data)
-        for each_window, window_info in cfg["windows"].items():
-            if get_config(window_info, "start", "") == "None":
-                logger.debug(
-                    f"Setting start of the '{each_window}' window to the beginning of the record."
-                )
-                window_info.pop("start")
-                window_info["duration"] = max_duration
+    null_starts = {window: get_config(window, "start", "") for window in cfg['windows'] if get_config(window, "start", "") == "None"}
+    if null_starts:
+        max_duration = -get_max_duration(df_predicates)
+        for each_window, window_info in null_starts:
+            logger.debug(
+                f"Setting start of the '{each_window}' window to the beginning of the record."
+            )
+            window_info.pop("start")
+            window_info["duration"] = max_duration
 
     logger.debug("Building tree...")
     tree = build_tree_from_config(cfg)
     print_tree(tree, style="const_bold")
 
     logger.debug("Beginning query...")
-    predicate_cols = [col for col in ESD_data.columns if col.startswith("is_")]
+    predicate_cols = [col for col in df_predicates.columns if col.startswith("is_")]
 
     trigger = cfg["windows"]["trigger"]
     # filter out subjects that do not have the trigger event if specified in inclusion criteria
     if get_config(trigger, "includes", []):
         valid_trigger_exprs = [
-            (ESD_data[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]
+            (df_predicates[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]
         ]
     # filter out subjects that do not have the trigger event if specified as the start
     else:
-        valid_trigger_exprs = [(ESD_data[f"is_{trigger['start']}"] == 1)]
-    anchor_to_subtree_root_by_subtree_anchor = ESD_data.clone()
+        valid_trigger_exprs = [(df_predicates[f"is_{trigger['start']}"] == 1)]
+    anchor_to_subtree_root_by_subtree_anchor = df_predicates.clone()
     anchor_to_subtree_root_by_subtree_anchor_shape = (
         anchor_to_subtree_root_by_subtree_anchor.shape[0]
     )
@@ -157,7 +97,7 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
     result = query_subtree(
         subtree=tree,
         anchor_to_subtree_root_by_subtree_anchor=anchor_to_subtree_root_by_subtree_anchor,
-        predicates_df=ESD_data,
+        predicates_df=df_predicates,
         anchor_offset=timedelta(hours=0),
     )
     logger.debug("Done.")
@@ -171,11 +111,9 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
         *[f"{c.name}/window_summary" for c in output_order[1:]],
     ).rename({"timestamp": f"{tree.name}/timestamp"})
 
-    # TODO: need to check if struct in window_summary has any null values and set them to 0
-
     # replace timestamps for windows that start at the beginning of the record
-    if None in starts:
-        record_starts = ESD_data.groupby("subject_id").agg(
+    if null_starts:
+        record_starts = df_predicates.groupby("subject_id").agg(
             [
                 pl.col("timestamp").min().alias("start_of_record"),
             ]
@@ -189,8 +127,7 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
             .with_columns(
                 *[
                     pl.col("start_of_record").alias(f"{each_window}/timestamp")
-                    for each_window, window_info in cfg["windows"].items()
-                    if get_config(window_info, "start", "") is None
+                    for each_window, _ in null_starts
                 ]
             )
             .drop(["start_of_record"])
