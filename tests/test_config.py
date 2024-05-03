@@ -3,7 +3,6 @@ import rootutils
 root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=False)
 
 import unittest
-from datetime import timedelta
 from unittest.mock import patch
 
 import polars as pl
