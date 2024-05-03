@@ -23,9 +23,9 @@ def query(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
     Returns:
         polars.DataFrame: The result of the task query.
     """
-    if type(cfg) != dict:
+    if not isinstance(cfg, dict):
         raise TypeError("Config type is not dict.")
-    if type(df_predicates) != pl.DataFrame:
+    if not isinstance(df_predicates, pl.DataFrame):
         raise TypeError("Predicates dataframe type is not polars.DataFrame.")
 
     # checking for "Beginning of record" in the configuration file
