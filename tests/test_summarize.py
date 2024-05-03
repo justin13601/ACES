@@ -1,15 +1,9 @@
-import rootutils
-
-root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=False)
-
 import unittest
 from datetime import timedelta
 from unittest.mock import patch
-
 import polars as pl
 from bigtree import Node
 from polars.testing import assert_frame_equal
-
 from esgpt_task_querying.summarize import (
     summarize_temporal_window,
     summarize_event_bound_window,
@@ -17,6 +11,9 @@ from esgpt_task_querying.summarize import (
     summarize_subtree,
     check_constraints,
 )
+
+import rootutils
+root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=False)
 
 
 class TestQueryFunctions(unittest.TestCase):
