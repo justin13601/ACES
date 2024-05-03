@@ -9,15 +9,22 @@ import ruamel.yaml
 from bigtree import Node
 from typing import Any
 
+
 def load_config(config_path: str) -> dict[str, Any]:
     """Load a configuration file from the given path and return it as a dict.
 
     Args:
         config_path (str): The path to the configuration file.
     """
-    yaml = ruamel.yaml.YAML()
+    yaml = ruamel.yaml.YAML(typ='safe', pure=True)
     with open(config_path) as file:
         return yaml.load(file)
+
+
+def get_config(cfg: dict, key: str, default: Any) -> Any:
+    if key not in cfg or cfg[key] is None:
+        return default
+    return cfg[key]
 
 
 def parse_timedelta(time_str: str) -> timedelta:
@@ -66,7 +73,7 @@ def get_max_duration(data: pl.DataFrame) -> timedelta:
     """Get the maximum duration for each subject timestamps.
 
     Args:
-        data: The data containing the events for each subject. The timestamps of the events are in the 
+        data: The data containing the events for each subject. The timestamps of the events are in the
         column ``"timestamp"`` and the subject IDs are in the column ``"subject_id"``.
 
     Returns:
@@ -107,7 +114,6 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         ...         "window1": {
         ...             "start": 'event1',
         ...             "duration": "24 hours",
-        ...             "end": None,
         ...             "offset": None,
         ...             "excludes": [],
         ...             "includes": [],
@@ -118,9 +124,7 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         ...             "start": "window1.end",
         ...             "duration": "24 hours",
         ...             "end": None,
-        ...             "offset": None,
         ...             "excludes": [],
-        ...             "includes": [],
         ...             "st_inclusive": False,
         ...             "end_inclusive": True,
         ...         },
@@ -130,46 +134,51 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         Node(/window1, constraints={}, endpoint_expr=(False, datetime.timedelta(days=1), True, datetime.timedelta(0)))
     """
     nodes = {}
-    windows = [name for name, _ in cfg['windows'].items()]
-    for window_name, window_info in cfg['windows'].items():
-        if sum(key in window_info for key in ['start', 'end', 'duration']) < 2:
+    windows = [name for name, _ in cfg["windows"].items()]
+    for window_name, window_info in cfg["windows"].items():
+        defined_keys = [key for key in ["start", "end", "duration"] if get_config(window_info, key, None) is not None]
+        if len(defined_keys) != 2:
+            x = ['duration']
             raise ValueError(
-                f"Invalid window specification for '{window_name}': must specify two fields out of ['start', 'end', 'duration']. "
-                f"Got {[key for key in window_info if key in ['start', 'end', 'duration']]}."
+                f"Invalid window specification for '{window_name}': must specify non-None values for exactly two fields out of ['start', 'end', 'duration']. "
+                f"Got {[f'{key}: {window_info[key]}' for key in window_info if key in ['start', 'end', 'duration']]}. "
+                f"""{"If 'start' is defined as None, 'end' must be specified. Currently, a time-bounded window (with 'duration') starting from the beginning of the record (None) is not yet supported." if defined_keys == x else ""}"""
             )
-        
+
         node = Node(window_name)
 
         # set node end_event
-        duration = window_info.get("duration", None)
+        duration = get_config(window_info, "duration", None)
         match duration:
             case timedelta():
-                end_event = window_info['duration']
+                end_event = window_info["duration"]
             case str():
-                end_event = parse_timedelta(window_info['duration'])
+                end_event = parse_timedelta(window_info["duration"])
             case False | None:
                 end_event = f"is_{window_info['end']}"
             case _:
-                raise ValueError(f"Invalid duration in '{window_name}': {window_info['duration']}")
+                raise ValueError(
+                    f"Invalid duration in '{window_name}': {window_info['duration']}"
+                )
 
         # set node st_inclusive and end_inclusive
-        st_inclusive = window_info.get("st_inclusive", False)
-        end_inclusive = window_info.get("end_inclusive", True)
+        st_inclusive = get_config(window_info, "st_inclusive", False)
+        end_inclusive = get_config(window_info, "end_inclusive", False)
 
         # set node offset
-        offset = window_info.get("offset", None)
+        offset = get_config(window_info, "offset", None)
         offset = parse_timedelta(offset)
-        
+
         node.endpoint_expr = (st_inclusive, end_event, end_inclusive, offset)
 
         # set node exclude constraints
         constraints = {}
-        for each_exclusion in window_info.get("excludes", []):
+        for each_exclusion in get_config(window_info, "excludes", []):
             if each_exclusion["predicate"]:
                 constraints[f"is_{each_exclusion['predicate']}"] = (None, 0)
 
         # set node include constraints, using min and max values and None if not specified
-        for each_inclusion in window_info.get("includes", []):
+        for each_inclusion in get_config(window_info, "includes", []):
             if each_inclusion["predicate"]:
                 constraints[f"is_{each_inclusion['predicate']}"] = (
                     (
@@ -187,13 +196,13 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         node.constraints = constraints
 
         # search for the parent node in tree
-        if window_info.get("start"):
+        if get_config(window_info, "start", None):
             root_name = window_info["start"].split(".")[0]
             node_root = next(
                 (substring for substring in windows if substring == root_name),
                 None,
             )
-        elif window_info.get("end"):
+        elif get_config(window_info, "end", None):
             root_name = window_info["end"].split(".")[0]
             node_root = next(
                 (substring for substring in windows if substring == root_name),
