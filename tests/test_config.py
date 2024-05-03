@@ -6,7 +6,6 @@ import unittest
 from unittest.mock import patch
 
 import polars as pl
-from bigtree import Node
 from polars.testing import assert_frame_equal
 
 from esgpt_task_querying.predicates import (
