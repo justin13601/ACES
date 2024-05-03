@@ -139,10 +139,13 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
     nodes = {}
     windows = [name for name, _ in cfg["windows"].items()]
     for window_name, window_info in cfg["windows"].items():
-        if sum(key in window_info for key in ["start", "end", "duration"]) < 2:
+        if sum([key in window_info for key in ["start", "end", "duration"]]) != 2:
+            defined_keys = [key for key in ["start", "end", "duration"] if get_config(window_info, key, None) is not None]
+            x = ['duration']
             raise ValueError(
-                f"Invalid window specification for '{window_name}': must specify two fields out of ['start', 'end', 'duration']. "
-                f"Got {[key for key in window_info if key in ['start', 'end', 'duration']]}."
+                f"Invalid window specification for '{window_name}': must specify non-None values for exactly two fields out of ['start', 'end', 'duration']. "
+                f"Got {[f'{key}: {window_info[key]}' for key in window_info if key in ['start', 'end', 'duration']]}."
+                f"{'If start is defined as NULL, end must be specified. Currently, a time-bounded window starting from the beginning of the record (NULL) is not yet supported.' if defined_keys == x else ''}"
             )
 
         node = Node(window_name)
