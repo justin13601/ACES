@@ -1,13 +1,13 @@
-"""This module contains functions for loading and parsing the configuration file into a dot accessible
-dictionary and subsequently building a tree structure from the configuration."""
+"""This module contains functions for loading and parsing the configuration file and subsequently building 
+a tree structure from the configuration."""
 
 from datetime import timedelta
 from pytimeparse import parse
+from typing import Any
 
 import polars as pl
 import ruamel.yaml
 from bigtree import Node
-from typing import Any
 
 
 def load_config(config_path: str) -> dict[str, Any]:
@@ -16,7 +16,7 @@ def load_config(config_path: str) -> dict[str, Any]:
     Args:
         config_path (str): The path to the configuration file.
     """
-    yaml = ruamel.yaml.YAML(typ='safe', pure=True)
+    yaml = ruamel.yaml.YAML(typ="safe", pure=True)
     with open(config_path) as file:
         return yaml.load(file)
 
@@ -136,9 +136,13 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
     nodes = {}
     windows = [name for name, _ in cfg["windows"].items()]
     for window_name, window_info in cfg["windows"].items():
-        defined_keys = [key for key in ["start", "end", "duration"] if get_config(window_info, key, None) is not None]
+        defined_keys = [
+            key
+            for key in ["start", "end", "duration"]
+            if get_config(window_info, key, None) is not None
+        ]
         if len(defined_keys) != 2:
-            x = ['duration']
+            x = ["duration"]
             raise ValueError(
                 f"Invalid window specification for '{window_name}': must specify non-None values for exactly two fields out of ['start', 'end', 'duration']. "
                 f"Got {[f'{key}: {window_info[key]}' for key in window_info if key in ['start', 'end', 'duration']]}. "

@@ -1,9 +1,10 @@
 """This module contains functions for generating predicate columns for event sequences."""
 
-import polars as pl
-from loguru import logger
 from functools import reduce
 from typing import Any
+
+import polars as pl
+from loguru import logger
 
 
 def get_config(cfg: dict, key: str, default: Any) -> Any:
@@ -56,7 +57,7 @@ def generate_simple_predicates(
 
     Raises:
         ValueError: If an invalid value is specified for the predicate.
-    
+
     Examples:
     >>> predicate_name = "A"
     >>> predicate_info = {"column": "event_type", "value": "A", "system": "boolean"}
