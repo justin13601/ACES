@@ -242,12 +242,12 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
         .group_by(["event_id"])
         .agg(
             *[
-                pl.col(c).sum().cast(pl.Int32)
+                pl.col(c).sum().cast(pl.Int64)
                 for c in data[1].columns
                 if c in count_cols
             ],
             *[
-                pl.col(c).max().cast(pl.Int32)
+                pl.col(c).max().cast(pl.Int64)
                 for c in data[1].columns
                 if c in boolean_cols
             ],
@@ -279,13 +279,13 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
                 )
 
         data = data.with_columns(
-            predicate_expr.alias(f"is_{predicate_name}").cast(pl.Int32)
+            predicate_expr.alias(f"is_{predicate_name}").cast(pl.Int64)
         )
         logger.debug(f"Added predicate column 'is_{predicate_name}'.")
 
     # add a column of 1s representing any predicate
     if "any" in cfg["predicates"]:
-        data = data.with_columns(pl.lit(1).alias("is_any").cast(pl.Int32))
+        data = data.with_columns(pl.lit(1).alias("is_any").cast(pl.Int64))
         logger.debug("Added predicate column 'is_any'.")
 
     data = data.sort(by=["subject_id", "timestamp"])

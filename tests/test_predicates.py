@@ -109,3 +109,51 @@ class TestQueryFunctions(unittest.TestCase):
                 want = c.pop("want")
                 got = generate_simple_predicates(**c)
                 self.assertEqual(got, want)
+        
+    def test_generate_predicate_columns(self):
+        cfg = {
+            "predicates": {
+                "A": {"column": "event_type", "value": "A", "system": "boolean"},
+                "B": {"column": "event_type", "value": "B", "system": "boolean"},
+                "C": {"column": "event_type", "value": "C", "system": "boolean"},
+                "D": {"column": "event_type", "value": "D", "system": "boolean"},
+                "A_or_B": {"type": "ANY", "predicates": ["A", "B"], "system": "boolean"},
+                "A_and_C_and_D": {"type": "ALL", "predicates": ["A", "C", "D"], "system": "boolean"},
+                "any": {"type": "special"},
+            }
+        }
+
+        data = pl.DataFrame(
+            {
+                "subject_id": [1, 1, 1, 2, 2, 3, 3],
+                "timestamp": [1, 1, 3, 1, 2, 1, 3],
+                "event_type": ["A", "B", "C", "A", "A&C&D", "B", "C"],
+            }
+        )
+
+        cases = [
+            {
+                "msg": "Should return full predicates dataframe",
+                "cfg": cfg,
+                "data": data,
+                "want": pl.DataFrame(
+                    {
+                        "subject_id": [1, 1, 2, 2, 3, 3],
+                        "timestamp": [1, 3, 1, 2, 1, 3],
+                        "is_A": [1, 0, 1, 1, 0, 0],
+                        "is_B": [1, 0, 0, 0, 1, 0],
+                        "is_C": [0, 1, 0, 1, 0, 1],
+                        "is_D": [0, 0, 0, 1, 0, 0],
+                        "is_A_or_B": [1, 0, 1, 1, 1, 0],
+                        "is_A_and_C_and_D": [0, 0, 0, 1, 0, 0],
+                        "is_any": [1, 1, 1, 1, 1, 1],
+                    }
+                ),
+            },
+        ]
+
+        for c in cases:
+            with self.subTest(msg=c.pop("msg")):
+                want = c.pop("want")
+                got = generate_predicate_columns(**c)
+                self.assertEqual(got, want)
