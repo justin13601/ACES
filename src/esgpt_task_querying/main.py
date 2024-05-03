@@ -92,10 +92,10 @@ def query_task(config: str, data: str | pl.DataFrame) -> pl.DataFrame:
 
     # checking for "Beginning of record" in the configuration file
     starts = [get_config(window, "start", "") for window in cfg["windows"].values()]
-    if None in starts:
+    if "None" in starts:
         max_duration = -get_max_duration(ESD_data)
         for each_window, window_info in cfg["windows"].items():
-            if get_config(window_info, "start", "") is None:
+            if get_config(window_info, "start", "") == "None":
                 logger.debug(
                     f"Setting start of the '{each_window}' window to the beginning of the record."
                 )
