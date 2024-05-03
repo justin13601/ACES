@@ -194,7 +194,7 @@ def summarize_temporal_window(
     else:
         closed = "none"
 
-    # set parameters for groupby rolling window
+    # set parameters for group_by rolling window
     if window_size < timedelta(days=0):
         period = -window_size
         offset = -period + offset

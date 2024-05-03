@@ -1,3 +1,3 @@
-config_path: sample_configs/inhospital_mortality.yaml
+config_path: sample_configs/01-inhospital-mortality.yaml
 data_path: sample_data/esgpt_sample
 output_path: 

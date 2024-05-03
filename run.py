@@ -34,7 +34,7 @@ def load_using_esgpt(cfg, path):
 
 
 def load_using_csv(cfg, path):
-    if "csv" not in path.suffix:
+    if path.suffix.lower() != ".csv":
         logger.error(f"File {path} is not a csv file.")
         return
 
@@ -75,6 +75,7 @@ def run(cfg: DictConfig) -> None:
     logger.debug("Loading config...")
     task_cfg_path = Path(cfg["config_path"])
     task_cfg = config.load_config(task_cfg_path)
+    print(type(task_cfg))
 
     # load data
     logger.debug("Loading data...")

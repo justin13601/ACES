@@ -16,7 +16,7 @@ def load_config(config_path: str) -> dict[str, Any]:
     Args:
         config_path (str): The path to the configuration file.
     """
-    yaml = ruamel.yaml.YAML()
+    yaml = ruamel.yaml.YAML(typ='safe', pure=True)
     with open(config_path) as file:
         return yaml.load(file)
 
