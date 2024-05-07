@@ -14,10 +14,14 @@ build:
 python:
   install:
     - requirements: docs/requirements.txt
-
+    - method: pip
+      path: .
+      extra_requirements:
+        - docs
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
   configuration: docs/source/conf.py
+  fail_on_warning: true
 # Optionally build your docs in additional formats such as PDF
-# formats:
-#  - pdf
+formats:
+  - pdf
