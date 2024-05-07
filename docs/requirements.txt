@@ -1,3 +1,4 @@
 sphinxcontrib-bibtex
 sphinx_subfigure
 myst_parser
+sphinx-collections
