@@ -22,13 +22,13 @@ sys.path.insert(0, str(__src__))
 
 # -- Project information -----------------------------------------------------
 
-project = "Event Stream GPT"
-copyright = "2023, Matthew McDermott"
-author = "Matthew McDermott"
+project = "ESGPTTaskQuerying"
+copyright = "2024, Justin Xu, Matthew McDermott"
+author = "Justin Xu, Matthew McDermott"
 
 # The full version, including alpha/beta/rc tags
-release = "0.0.1"
-version = "0.0.1"
+release = "0.0.2"
+version = "0.0.2"
 
 
 def ensure_pandoc_installed(_):
@@ -57,7 +57,7 @@ def ensure_pandoc_installed(_):
 from sphinx.ext import apidoc
 
 output_dir = __location__ / "api"
-module_dir = __src__ / "EventStream"
+module_dir = __src__ / "src/esgpt_task_querying"
 if output_dir.is_dir():
     shutil.rmtree(output_dir)
 
@@ -94,19 +94,12 @@ if not collections_dir.is_dir():
     os.mkdir(collections_dir)
 
 collections = {
-    "local_tutorial_files": {
+    "tutorial_files": {
         "driver": "copy_file",
-        "source": "../sample_data/examine_synthetic_data.ipynb",
-        "target": "local_tutorial_notebook.ipynb",
-    },
-    "video_tutorial": {
-        "driver": "copy_file",
-        "source": "../sample_data/model_tutorial.mp4",
-        "target": "model_tutorial.mp4",
+        "source": "../tutorial.ipynb",
+        "target": "tutorial.ipynb",
     },
 }
-
-bibtex_bibfiles = ["MIMIC_IV_tutorial/refs.bib", "api_refs.bib"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -144,7 +137,7 @@ myst_url_schemes = {
     "https": None,
     "ftp": None,
     "mailto": None,
-    "repo-code": "https://github.com/mmcdermott/EventStreamGPT/tree/main/{{path}}#{{fragment}}",
+    "repo-code": "https://github.com/justin13601/ESGPTTaskQuerying/tree/main/{{path}}#{{fragment}}",
     # "doi": "https://doi.org/{{path}}",
     # "gh-issue": {
     #     "url": "https://github.com/executablebooks/MyST-Parser/issue/{{path}}#{{fragment}}",
@@ -201,7 +194,7 @@ html_theme = "sphinx_immaterial"
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
     # Set the name of the project to appear in the navigation.
-    "nav_title": "Event Stream GPT",
+    "nav_title": "ESGPT Task Querying",
     # Icon,
     "logo_icon": "timeline",  # TODO(mmcdermott): Set actual logo icon.
     # Set you GA account ID to enable tracking
@@ -216,8 +209,8 @@ html_theme_options = {
     # "color_primary": "",
     # "color_accent": "",
     # Set the repo location to get a badge with stats
-    "repo_url": "https://github.com/mmcdermott/EventStreamGPT",
-    "repo_name": "EventStreamGPT",
+    "repo_url": "https://github.com/justin13601/ESGPTTaskQuerying",
+    "repo_name": "ESGPTTaskQuerying",
     # Visible levels of the global TOC; -1 means unlimited
     "globaltoc_depth": 3,
     # If False, expand all TOC entries
@@ -309,7 +302,7 @@ latex_elements = {  # type: ignore
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ("index", "user_guide.tex", "Event Stream GPT Documentation", "Matthew McDermott", "manual")
+    ("index", "user_guide.tex", "ESGPTTaskQuerying Documentation", "Justin Xu", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
