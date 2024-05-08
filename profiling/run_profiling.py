@@ -23,7 +23,7 @@ from EventStream.logger import hydra_loguru_init
 from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 
-from esgpt_task_querying import main
+from esgpt_task_querying import main as query_runner
 
 
 def get_machine_details():
@@ -73,7 +73,7 @@ def profile_based_on_num_original_rows(DATA_DIR, output_dir, original_rows):
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = main.query_task(config, df_temp)
+        df_result = query_runner.query_task(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -160,7 +160,7 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = main.query_task(config, df_temp)
+        df_result = query_runner.query_task(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -231,7 +231,7 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = main.query_task(config, df_temp)
+        df_result = query_runner.query_task(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -292,9 +292,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
 
     profiling_results = []
     for i in num_criteria:
-        logger.info(
-            f"====================================={i} Extra Windows in Series ====================================="
-        )
+        logger.info(f"========================={i} Extra Windows in Series ============================")
         logger.info(f"Number of rows: {df_temp.shape[0]}")
         logger.info(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
@@ -302,7 +300,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = main.query_task(config, df_temp)
+        df_result = query_runner.query_task(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -363,9 +361,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
 
     profiling_results = []
     for i in num_criteria:
-        logger.info(
-            f"====================================={i} Extra Windows in Parallel ====================================="
-        )
+        logger.info(f"============================{i} Extra Windows in Parallel =========================")
         logger.info(f"Number of rows: {df_temp.shape[0]}")
         logger.info(f"Number of patients: {df_temp['subject_id'].n_unique()}")
 
@@ -373,7 +369,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = main.query_task(config, df_temp)
+        df_result = query_runner.query_task(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -442,7 +438,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = main.query_task(config, df_temp)
+        df_result = query_runner.query_task(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -487,28 +483,21 @@ def main(cfg: DictConfig):
     output_dir = experiment_dir / "results"
     output_dir.mkdir(exist_ok=True, parents=True)
 
-    configs_dir = experiment_dir / "configs"
+    experiment_dir / "configs"
 
-    ############ Number of original rows ############
     # profile_based_on_num_original_rows(DATA_DIR, output_dir, cfg["num_rows"])
-
-    ############ Number of predicates ############
     # profile_based_on_num_predicates(DATA_DIR, output_dir, cfg["num_predicates"], num_rows=10000000)
-
-    ############ Number of criteria ############
     # profile_based_on_num_criteria(DATA_DIR, output_dir, cfg["num_criteria"], num_rows=150000000)
-
-    ############ Number of windows in series (segments) ############
-    # profile_based_on_num_windows_in_series(DATA_DIR, output_dir, cfg["num_windows_series"], num_rows=150000000)
-
-    ############ Number of windows in parallel (overlapping) ############
-    # profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, cfg["num_windows_parallel"], num_rows=150000000)
-
-    ############ Various tasks ############
+    # profile_based_on_num_windows_in_series(
+    #   DATA_DIR, output_dir, cfg["num_windows_series"], num_rows=150000000
+    # )
+    # profile_based_on_num_windows_in_parallel(
+    #   DATA_DIR, output_dir, cfg["num_windows_parallel"], num_rows=150000000
+    # )
     # profile_based_on_task(DATA_DIR, output_dir, [fp.stem for fp in configs_dir.glob("*.yaml")])
 
-    ############ Number of threads ############
-    # Warning: Will run inhospital mortality on full dataset, so will take a really long time to load the data with low number of threads
+    # Warning: Will run inhospital mortality on full dataset, so will take a really long time to load the data
+    # with low number of threads
     profile_based_on_num_threads(output_dir, cfg["num_threads"])
 
 

@@ -219,7 +219,8 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
         else:
             data[1] = generate_simple_predicates(predicate_name, cfg["predicates"][predicate_name], data[1])
 
-    # aggregate measurements (data[1]) by summing columns that are in count_cols, and taking the max for columns in boolean_cols
+    # aggregate measurements (data[1]) by summing columns that are in count_cols, and taking the max for
+    # columns in boolean_cols
     data[1] = (
         data[1]
         .group_by(["event_id"])

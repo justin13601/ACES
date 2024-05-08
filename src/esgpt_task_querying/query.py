@@ -64,11 +64,13 @@ def query(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
         if anchor_to_subtree_root_by_subtree_anchor.shape[0] < anchor_to_subtree_root_by_subtree_anchor_shape:
             if get_config(trigger, "includes", []):
                 logger.debug(
-                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg['windows']['trigger']['includes'][i]}."
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) "
+                    f"were excluded due to trigger condition: {cfg['windows']['trigger']['includes'][i]}."
                 )
             else:
                 logger.debug(
-                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg['windows']['trigger']['start']}."
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) "
+                    f"were excluded due to trigger event: {cfg['windows']['trigger']['start']}."
                 )
             anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
 

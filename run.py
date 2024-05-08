@@ -17,7 +17,8 @@ def load_using_esgpt(cfg, path):
         ESD = Dataset.load(path)
     except Exception as e:
         raise ValueError(
-            f"Error loading data using ESGPT: {e}. Please ensure the path provided is a valid ESGPT dataset directory."
+            f"Error loading data using ESGPT: {e}. "
+            "Please ensure the path provided is a valid ESGPT dataset directory."
         ) from e
 
     events_df = ESD.events_df
@@ -27,7 +28,8 @@ def load_using_esgpt(cfg, path):
         df_predicates = predicates.generate_predicate_columns(cfg, [events_df, dynamic_measurements_df])
     except Exception as e:
         raise ValueError(
-            "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
+            "Error generating predicate columns from configuration file! "
+            "Check to make sure the format of the configuration file is valid."
         ) from e
 
     return df_predicates
@@ -54,7 +56,8 @@ def load_using_csv(cfg, path):
         df_predicates = predicates.generate_predicate_columns(cfg, df_data)
     except Exception as e:
         raise ValueError(
-            "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
+            "Error generating predicate columns from configuration file! "
+            "Check to make sure the format of the configuration file is valid."
         ) from e
     return df_predicates
 
@@ -73,7 +76,6 @@ def run(cfg: DictConfig) -> None:
     logger.debug("Loading config...")
     task_cfg_path = Path(cfg["config_path"])
     task_cfg = config.load_config(task_cfg_path)
-    print(type(task_cfg))
 
     # load data
     logger.debug("Loading data...")

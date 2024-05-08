@@ -8,13 +8,7 @@ from datetime import timedelta
 import polars as pl
 from polars.testing import assert_frame_equal
 
-from esgpt_task_querying.summarize import (
-    check_constraints,
-    summarize_event_bound_window,
-    summarize_subtree,
-    summarize_temporal_window,
-    summarize_window,
-)
+from esgpt_task_querying.summarize import check_constraints, summarize_temporal_window
 
 
 class TestQueryFunctions(unittest.TestCase):
@@ -128,7 +122,10 @@ class TestQueryFunctions(unittest.TestCase):
                 "want": empty_dataframe.with_columns(pl.col("timestamp").alias("timestamp_at_anchor")),
             },
             {
-                "msg": "Testing summarize_temporal_window with both st_inclusive and end_inclusive as True, should be equal",
+                "msg": (
+                    "Testing summarize_temporal_window with both st_inclusive and end_inclusive as True, "
+                    "should be equal"
+                ),
                 "predicates_df": predicates_df,
                 "predicate_cols": predicate_cols,
                 "endpoint_expr": endpoint_expr_case_both_true,
@@ -171,7 +168,10 @@ class TestQueryFunctions(unittest.TestCase):
                 ),
             },
             {
-                "msg": "Testing summarize_temporal_window with st_inclusive as False and end_inclusive as True, should be equal",
+                "msg": (
+                    "Testing summarize_temporal_window with st_inclusive as False and end_inclusive as True, "
+                    "should be equal"
+                ),
                 "predicates_df": predicates_df,
                 "predicate_cols": predicate_cols,
                 "endpoint_expr": endpoint_expr_case_end_true,
@@ -214,7 +214,10 @@ class TestQueryFunctions(unittest.TestCase):
                 ),
             },
             {
-                "msg": "Testing summarize_temporal_window with st_inclusive as False, end_inclusive as True, and offset of 4 hours, should be equal",
+                "msg": (
+                    "Testing summarize_temporal_window with st_inclusive as False, end_inclusive as True, "
+                    "and offset of 4 hours, should be equal"
+                ),
                 "predicates_df": predicates_df,
                 "predicate_cols": predicate_cols,
                 "endpoint_expr": endpoint_expr_case_end_true_offset,
@@ -257,7 +260,10 @@ class TestQueryFunctions(unittest.TestCase):
                 ),
             },
             {
-                "msg": "Testing summarize_temporal_window with both st_inclusive and end_inclusive as False, and negative duration of 1 day, should be equal",
+                "msg": (
+                    "Testing summarize_temporal_window with both st_inclusive and end_inclusive as False, "
+                    "and negative duration of 1 day, should be equal"
+                ),
                 "predicates_df": predicates_df,
                 "predicate_cols": predicate_cols,
                 "endpoint_expr": endpoint_expr_case_both_false_neg,

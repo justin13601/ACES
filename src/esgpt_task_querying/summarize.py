@@ -26,26 +26,35 @@ def summarize_temporal_window(
 
     Examples:
         >>> import polars as pl
-        >>> from datetime import timedelta
+        >>> from datetime import datetime, timedelta
         >>> predicates_df = pl.DataFrame(
         ...     {
         ...         "subject_id": [1, 1, 1],
-        ...         "timestamp": ["12/1/1989 12:03", "12/1/1989 13:14", "12/1/1989 15:17"],
+        ...         "timestamp": [
+        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=1, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=1, hour=15, minute=17),
+        ...         ],
         ...         "is_A": [1, 0, 1],
         ...         "is_B": [0, 1, 0],
         ...     }
-        ... ).with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime))
+        ... ))
         >>> anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
         ...     {
         ...         "subject_id": [1, 1, 1],
-        ...         "timestamp": ["12/1/1989 12:03", "12/1/1989 13:14", "12/1/1989 15:17"],
-        ...         "timestamp_at_anchor": ["12/1/1989 12:03", "12/1/1989 13:14", "12/1/1989 15:17"],
+        ...         "timestamp": [
+        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=1, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=1, hour=15, minute=17),
+        ...         ],
+        ...         "timestamp_at_anchor": [
+        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=1, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=1, hour=15, minute=17),
+        ...         ],
         ...         "is_A": [0, 0, 0],
         ...         "is_B": [0, 0, 0],
         ...     }
-        ... ).with_columns(
-        ...     pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
-        ...     pl.col("timestamp_at_anchor").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
         ... )
         >>> predicate_cols = ["is_A", "is_B"]
         >>> endpoint_expr = (True, timedelta(days=1), True, timedelta(days=0))
@@ -301,7 +310,8 @@ def check_constraints(window_constraints, summary_df):
         summary_df = summary_df.filter(condition)
         if summary_df.shape[0] < summary_df_shape:
             logger.debug(
-                f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to constraint: {condition}."
+                f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) "
+                f"were excluded due to constraint: {condition}."
             )
             summary_df_shape = summary_df.shape[0]
 
@@ -457,7 +467,8 @@ def summarize_subtree(
                     )
                 )
 
-        # Can try to move some joins before recursive call to reduce memory for Inovalon but stable for MIMIC for some reason
+        # Can try to move some joins before recursive call to reduce memory for Inovalon but stable for MIMIC
+        # for some reason
 
         # Step 4: Recurse
         recursive_result = summarize_subtree(
