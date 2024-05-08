@@ -7,15 +7,11 @@ import unittest
 import polars as pl
 from polars.testing import assert_frame_equal
 
-from esgpt_task_querying.predicates import (
-    get_config,
-    has_event_type,
-)
+from esgpt_task_querying.predicates import get_config, has_event_type
 
 
 class TestQueryFunctions(unittest.TestCase):
     def setUp(self):
-
         self.addTypeEqualityFunc(
             pl.DataFrame,
             lambda a, b, msg: assert_frame_equal(a, b, check_column_order=False),
@@ -60,9 +56,7 @@ class TestQueryFunctions(unittest.TestCase):
             {
                 "msg": "",
                 "type_str": "A",
-                "want": pl.DataFrame(
-                    {"event_type": [True, True, False, False, True, False, True]}
-                ),
+                "want": pl.DataFrame({"event_type": [True, True, False, False, True, False, True]}),
             },
         ]
 

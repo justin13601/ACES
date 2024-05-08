@@ -3,13 +3,13 @@
 import os
 from pathlib import Path
 
-import polars as pl
-from loguru import logger
 import hydra
+import polars as pl
+from EventStream.data.dataset_polars import Dataset
+from loguru import logger
 from omegaconf import DictConfig
 
-from esgpt_task_querying import query, predicates, config
-from EventStream.data.dataset_polars import Dataset
+from esgpt_task_querying import config, predicates, query
 
 
 def load_using_esgpt(cfg, path):
@@ -24,9 +24,7 @@ def load_using_esgpt(cfg, path):
     dynamic_measurements_df = ESD.dynamic_measurements_df
 
     try:
-        df_predicates = predicates.generate_predicate_columns(
-            cfg, [events_df, dynamic_measurements_df]
-        )
+        df_predicates = predicates.generate_predicate_columns(cfg, [events_df, dynamic_measurements_df])
     except Exception as e:
         raise ValueError(
             "Error generating predicate columns from configuration file! Check to make sure the format of the configuration file is valid."
@@ -41,9 +39,7 @@ def load_using_csv(cfg, path):
         return
 
     df_data = pl.read_csv(path).with_columns(
-        pl.col("timestamp")
-        .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
-        .cast(pl.Datetime)
+        pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
     )
 
     # check if data is in correct format
@@ -98,11 +94,7 @@ def run(cfg: DictConfig) -> None:
         result = query.query(task_cfg, df_predicates)
 
     result = result.with_columns(
-        *[
-            pl.col(col).struct.json_encode()
-            for col in result.columns
-            if "window_summary" in col
-        ]
+        *[pl.col(col).struct.json_encode() for col in result.columns if "window_summary" in col]
     )
 
     result.write_csv(

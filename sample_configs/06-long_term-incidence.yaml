@@ -17,11 +17,7 @@ predicates:
     system: boolean
   myocardial_infarction:
     type: ANY
-    predicates:
-      [
-        diagnosis_1,
-        diagnosis_2,
-      ]
+    predicates: [diagnosis_1, diagnosis_2]
     system: boolean
   any:
     type: special

@@ -13,23 +13,11 @@ import pstats
 import sys
 from pathlib import Path
 
+import hydra
+import inflect
 import pandas as pd
 import polars as pl
 import psutil
-from EventStream.data.dataset_polars import Dataset
-
-from esgpt_task_querying import main
-
-import dataclasses
-from collections import defaultdict
-from pathlib import Path
-from typing import Any
-
-import hydra
-import inflect
-from loguru import logger
-from omegaconf import DictConfig, OmegaConf
-
 from EventStream.data.config import (
     DatasetConfig,
     DatasetSchema,
@@ -44,6 +32,10 @@ from EventStream.data.types import (
     TemporalityType,
 )
 from EventStream.logger import hydra_loguru_init
+from loguru import logger
+from omegaconf import DictConfig, OmegaConf
+
+from esgpt_task_querying import main
 
 
 def get_machine_details():

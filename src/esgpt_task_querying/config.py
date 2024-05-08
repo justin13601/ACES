@@ -1,13 +1,13 @@
-"""This module contains functions for loading and parsing the configuration file and subsequently building 
-a tree structure from the configuration."""
+"""This module contains functions for loading and parsing the configuration file and subsequently building a
+tree structure from the configuration."""
 
 from datetime import timedelta
-from pytimeparse import parse
 from typing import Any
 
 import polars as pl
 import ruamel.yaml
 from bigtree import Node
+from pytimeparse import parse
 
 
 def load_config(config_path: str) -> dict[str, Any]:
@@ -100,7 +100,8 @@ def get_max_duration(data: pl.DataFrame) -> timedelta:
 
 
 def build_tree_from_config(cfg: dict[str, Any]) -> Node:
-    """Build a tree structure from the given configuration. Note: the parse_timedelta function handles negative durations already if duration is specified with "-".
+    """Build a tree structure from the given configuration. Note: the parse_timedelta function handles
+    negative durations already if duration is specified with "-".
 
     Args:
         cfg: The configuration object.
@@ -137,9 +138,7 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
     windows = [name for name, _ in cfg["windows"].items()]
     for window_name, window_info in cfg["windows"].items():
         defined_keys = [
-            key
-            for key in ["start", "end", "duration"]
-            if get_config(window_info, key, None) is not None
+            key for key in ["start", "end", "duration"] if get_config(window_info, key, None) is not None
         ]
         if len(defined_keys) != 2:
             x = ["duration"]
@@ -161,9 +160,7 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
             case False | None:
                 end_event = f"is_{window_info['end']}"
             case _:
-                raise ValueError(
-                    f"Invalid duration in '{window_name}': {window_info['duration']}"
-                )
+                raise ValueError(f"Invalid duration in '{window_name}': {window_info['duration']}")
 
         # set node st_inclusive and end_inclusive
         st_inclusive = get_config(window_info, "st_inclusive", False)

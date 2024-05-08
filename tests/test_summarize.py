@@ -3,24 +3,22 @@ import rootutils
 root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=False)
 
 import unittest
-from unittest.mock import patch
-
 from datetime import timedelta
+
 import polars as pl
 from polars.testing import assert_frame_equal
 
 from esgpt_task_querying.summarize import (
-    summarize_temporal_window,
-    summarize_event_bound_window,
-    summarize_window,
-    summarize_subtree,
     check_constraints,
+    summarize_event_bound_window,
+    summarize_subtree,
+    summarize_temporal_window,
+    summarize_window,
 )
 
 
 class TestQueryFunctions(unittest.TestCase):
     def setUp(self):
-
         self.addTypeEqualityFunc(
             pl.DataFrame,
             lambda a, b, msg: assert_frame_equal(a, b, check_column_order=False),
@@ -45,9 +43,7 @@ class TestQueryFunctions(unittest.TestCase):
                 "is_C": [0, 0, 1, 0, 0, 0, 1, 1],
             }
         ).with_columns(
-            pl.col("timestamp")
-            .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
-            .cast(pl.Datetime)
+            pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
         )
 
         anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
@@ -78,9 +74,7 @@ class TestQueryFunctions(unittest.TestCase):
                 "is_C": [0, 0, 0, 0, 0, 0, 0, 0],
             }
         ).with_columns(
-            pl.col("timestamp")
-            .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
-            .cast(pl.Datetime),
+            pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
             pl.col("timestamp_at_anchor")
             .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
             .cast(pl.Datetime),
@@ -131,9 +125,7 @@ class TestQueryFunctions(unittest.TestCase):
                 "predicate_cols": [],
                 "endpoint_expr": endpoint_expr_case_both_true,
                 "anchor_to_subtree_root_by_subtree_anchor": empty_dataframe,
-                "want": empty_dataframe.with_columns(
-                    pl.col("timestamp").alias("timestamp_at_anchor")
-                ),
+                "want": empty_dataframe.with_columns(pl.col("timestamp").alias("timestamp_at_anchor")),
             },
             {
                 "msg": "Testing summarize_temporal_window with both st_inclusive and end_inclusive as True, should be equal",
@@ -172,9 +164,7 @@ class TestQueryFunctions(unittest.TestCase):
                         "is_C_summary": [0, 0, 0, 0, 0, 0, 0, 0],
                     }
                 ).with_columns(
-                    pl.col("timestamp")
-                    .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
-                    .cast(pl.Datetime),
+                    pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
                     pl.col("timestamp_at_anchor")
                     .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
                     .cast(pl.Datetime),
@@ -217,9 +207,7 @@ class TestQueryFunctions(unittest.TestCase):
                         "is_C_summary": [0, 0, 0, 0, 0, 0, 0, 0],
                     }
                 ).with_columns(
-                    pl.col("timestamp")
-                    .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
-                    .cast(pl.Datetime),
+                    pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
                     pl.col("timestamp_at_anchor")
                     .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
                     .cast(pl.Datetime),
@@ -262,9 +250,7 @@ class TestQueryFunctions(unittest.TestCase):
                         "is_C_summary": [0, 0, 0, 0, 0, 0, 0, 0],
                     }
                 ).with_columns(
-                    pl.col("timestamp")
-                    .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
-                    .cast(pl.Datetime),
+                    pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
                     pl.col("timestamp_at_anchor")
                     .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
                     .cast(pl.Datetime),
@@ -307,9 +293,7 @@ class TestQueryFunctions(unittest.TestCase):
                         "is_C_summary": [0, 0, 0, 0, 0, 0, 0, 0],
                     }
                 ).with_columns(
-                    pl.col("timestamp")
-                    .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
-                    .cast(pl.Datetime),
+                    pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
                     pl.col("timestamp_at_anchor")
                     .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
                     .cast(pl.Datetime),
@@ -351,9 +335,7 @@ class TestQueryFunctions(unittest.TestCase):
                 "is_C": [0, 0, 1, 0, 0, 0, 1, 1],
             }
         ).with_columns(
-            pl.col("timestamp")
-            .str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
-            .cast(pl.Datetime)
+            pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
         )
 
         empty_constraints = {}
@@ -406,9 +388,7 @@ class TestQueryFunctions(unittest.TestCase):
                 "window_constraints": constraints_case_max_zero,
                 "summary_df": predicates_df,
                 "want": predicates_df.filter(
-                    pl.all_horizontal(
-                        [pl.col("is_A") <= 0, pl.col("is_B") <= 0, pl.col("is_C") <= 0]
-                    )
+                    pl.all_horizontal([pl.col("is_A") <= 0, pl.col("is_B") <= 0, pl.col("is_C") <= 0])
                 ),
             },
             {
@@ -416,9 +396,7 @@ class TestQueryFunctions(unittest.TestCase):
                 "window_constraints": constraints_case_min_zero,
                 "summary_df": predicates_df,
                 "want": predicates_df.filter(
-                    pl.all_horizontal(
-                        [pl.col("is_A") >= 0, pl.col("is_B") >= 0, pl.col("is_C") >= 0]
-                    )
+                    pl.all_horizontal([pl.col("is_A") >= 0, pl.col("is_B") >= 0, pl.col("is_C") >= 0])
                 ),
             },
             {
@@ -426,9 +404,7 @@ class TestQueryFunctions(unittest.TestCase):
                 "window_constraints": constraints_case_exactly_zero,
                 "summary_df": predicates_df,
                 "want": predicates_df.filter(
-                    pl.all_horizontal(
-                        [pl.col("is_A") == 0, pl.col("is_B") == 0, pl.col("is_C") == 0]
-                    )
+                    pl.all_horizontal([pl.col("is_A") == 0, pl.col("is_B") == 0, pl.col("is_C") == 0])
                 ),
             },
             {
@@ -436,9 +412,7 @@ class TestQueryFunctions(unittest.TestCase):
                 "window_constraints": constraints_case_exactly_one,
                 "summary_df": predicates_df,
                 "want": predicates_df.filter(
-                    pl.all_horizontal(
-                        [pl.col("is_A") == 1, pl.col("is_B") == 1, pl.col("is_C") == 1]
-                    )
+                    pl.all_horizontal([pl.col("is_A") == 1, pl.col("is_B") == 1, pl.col("is_C") == 1])
                 ),
             },
             {
