@@ -23,7 +23,7 @@ from EventStream.logger import hydra_loguru_init
 from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 
-from esgpt_task_querying import main as query_runner
+from esgpt_task_querying import query
 
 
 def get_machine_details():
@@ -73,7 +73,7 @@ def profile_based_on_num_original_rows(DATA_DIR, output_dir, original_rows):
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = query_runner.query_task(config, df_temp)
+        df_result = query.query(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -160,7 +160,7 @@ def profile_based_on_num_predicates(DATA_DIR, output_dir, num_predicates, num_ro
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = query_runner.query_task(config, df_temp)
+        df_result = query.query(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -231,7 +231,7 @@ def profile_based_on_num_criteria(DATA_DIR, output_dir, num_criteria, num_rows=N
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = query_runner.query_task(config, df_temp)
+        df_result = query.query(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -300,7 +300,7 @@ def profile_based_on_num_windows_in_series(DATA_DIR, output_dir, num_criteria, n
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = query_runner.query_task(config, df_temp)
+        df_result = query.query(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -369,7 +369,7 @@ def profile_based_on_num_windows_in_parallel(DATA_DIR, output_dir, num_criteria,
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = query_runner.query_task(config, df_temp)
+        df_result = query.query(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
@@ -438,7 +438,7 @@ def profile_based_on_task(DATA_DIR, output_dir, tasks, num_rows=None):
 
         pr = cProfile.Profile()
         pr.enable()
-        df_result = query_runner.query_task(config, df_temp)
+        df_result = query.query(config, df_temp)
         pr.disable()
         ps = pstats.Stats(pr, stream=sys.stdout)
         query_time = ps.total_tt
