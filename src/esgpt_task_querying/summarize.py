@@ -26,6 +26,7 @@ def summarize_temporal_window(
 
     Examples:
         >>> import polars as pl
+        >>> _ = pl.Config.set_tbl_width_chars(100)
         >>> from datetime import datetime, timedelta
         >>> predicates_df = pl.DataFrame(
         ...     {
@@ -38,7 +39,7 @@ def summarize_temporal_window(
         ...         "is_A": [1, 0, 1],
         ...         "is_B": [0, 1, 0],
         ...     }
-        ... ))
+        ... )
         >>> anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
         ...     {
         ...         "subject_id": [1, 1, 1],

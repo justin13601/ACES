@@ -70,7 +70,7 @@ def generate_simple_predicates(predicate_name: str, predicate_info: dict, df: pl
     ┌────────────┬───────────┬────────────┬──────┐
     │ subject_id ┆ timestamp ┆ event_type ┆ is_A │
     │ ---        ┆ ---       ┆ ---        ┆ ---  │
-    │ i64        ┆ i64       ┆ str        ┆ i32  │
+    │ i64        ┆ i64       ┆ str        ┆ i64  │
     ╞════════════╪═══════════╪════════════╪══════╡
     │ 1          ┆ 1         ┆ A          ┆ 1    │
     │ 1          ┆ 1         ┆ B          ┆ 0    │
@@ -142,7 +142,7 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
     ┌────────────┬───────────┬──────┬──────┬───┬──────┬───────────┬──────────────────┬────────┐
     │ subject_id ┆ timestamp ┆ is_A ┆ is_B ┆ … ┆ is_D ┆ is_A_or_B ┆ is_A_and_C_and_D ┆ is_any │
     │ ---        ┆ ---       ┆ ---  ┆ ---  ┆   ┆ ---  ┆ ---       ┆ ---              ┆ ---    │
-    │ i64        ┆ i64       ┆ i32  ┆ i32  ┆   ┆ i32  ┆ i32       ┆ i32              ┆ i32    │
+    │ i64        ┆ i64       ┆ i64  ┆ i64  ┆   ┆ i64  ┆ i64       ┆ i64              ┆ i64    │
     ╞════════════╪═══════════╪══════╪══════╪═══╪══════╪═══════════╪══════════════════╪════════╡
     │ 1          ┆ 1         ┆ 1    ┆ 1    ┆ … ┆ 0    ┆ 1         ┆ 0                ┆ 1      │
     │ 1          ┆ 3         ┆ 0    ┆ 0    ┆ … ┆ 0    ┆ 0         ┆ 0                ┆ 1      │
