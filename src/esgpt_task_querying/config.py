@@ -119,11 +119,9 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         ...     }
         ... }
         >>> build_tree_from_config(cfg) # doctest: +NORMALIZE_WHITESPACE
-        Node(
-            /window1,
-            constraints={},
-            endpoint_expr=(False, datetime.timedelta(days=1), True, datetime.timedelta(0))
-        )
+        Node(/window1,
+             constraints={},
+             endpoint_expr=(False, datetime.timedelta(days=1), True, datetime.timedelta(0)))
     """
     nodes = {}
     windows = [name for name, _ in cfg["windows"].items()]

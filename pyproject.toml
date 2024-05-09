@@ -29,6 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pre-commit", "pytest", "pytest-cov", ]
+profiling = ["psutil"]
 
 [project.urls]
 Homepage = "https://github.com/justin13601/ESGPTTaskQueryingPublic"
