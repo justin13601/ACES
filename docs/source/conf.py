@@ -217,6 +217,7 @@ html_theme_options = {
     # 'base_url': 'https://project.github.io/project',
     #
     # Set the color and the accent color
+    "palette": {"primary": "green", "accent": "green"},
     # "color_primary": "",
     # "color_accent": "",
     # Set the repo location to get a badge with stats
