@@ -65,19 +65,16 @@ def summarize_temporal_window(
         ...     endpoint_expr,
         ...     anchor_to_subtree_root_by_subtree_anchor,
         ... )
-        shape: (3, 7)
-        ┌────────────┬──────────────┬──────┬──────┬─────────────────────┬──────────────┬──────────────┐
-        │ subject_id ┆ timestamp    ┆ is_A ┆ is_B ┆ timestamp_at_anchor ┆ is_A_summary ┆ is_B_summary │
-        │ ---        ┆ ---          ┆ ---  ┆ ---  ┆ ---                 ┆ ---          ┆ ---          │
-        │ i64        ┆ datetime[μs] ┆ i64  ┆ i64  ┆ datetime[μs]        ┆ i64          ┆ i64          │
-        ╞════════════╪══════════════╪══════╪══════╪═════════════════════╪══════════════╪══════════════╡
-        │ 1          ┆ 1989-12-01   ┆ 2    ┆ 1    ┆ 1989-12-01 12:03:00 ┆ 0            ┆ 0            │
-        │            ┆ 12:03:00     ┆      ┆      ┆                     ┆              ┆              │
-        │ 1          ┆ 1989-12-01   ┆ 1    ┆ 1    ┆ 1989-12-01 13:14:00 ┆ 0            ┆ 0            │
-        │            ┆ 13:14:00     ┆      ┆      ┆                     ┆              ┆              │
-        │ 1          ┆ 1989-12-01   ┆ 1    ┆ 0    ┆ 1989-12-01 15:17:00 ┆ 0            ┆ 0            │
-        │            ┆ 15:17:00     ┆      ┆      ┆                     ┆              ┆              │
-        └────────────┴──────────────┴──────┴──────┴─────────────────────┴──────────────┴──────────────┘
+        shape: (3, 5)
+        ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_anchor ┆ is_A ┆ is_B │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 2    ┆ 1    │
+        │ 1          ┆ 1989-12-01 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-01 15:17:00 ┆ 1989-12-01 15:17:00 ┆ 1    ┆ 0    │
+        └────────────┴─────────────────────┴─────────────────────┴──────┴──────┘
     """
     st_inclusive, window_size, end_inclusive, offset = endpoint_expr
     if not offset:
@@ -100,8 +97,7 @@ def summarize_temporal_window(
         period = window_size
         offset = offset
 
-    # summarize the window using rolling window
-    rolling_results = (
+    return (
         predicates_df.rolling(
             index_column="timestamp",
             group_by="subject_id",
@@ -116,14 +112,18 @@ def summarize_temporal_window(
             on=["subject_id", "timestamp"],
             suffix="_summary",
         )
-    )
-
-    # fill nulls with 0 and reorder columns
-    return rolling_results.with_columns(
-        "subject_id",
-        "timestamp",
-        pl.col("timestamp").alias("timestamp_at_anchor"),
-        *[pl.col(c).fill_null(strategy="zero") for c in rolling_results.columns if c.startswith("is_")],
+        .with_columns(
+            "subject_id",
+            "timestamp",
+            pl.col("timestamp").alias("timestamp_at_anchor"),
+            *[pl.col(c).fill_null(strategy="zero") for c in predicate_cols],
+        )
+        .select(
+            "subject_id",
+            "timestamp",
+            "timestamp_at_anchor",
+            *[(pl.col(c) - pl.col(f"{c}_summary")).alias(c) for c in predicate_cols],
+        )
     )
 
 
@@ -215,14 +215,17 @@ def summarize_event_bound_window(
         )
     )
 
-    filtered_result = filtered_by_end_event_at_child_anchor.join(
+    return filtered_by_end_event_at_child_anchor.join(
         anchor_to_subtree_root_by_subtree_anchor,
         left_on=["subject_id", "timestamp_at_anchor"],
         right_on=["subject_id", "timestamp"],
         suffix="_summary",
+    ).select(
+        "subject_id",
+        "timestamp",
+        "timestamp_at_anchor",
+        *[(pl.col(c) - pl.col(f"{c}_summary")).alias(c) for c in predicate_cols],
     )
-
-    return filtered_result
 
 
 def summarize_window(
@@ -248,31 +251,19 @@ def summarize_window(
             with the counts occurring between subtree_root and the child
     """
     match child.endpoint_expr[1]:
-        # if time-bounded window
         case timedelta():
-            subtree_anchor_to_child_root_by_child_anchor = summarize_temporal_window(
-                predicates_df,
-                predicate_cols,
-                child.endpoint_expr,
-                anchor_to_subtree_root_by_subtree_anchor,
-            )
-        # if event-bounded window
+            fn = summarize_temporal_window
         case str():
-            subtree_anchor_to_child_root_by_child_anchor = summarize_event_bound_window(
-                predicates_df,
-                predicate_cols,
-                child.endpoint_expr,
-                anchor_to_subtree_root_by_subtree_anchor,
-            )
+            fn = summarize_event_bound_window
+        case _:
+            raise ValueError(f"Invalid endpoint expression: {child.endpoint_expr}")
 
-    subtree_root_to_child_root_by_child_anchor = subtree_anchor_to_child_root_by_child_anchor.select(
-        "subject_id",
-        "timestamp",
-        "timestamp_at_anchor",
-        *[pl.col(c) - pl.col(f"{c}_summary") for c in predicate_cols],
+    return fn(
+        predicates_df,
+        predicate_cols,
+        child.endpoint_expr,
+        anchor_to_subtree_root_by_subtree_anchor,
     )
-
-    return subtree_root_to_child_root_by_child_anchor
 
 
 def check_constraints(window_constraints, summary_df):

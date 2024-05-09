@@ -143,9 +143,6 @@ class TestQueryFunctions(unittest.TestCase):
                             "1/27/1991 23:46",
                             "1/28/1991 3:18",
                         ],
-                        "is_A": [3, 2, 2, 2, 1, 1, 1, 1],
-                        "is_B": [2, 2, 1, 1, 0, 2, 1, 1],
-                        "is_C": [1, 1, 1, 0, 0, 2, 2, 1],
                         "timestamp_at_anchor": [
                             "12/1/1989 12:03",
                             "12/1/1989 13:14",
@@ -156,9 +153,9 @@ class TestQueryFunctions(unittest.TestCase):
                             "1/27/1991 23:46",
                             "1/28/1991 3:18",
                         ],
-                        "is_A_summary": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "is_B_summary": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "is_C_summary": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "is_A": [3, 2, 2, 2, 1, 1, 1, 1],
+                        "is_B": [2, 2, 1, 1, 0, 2, 1, 1],
+                        "is_C": [1, 1, 1, 0, 0, 2, 2, 1],
                     }
                 ).with_columns(
                     pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
@@ -189,9 +186,6 @@ class TestQueryFunctions(unittest.TestCase):
                             "1/27/1991 23:46",
                             "1/28/1991 3:18",
                         ],
-                        "is_A": [2, 2, 2, 1, 0, 1, 1, 0],
-                        "is_B": [2, 1, 1, 0, 0, 1, 1, 0],
-                        "is_C": [1, 1, 0, 0, 0, 2, 1, 0],
                         "timestamp_at_anchor": [
                             "12/1/1989 12:03",
                             "12/1/1989 13:14",
@@ -202,9 +196,9 @@ class TestQueryFunctions(unittest.TestCase):
                             "1/27/1991 23:46",
                             "1/28/1991 3:18",
                         ],
-                        "is_A_summary": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "is_B_summary": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "is_C_summary": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "is_A": [2, 2, 2, 1, 0, 1, 1, 0],
+                        "is_B": [2, 1, 1, 0, 0, 1, 1, 0],
+                        "is_C": [1, 1, 0, 0, 0, 2, 1, 0],
                     }
                 ).with_columns(
                     pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
@@ -235,9 +229,6 @@ class TestQueryFunctions(unittest.TestCase):
                             "1/27/1991 23:46",
                             "1/28/1991 3:18",
                         ],
-                        "is_A": [2, 1, 1, 1, 0, 0, 0, 0],
-                        "is_B": [1, 0, 0, 0, 0, 0, 0, 0],
-                        "is_C": [0, 0, 0, 0, 0, 0, 0, 0],
                         "timestamp_at_anchor": [
                             "12/1/1989 12:03",
                             "12/1/1989 13:14",
@@ -248,9 +239,9 @@ class TestQueryFunctions(unittest.TestCase):
                             "1/27/1991 23:46",
                             "1/28/1991 3:18",
                         ],
-                        "is_A_summary": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "is_B_summary": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "is_C_summary": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "is_A": [2, 1, 1, 1, 0, 0, 0, 0],
+                        "is_B": [1, 0, 0, 0, 0, 0, 0, 0],
+                        "is_C": [0, 0, 0, 0, 0, 0, 0, 0],
                     }
                 ).with_columns(
                     pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
@@ -281,9 +272,6 @@ class TestQueryFunctions(unittest.TestCase):
                             "1/27/1991 23:46",
                             "1/28/1991 3:18",
                         ],
-                        "is_A": [0, 1, 1, 1, 2, 0, 0, 0],
-                        "is_B": [0, 0, 1, 1, 2, 0, 1, 1],
-                        "is_C": [0, 0, 0, 1, 1, 0, 0, 1],
                         "timestamp_at_anchor": [
                             "12/1/1989 12:03",
                             "12/1/1989 13:14",
@@ -294,9 +282,9 @@ class TestQueryFunctions(unittest.TestCase):
                             "1/27/1991 23:46",
                             "1/28/1991 3:18",
                         ],
-                        "is_A_summary": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "is_B_summary": [0, 0, 0, 0, 0, 0, 0, 0],
-                        "is_C_summary": [0, 0, 0, 0, 0, 0, 0, 0],
+                        "is_A": [0, 1, 1, 1, 2, 0, 0, 0],
+                        "is_B": [0, 0, 1, 1, 2, 0, 1, 1],
+                        "is_C": [0, 0, 0, 1, 1, 0, 0, 1],
                     }
                 ).with_columns(
                     pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime),
@@ -315,10 +303,6 @@ class TestQueryFunctions(unittest.TestCase):
 
     @unittest.skip("Not yet implemented")
     def test_summarize_event_bound_window(self):
-        raise NotImplementedError
-
-    @unittest.skip("Not yet implemented")
-    def test_summarize_window(self):
         raise NotImplementedError
 
     @unittest.skip("Not yet implemented")
