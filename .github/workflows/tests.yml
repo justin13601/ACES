@@ -1,0 +1,39 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master, "release/*", "dev"]
+
+jobs:
+  run_tests_ubuntu:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
+        with:
+          python-version: "3.10"
+
+      - name: Install packages
+        run: |
+          pip install -e .[dev]
+
+      #----------------------------------------------
+      #              run test suite
+      #----------------------------------------------
+      - name: Run tests
+        run: |
+          pytest -v --doctest-modules --ignore=profiling/ --ignore=run.py --cov=src -s
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
