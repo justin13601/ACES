@@ -82,7 +82,6 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
-    "sphinxcontrib.bibtex",
     "sphinxcontrib.collections",
     "sphinx_subfigure",
     "sphinx_immaterial",
@@ -94,9 +93,22 @@ collections_dir = __location__ / "_collections"
 if not collections_dir.is_dir():
     os.mkdir(collections_dir)
 
+python_version = ".".join(map(str, sys.version_info[0:2]))
 intersphinx_mapping = {
-    "python": ("https://docs.python.org/3/", None),
-    "sphinx": ("https://www.sphinx-doc.org/en/master/", None),
+    "sphinx": ("https://www.sphinx-doc.org/en/master", None),
+    "python": ("https://docs.python.org/" + python_version, None),
+    "matplotlib": ("https://matplotlib.org", None),
+    "numpy": ("https://numpy.org/doc/stable", None),
+    "sklearn": ("https://scikit-learn.org/stable", None),
+    "pandas": ("https://pandas.pydata.org/docs", None),
+    "pandera": ("https://pandera.readthedocs.io/en/stable", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
+    "setuptools": ("https://setuptools.pypa.io/en/stable/", None),
+    "pyscaffold": ("https://pyscaffold.org/en/stable", None),
+    "hyperimpute": ("https://hyperimpute.readthedocs.io/en/latest/", None),
+    "xgbse": ("https://loft-br.github.io/xgboost-survival-embeddings/", None),
+    "lifelines": ("https://lifelines.readthedocs.io/en/stable/", None),
+    "optuna": ("https://optuna.readthedocs.io/en/stable/", None),
 }
 intersphinx_disabled_domains = ["std"]
 
