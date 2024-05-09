@@ -12,8 +12,6 @@ import numpy as np
 import pandas as pd
 import polars as pl
 import torch
-from polars.testing import assert_frame_equal as assert_pl_frame_equal
-
 from EventStream.data.config import DatasetConfig, MeasurementConfig
 from EventStream.data.types import PytorchBatch
 from EventStream.data.vocabulary import Vocabulary
@@ -25,6 +23,7 @@ from EventStream.transformer.model_output import (
     GenerativeSequenceModelPredictions,
     TransformerOutputWithPast,
 )
+from polars.testing import assert_frame_equal as assert_pl_frame_equal
 
 ASSERT_FN = Callable[[Any, Any, Optional[str]], None]
 

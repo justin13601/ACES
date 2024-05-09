@@ -41,11 +41,8 @@ def has_event_type(type_str: str) -> pl.Expr:
     return has_event_type
 
 
-def generate_simple_predicates(
-    predicate_name: str, predicate_info: dict, df: pl.DataFrame
-) -> pl.DataFrame:
-    """
-    Generate simple predicate columns based on the configuration.
+def generate_simple_predicates(predicate_name: str, predicate_info: dict, df: pl.DataFrame) -> pl.DataFrame:
+    """Generate simple predicate columns based on the configuration.
 
     Args:
         predicate_name: The name of the predicate.
@@ -90,14 +87,8 @@ def generate_simple_predicates(
             # if value of predicate is specified with min and max
             predicate_col = (
                 pl.when(
-                    (
-                        pl.col(predicate_info["column"])
-                        >= float(get_config(value, "min", float("-inf")))
-                    )
-                    & (
-                        pl.col(predicate_info["column"])
-                        <= float(get_config(value, "max", float("inf")))
-                    )
+                    (pl.col(predicate_info["column"]) >= float(get_config(value, "min", float("-inf"))))
+                    & (pl.col(predicate_info["column"]) <= float(get_config(value, "max", float("inf"))))
                 )
                 .then(1)
                 .otherwise(0)
@@ -105,9 +96,7 @@ def generate_simple_predicates(
         case str() if predicate_info["column"] == "event_type":
             predicate_col = has_event_type(str(predicate_info["value"]))
         case str() if value:
-            predicate_col = (
-                pl.when(pl.col(predicate_info["column"]) == value).then(1).otherwise(0)
-            )
+            predicate_col = pl.when(pl.col(predicate_info["column"]) == value).then(1).otherwise(0)
         case _:
             raise ValueError(f"Invalid value '{value}' for '{predicate_name}'.")
 
@@ -179,9 +168,7 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
             case "count":
                 count_cols.append(f"is_{predicate_name}")
             case _ as invalid:
-                raise ValueError(
-                    f"Invalid predicate system '{invalid}' for '{predicate_name}'."
-                )
+                raise ValueError(f"Invalid predicate system '{invalid}' for '{predicate_name}'.")
 
         value = get_config(predicate_info, "value", None)
         predicate_type = get_config(predicate_info, "type", None)
@@ -205,8 +192,7 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
             # populate event_id column
             data = data.with_row_index("event_id").select(
                 *data.columns,
-                pl.first("event_id").over(["subject_id", "timestamp"]).rank("dense")
-                - 1,
+                pl.first("event_id").over(["subject_id", "timestamp"]).rank("dense") - 1,
             )
             events = data.select(
                 "subject_id",
@@ -229,29 +215,18 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
 
     for predicate_name in simple_predicates:
         if cfg["predicates"][predicate_name]["column"] == "event_type":
-            data[0] = generate_simple_predicates(
-                predicate_name, cfg["predicates"][predicate_name], data[0]
-            )
+            data[0] = generate_simple_predicates(predicate_name, cfg["predicates"][predicate_name], data[0])
         else:
-            data[1] = generate_simple_predicates(
-                predicate_name, cfg["predicates"][predicate_name], data[1]
-            )
+            data[1] = generate_simple_predicates(predicate_name, cfg["predicates"][predicate_name], data[1])
 
-    # aggregate measurements (data[1]) by summing columns that are in count_cols, and taking the max for columns in boolean_cols
+    # aggregate measurements (data[1]) by summing columns that are in count_cols, and taking the max for
+    # columns in boolean_cols
     data[1] = (
         data[1]
         .group_by(["event_id"])
         .agg(
-            *[
-                pl.col(c).sum().cast(pl.Int64)
-                for c in data[1].columns
-                if c in count_cols
-            ],
-            *[
-                pl.col(c).max().cast(pl.Int64)
-                for c in data[1].columns
-                if c in boolean_cols
-            ],
+            *[pl.col(c).sum().cast(pl.Int64) for c in data[1].columns if c in count_cols],
+            *[pl.col(c).max().cast(pl.Int64) for c in data[1].columns if c in boolean_cols],
         )
     )
 
@@ -266,22 +241,16 @@ def generate_predicate_columns(cfg: dict, data: list | pl.DataFrame) -> pl.DataF
     for predicate_name in complex_predicates:
         predicate_info = cfg["predicates"][predicate_name]
         predicate_type = predicate_info["type"]
-        sub_predicate_cols = [
-            pl.col(f"is_{predicate}") for predicate in predicate_info["predicates"]
-        ]
+        sub_predicate_cols = [pl.col(f"is_{predicate}") for predicate in predicate_info["predicates"]]
         match predicate_type:
             case "ANY":
                 predicate_expr = reduce(lambda x, y: x | y, sub_predicate_cols)
             case "ALL":
                 predicate_expr = reduce(lambda x, y: x & y, sub_predicate_cols)
             case _:
-                raise ValueError(
-                    f"Invalid predicate type '{predicate_type}' for '{predicate_name}'."
-                )
+                raise ValueError(f"Invalid predicate type '{predicate_type}' for '{predicate_name}'.")
 
-        data = data.with_columns(
-            predicate_expr.alias(f"is_{predicate_name}").cast(pl.Int64)
-        )
+        data = data.with_columns(predicate_expr.alias(f"is_{predicate_name}").cast(pl.Int64))
         logger.debug(f"Added predicate column 'is_{predicate_name}'.")
 
     # add a column of 1s representing any predicate

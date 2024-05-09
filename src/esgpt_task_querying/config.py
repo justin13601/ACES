@@ -1,13 +1,13 @@
-"""This module contains functions for loading and parsing the configuration file and subsequently building 
-a tree structure from the configuration."""
+"""This module contains functions for loading and parsing the configuration file and subsequently building a
+tree structure from the configuration."""
 
 from datetime import timedelta
-from pytimeparse import parse
 from typing import Any
 
 import polars as pl
 import ruamel.yaml
 from bigtree import Node
+from pytimeparse import parse
 
 
 def load_config(config_path: str) -> dict[str, Any]:
@@ -55,19 +55,6 @@ def parse_timedelta(time_str: str) -> timedelta:
 
     return timedelta(seconds=parse(time_str))
 
-    # units = {"day": 0, "hour": 0, "minute": 0, "second": 0}
-    # pattern = r"(\d+)\s*(second|minute|hour|day)"
-    # matches = re.findall(pattern, time_str.lower())
-    # for value, unit in matches:
-    #     units[unit] = int(value)
-
-    # return timedelta(
-    #     days=units["day"],
-    #     hours=units["hour"],
-    #     minutes=units["minute"],
-    #     seconds=units["second"],
-    # )
-
 
 def get_max_duration(data: pl.DataFrame) -> timedelta:
     """Get the maximum duration for each subject timestamps.
@@ -100,7 +87,8 @@ def get_max_duration(data: pl.DataFrame) -> timedelta:
 
 
 def build_tree_from_config(cfg: dict[str, Any]) -> Node:
-    """Build a tree structure from the given configuration. Note: the parse_timedelta function handles negative durations already if duration is specified with "-".
+    """Build a tree structure from the given configuration. Note: the parse_timedelta function handles
+    negative durations already if duration is specified with "-".
 
     Args:
         cfg: The configuration object.
@@ -130,24 +118,31 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
         ...         },
         ...     }
         ... }
-        >>> build_tree_from_config(cfg)
-        Node(/window1, constraints={}, endpoint_expr=(False, datetime.timedelta(days=1), True, datetime.timedelta(0)))
+        >>> build_tree_from_config(cfg) # doctest: +NORMALIZE_WHITESPACE
+        Node(
+            /window1,
+            constraints={},
+            endpoint_expr=(False, datetime.timedelta(days=1), True, datetime.timedelta(0))
+        )
     """
     nodes = {}
     windows = [name for name, _ in cfg["windows"].items()]
     for window_name, window_info in cfg["windows"].items():
         defined_keys = [
-            key
-            for key in ["start", "end", "duration"]
-            if get_config(window_info, key, None) is not None
+            key for key in ["start", "end", "duration"] if get_config(window_info, key, None) is not None
         ]
         if len(defined_keys) != 2:
-            x = ["duration"]
-            raise ValueError(
-                f"Invalid window specification for '{window_name}': must specify non-None values for exactly two fields out of ['start', 'end', 'duration']. "
-                f"Got {[f'{key}: {window_info[key]}' for key in window_info if key in ['start', 'end', 'duration']]}. "
-                f"""{"If 'start' is defined as None, 'end' must be specified. Currently, a time-bounded window (with 'duration') starting from the beginning of the record (None) is not yet supported." if defined_keys == x else ""}"""
-            )
+            error_keys = [f"{key}: {window_info[key]}" for key in defined_keys]
+
+            error_lines = [
+                f"Invalid window specification for '{window_name}'",
+                (
+                    "Must specify non-None values for exactly two fields of ['start', 'end', 'duration'], "
+                    "and if 'start' is not one of those two, then 'end' must be specified. Got:"
+                ),
+                ", ".join(error_keys),
+            ]
+            raise ValueError("\n".join(error_lines))
 
         node = Node(window_name)
 
@@ -161,9 +156,7 @@ def build_tree_from_config(cfg: dict[str, Any]) -> Node:
             case False | None:
                 end_event = f"is_{window_info['end']}"
             case _:
-                raise ValueError(
-                    f"Invalid duration in '{window_name}': {window_info['duration']}"
-                )
+                raise ValueError(f"Invalid duration in '{window_name}': {window_info['duration']}")
 
         # set node st_inclusive and end_inclusive
         st_inclusive = get_config(window_info, "st_inclusive", False)

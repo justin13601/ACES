@@ -1,5 +1,7 @@
-"""This module contains the main function for querying a task. It accepts the configuration file and 
-predicate columns, builds the tree, and recursively queries the tree."""
+"""This module contains the main function for querying a task.
+
+It accepts the configuration file and predicate columns, builds the tree, and recursively queries the tree.
+"""
 
 from datetime import timedelta
 
@@ -7,7 +9,7 @@ import polars as pl
 from bigtree import preorder_iter, print_tree
 from loguru import logger
 
-from .config import build_tree_from_config, get_max_duration, get_config
+from .config import build_tree_from_config, get_config, get_max_duration
 from .summarize import summarize_subtree
 
 
@@ -35,9 +37,7 @@ def query(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
     if null_starts:
         max_duration = -get_max_duration(df_predicates)
         for each_window in null_starts:
-            logger.debug(
-                f"Setting start of the '{each_window}' window to the beginning of the record."
-            )
+            logger.debug(f"Setting start of the '{each_window}' window to the beginning of the record.")
             cfg["windows"][each_window].pop("start")
             cfg["windows"][each_window]["duration"] = max_duration
 
@@ -51,46 +51,33 @@ def query(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
     trigger = cfg["windows"]["trigger"]
     # filter out subjects that do not have the trigger event if specified in inclusion criteria
     if get_config(trigger, "includes", []):
-        valid_trigger_exprs = [
-            (df_predicates[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]
-        ]
+        valid_trigger_exprs = [(df_predicates[f"is_{x['predicate']}"] == 1) for x in trigger["includes"]]
     # filter out subjects that do not have the trigger event if specified as the start
     else:
         valid_trigger_exprs = [(df_predicates[f"is_{trigger['start']}"] == 1)]
     anchor_to_subtree_root_by_subtree_anchor = df_predicates.clone()
-    anchor_to_subtree_root_by_subtree_anchor_shape = (
-        anchor_to_subtree_root_by_subtree_anchor.shape[0]
-    )
+    anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
     # log filtered subjects
     for i, condition in enumerate(valid_trigger_exprs):
         dropped = anchor_to_subtree_root_by_subtree_anchor.filter(~condition)
-        anchor_to_subtree_root_by_subtree_anchor = (
-            anchor_to_subtree_root_by_subtree_anchor.filter(condition)
-        )
-        if (
-            anchor_to_subtree_root_by_subtree_anchor.shape[0]
-            < anchor_to_subtree_root_by_subtree_anchor_shape
-        ):
+        anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.filter(condition)
+        if anchor_to_subtree_root_by_subtree_anchor.shape[0] < anchor_to_subtree_root_by_subtree_anchor_shape:
             if get_config(trigger, "includes", []):
                 logger.debug(
-                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger condition: {cfg['windows']['trigger']['includes'][i]}."
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) "
+                    f"were excluded due to trigger condition: {cfg['windows']['trigger']['includes'][i]}."
                 )
             else:
                 logger.debug(
-                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) were excluded due to trigger event: {cfg['windows']['trigger']['start']}."
+                    f"{dropped['subject_id'].unique().shape[0]} subjects ({dropped.shape[0]} rows) "
+                    f"were excluded due to trigger event: {cfg['windows']['trigger']['start']}."
                 )
-            anchor_to_subtree_root_by_subtree_anchor_shape = (
-                anchor_to_subtree_root_by_subtree_anchor.shape[0]
-            )
+            anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
 
     # prepare anchor_to_subtree_root_by_subtree_anchor for summarize_subtree
-    anchor_to_subtree_root_by_subtree_anchor = (
-        anchor_to_subtree_root_by_subtree_anchor.select(
-            "subject_id", "timestamp", *[pl.col(c) for c in predicate_cols]
-        ).with_columns(
-            "subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols]
-        )
-    )
+    anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.select(
+        "subject_id", "timestamp", *[pl.col(c) for c in predicate_cols]
+    ).with_columns("subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols])
 
     # recursively summarize the windows of the task tree
     result = summarize_subtree(
@@ -124,10 +111,7 @@ def query(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
                 how="left",
             )
             .with_columns(
-                *[
-                    pl.col("start_of_record").alias(f"{each_window}/timestamp")
-                    for each_window in null_starts
-                ]
+                *[pl.col("start_of_record").alias(f"{each_window}/timestamp") for each_window in null_starts]
             )
             .drop(["start_of_record"])
         )
@@ -141,8 +125,6 @@ def query(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
     if label_window:
         label = cfg["windows"][label_window]["label"]
         result = result.with_columns(
-            pl.col(f"{label_window}/window_summary")
-            .struct.field(f"is_{label}")
-            .alias("label")
+            pl.col(f"{label_window}/window_summary").struct.field(f"is_{label}").alias("label")
         )
     return result
