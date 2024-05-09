@@ -313,12 +313,15 @@ class TestQueryFunctions(unittest.TestCase):
                 got = summarize_temporal_window(**c)
                 self.assertEqual(got, want)
 
+    @unittest.skip("Not yet implemented")
     def test_summarize_event_bound_window(self):
         raise NotImplementedError
 
+    @unittest.skip("Not yet implemented")
     def test_summarize_window(self):
         raise NotImplementedError
 
+    @unittest.skip("Not yet implemented")
     def test_summarize_subtree(self):
         raise NotImplementedError
 
