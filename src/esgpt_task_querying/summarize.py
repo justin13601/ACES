@@ -26,6 +26,7 @@ def summarize_temporal_window(
 
     Examples:
         >>> import polars as pl
+        >>> _ = pl.Config.set_tbl_width_chars(100)
         >>> from datetime import datetime, timedelta
         >>> predicates_df = pl.DataFrame(
         ...     {
