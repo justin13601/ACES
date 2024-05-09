@@ -29,7 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "pre-commit", "pytest", "pytest-cov", "pytest-subtests"
+  "pre-commit", "pytest", "pytest-cov", "pytest-subtests", "rootutils"
 ]
 profiling = ["psutil"]
 
