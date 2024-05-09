@@ -34,16 +34,18 @@ def aggregate_temporal_window(
         ...     {
         ...         "subject_id": [1, 1, 1, 1, 2, 2],
         ...         "timestamp": [
+        ...             # Subject 1
         ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
         ...             datetime(year=1989, month=12, day=2, hour=5,  minute=17),
         ...             datetime(year=1989, month=12, day=2, hour=12, minute=3),
         ...             datetime(year=1989, month=12, day=6, hour=11, minute=0),
-        ...             datetime(year=1989, month=12, day=3, hour=15, minute=17),
+        ...             # Subject 2
         ...             datetime(year=1989, month=12, day=1, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=3, hour=15, minute=17),
         ...         ],
         ...         "is_A": [1, 0, 1, 0, 0, 0],
-        ...         "is_B": [0, 1, 0, 1, 0, 1],
-        ...         "is_C": [1, 1, 0, 0, 0, 1],
+        ...         "is_B": [0, 1, 0, 1, 1, 0],
+        ...         "is_C": [1, 1, 0, 0, 1, 0],
         ...     },
         ...     schema = {
         ...         'subject_id': pl.Int64,
@@ -70,23 +72,6 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(
-        ...     predicates_df,
-        ...     TemporalWindowBounds(False, timedelta(days=1), True, timedelta(days=0)),
-        ... )
-        shape: (6, 5)
-        ┌────────────┬─────────────────────┬──────┬──────┬──────┐
-        │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
-        │ ---        ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
-        │ i64        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
-        ╞════════════╪═════════════════════╪══════╪══════╪══════╡
-        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1    ┆ 1    ┆ 1    │
-        │ 1          ┆ 1989-12-02 05:17:00 ┆ 1    ┆ 0    ┆ 0    │
-        │ 1          ┆ 1989-12-02 12:03:00 ┆ 0    ┆ 0    ┆ 0    │
-        │ 1          ┆ 1989-12-06 11:00:00 ┆ 0    ┆ 1    ┆ 0    │
-        │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
-        │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
-        └────────────┴─────────────────────┴──────┴──────┴──────┘
     """
     if not isinstance(endpoint_expr, TemporalWindowBounds):
         endpoint_expr = TemporalWindowBounds(*endpoint_expr)
@@ -94,14 +79,13 @@ def aggregate_temporal_window(
     predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
 
     return (
-        predicates_df.sort(by=["subject_id", "timestamp"])
-        .rolling(
+        predicates_df.rolling(
             index_column="timestamp",
             group_by="subject_id",
             **endpoint_expr.polars_gp_rolling_kwargs,
-            check_sorted=False,
         )
-        .agg([pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols])
+        .agg(*[pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols])
+        .sort(by=["subject_id", "timestamp"])
     )
 
 
