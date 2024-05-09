@@ -18,7 +18,7 @@ import psutil
 from EventStream.data.dataset_polars import Dataset
 from loguru import logger
 
-from esgpt_task_querying import main
+from esgpt_task_querying import query
 
 
 def get_machine_details():
@@ -64,7 +64,7 @@ def profile_based_on_num_threads(DATA_DIR, config):
 
     pr = cProfile.Profile()
     pr.enable()
-    df_result = main.query_task(config, df_temp)
+    df_result = query.query(config, df_temp)
     pr.disable()
     ps = pstats.Stats(pr, stream=sys.stdout)
     query_time = ps.total_tt
