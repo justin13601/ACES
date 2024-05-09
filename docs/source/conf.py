@@ -205,7 +205,7 @@ html_theme = "sphinx_immaterial"
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
     # Set the name of the project to appear in the navigation.
-    "nav_title": "Event Stream GPT",
+    "nav_title": "ESGPTTaskQuerying",
     # Icon,
     # "logo_icon": "query-512.png",
     # Set you GA account ID to enable tracking
@@ -242,7 +242,7 @@ html_short_title = "ESGPTTaskQuerying Documentation"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "query_512.png"
+html_logo = "query-512.png"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
