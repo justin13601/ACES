@@ -1,17 +1,15 @@
-Welcome to Lumache's documentation!
+Welcome to ESGPTTaskQuerying's Documentation!
 ===================================
 
-**Lumache** (/lu'make/) is a Python library for cooks and food lovers
-that creates recipes mixing random ingredients.
-It pulls data from the `Open Food Facts database <https://world.openfoodfacts.org/>`_
-and offers a *simple* and *intuitive* API.
+**ESGPTTaskQuerying** is a Pythons library for querying and extracting data from event stream datasets,
+such as electronic health records (EHRs). It can be used to automatically query tasks for reproducible
+machine learning research in healthcare or to standardized medical cohorts across various data sources.
 
-Check out the :doc:`usage` section for further information, including
-how to :ref:`installation` the project.
+Check out the :doc:`usage` section for further information, including instructions for :ref:`installation`.
 
 .. note::
 
-   This project is under active development.
+   This library is under development.
 
 Contents
 --------
@@ -19,4 +17,4 @@ Contents
 .. toctree::
 
    usage
-   api
+   config

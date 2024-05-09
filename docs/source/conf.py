@@ -207,7 +207,7 @@ html_theme_options = {
     # Set the name of the project to appear in the navigation.
     "nav_title": "Event Stream GPT",
     # Icon,
-    "logo_icon": "query-512.png",
+    # "logo_icon": "query-512.png",
     # Set you GA account ID to enable tracking
     # "google_analytics_account": "UA-XXXXX",
     #
@@ -235,7 +235,7 @@ html_theme_options = {
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-# html_title = None
+html_title = f"ESGPTTaskQuerying v{version} Documentation"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 html_short_title = "ESGPTTaskQuerying Documentation"
