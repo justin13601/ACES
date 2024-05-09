@@ -34,8 +34,3 @@ jobs:
         uses: pre-commit/action@v3.0.0
         with:
           extra_args: --files ${{ steps.file_changes.outputs.files}}
-
-      - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@v4.0.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
