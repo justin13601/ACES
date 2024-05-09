@@ -6,6 +6,104 @@ from typing import Any
 import polars as pl
 from loguru import logger
 
+from .types import TemporalWindowBounds
+
+PRED_CNT_TYPE = pl.UInt16
+
+
+def aggregate_temporal_window(
+    predicates_df: pl.LazyFrame | pl.DataFrame,
+    endpoint_expr: TemporalWindowBounds | tuple[bool, timedelta, bool, timedelta],
+) -> pl.LazyFrame | pl.DataFrame:
+    """Aggregates the predicates dataframe into the specified temporal buckets.
+
+    Args:
+        predicates_df: The dataframe containing the predicates. The input need not be properly sorted, though
+            this may change in future iterations.
+        endpoint_expr: The expression defining the temporal window endpoints. Can be specified as a tuple or a
+            TemporalWindowBounds object, which is just a named tuple of the expected form.
+
+    Returns:
+        The dataframe that has been aggregated temporally according to the specified ``endpoint_expr``.
+
+    Examples:
+        >>> import polars as pl
+        >>> _ = pl.Config.set_tbl_width_chars(100)
+        >>> from datetime import datetime, timedelta
+        >>> predicates_df = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 1, 1, 1, 2, 2],
+        ...         "timestamp": [
+        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=2, hour=5,  minute=17),
+        ...             datetime(year=1989, month=12, day=2, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=6, hour=11, minute=0),
+        ...             datetime(year=1989, month=12, day=3, hour=15, minute=17),
+        ...             datetime(year=1989, month=12, day=1, hour=13, minute=14),
+        ...         ],
+        ...         "is_A": [1, 0, 1, 0, 0, 0],
+        ...         "is_B": [0, 1, 0, 1, 0, 1],
+        ...         "is_C": [1, 1, 0, 0, 0, 1],
+        ...     },
+        ...     schema = {
+        ...         'subject_id': pl.Int64,
+        ...         'timestamp': pl.Datetime,
+        ...         'is_A': pl.UInt16,
+        ...         'is_B': pl.UInt16,
+        ...         'is_C': pl.UInt16
+        ...     },
+        ... )
+        >>> aggregate_temporal_window(
+        ...     predicates_df,
+        ...     TemporalWindowBounds(True, timedelta(days=1), True, timedelta(days=0)),
+        ... )
+        shape: (6, 5)
+        ┌────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 2    ┆ 1    ┆ 2    │
+        │ 1          ┆ 1989-12-02 05:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-02 12:03:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-06 11:00:00 ┆ 0    ┆ 1    ┆ 0    │
+        │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> aggregate_temporal_window(
+        ...     predicates_df,
+        ...     TemporalWindowBounds(False, timedelta(days=1), True, timedelta(days=0)),
+        ... )
+        shape: (6, 5)
+        ┌────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-02 05:17:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-02 12:03:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-06 11:00:00 ┆ 0    ┆ 1    ┆ 0    │
+        │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴──────┴──────┴──────┘
+    """
+    if not isinstance(endpoint_expr, TemporalWindowBounds):
+        endpoint_expr = TemporalWindowBounds(*endpoint_expr)
+
+    predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
+
+    return (
+        predicates_df.sort(by=["subject_id", "timestamp"])
+        .rolling(
+            index_column="timestamp",
+            group_by="subject_id",
+            **endpoint_expr.polars_gp_rolling_kwargs,
+            check_sorted=False,
+        )
+        .agg([pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols])
+    )
+
 
 def summarize_temporal_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
@@ -76,37 +174,9 @@ def summarize_temporal_window(
         │ 1          ┆ 1989-12-01 15:17:00 ┆ 1989-12-01 15:17:00 ┆ 1    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴──────┴──────┘
     """
-    st_inclusive, window_size, end_inclusive, offset = endpoint_expr
-    if not offset:
-        offset = timedelta(days=0)
-
-    if st_inclusive and end_inclusive:
-        closed = "both"
-    elif st_inclusive:
-        closed = "left"
-    elif end_inclusive:
-        closed = "right"
-    else:
-        closed = "none"
-
-    # set parameters for group_by rolling window
-    if window_size < timedelta(days=0):
-        period = -window_size
-        offset = -period + offset
-    else:
-        period = window_size
-        offset = offset
 
     return (
-        predicates_df.rolling(
-            index_column="timestamp",
-            group_by="subject_id",
-            closed=closed,
-            period=period,
-            offset=offset,
-        )
-        .agg([pl.col(c).sum().alias(c) for c in predicate_cols])
-        .sort(by=["subject_id", "timestamp"])
+        aggregate_temporal_window(predicates_df, endpoint_expr)
         .join(
             anchor_to_subtree_root_by_subtree_anchor,
             on=["subject_id", "timestamp"],
