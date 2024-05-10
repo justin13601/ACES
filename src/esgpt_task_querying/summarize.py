@@ -39,7 +39,8 @@ def aggregate_temporal_window(
         dataframe will contain the same number of rows and be in the same order (in terms of ``subject_id``
         and ``timestamp``) as the input dataframe. The column names will also be the same as the input
         dataframe, but the values in the predicate columns of the output dataframe will be the sum of the
-        values in the predicate columns of the input dataframe over the specified temporal window.
+        values in the predicate columns of the input dataframe from the timestamp of the event in the row of
+        the output dataframe spanning the specified temporal window.
 
     Examples:
         >>> import polars as pl
@@ -163,11 +164,29 @@ def summarize_temporal_window(
 ) -> pl.LazyFrame | pl.DataFrame:
     """Summarizes the temporal window based on the given predicates and anchor-to-subtree-root mapping.
 
+    TODO: Significantly clarify docstring!!!
+
     Args:
-        predicates_df: The dataframe containing the predicates.
+        predicates_df: The dataframe containing the predicates. The input must be sorted in ascending order by
+            timestamp within each subject group. It must contain the following columns:
+              - A column ``subject_id`` which contains the subject ID.
+              - A column ``timestamp`` which contains the timestamp at which the event contained in any given
+                row occurred.
+              - A set of "predicate" columns that contain counts of the number of times a given predicate
+                is satisfied in the event contained in any given row.
         predicate_cols: The list of predicate columns.
-        endpoint_expr: The expression defining the temporal window endpoints.
-        anchor_to_subtree_root_by_subtree_anchor: The mapping of anchor to subtree root.
+        endpoint_expr: The expression defining the temporal window endpoints. Can be specified as a tuple or a
+            TemporalWindowBounds object, which is just a named tuple of the expected form. Said expected form
+            is as follows:
+              - The first element is a boolean indicating whether the start of the window is inclusive.
+              - The second element is a timedelta object indicating the size of the window.
+              - The third element is a boolean indicating whether the end of the window is inclusive.
+              - The fourth element is a timedelta object indicating the offset from the timestamp of the row
+                to the start of the window.
+        anchor_to_subtree_root_by_subtree_anchor: A dataframe with a row for each possible realization of an
+            anchor event for the subtree, with the corresponding row timestamp of the associated subtree
+            root event. This is used to define the starting points of possible valid window starts for the
+            eventual child anchor events.
 
     Returns:
         The summarized dataframe.
@@ -255,11 +274,35 @@ def summarize_event_bound_window(
 ) -> pl.LazyFrame | pl.DataFrame:
     """Summarizes the event bound window based on the given predicates and anchor-to-subtree-root mapping.
 
+    Given an input dataframe of event-level predicate counts and a dataframe keyed by subtree anchor events,
+    this function computes the counts of predicates that have occurred between successive pairs of subtree
+    anchor and prospective child anchor events (as dictated by `endpoint_expr`), keyed by the child anchor.
+    This function will not output any overlapping windows (i.e., the same child anchor will not appear in the
+    output more than once), so only the nearest possible subtree anchor event will be considered for each
+    child anchor event.
+
     Args:
-        predicates_df: The dataframe containing the predicates.
+        predicates_df: The dataframe containing the predicates. The input must be sorted in ascending order by
+            timestamp within each subject group. It must contain the following columns:
+              - A column ``subject_id`` which contains the subject ID.
+              - A column ``timestamp`` which contains the timestamp at which the event contained in any given
+                row occurred.
+              - A set of "predicate" columns that contain counts of the number of times a given predicate
+                is satisfied in the event contained in any given row.
         predicate_cols: The list of predicate columns.
-        endpoint_expr: The expression defining the temporal window endpoints.
-        anchor_to_subtree_root_by_subtree_anchor: The mapping of anchor to subtree root.
+        endpoint_expr: The expression defining the event bound window endpoints. Can be specified as a tuple
+            or a ToEventWindowBounds object, which is just a named tuple of the expected form. Said expected
+            form is as follows:
+              - The first element is a boolean indicating whether the start of the window is inclusive.
+              - The second element is a string indicating the name of the column in which non-zero counts
+                indicate the event is a valid "end event" of the window.
+              - The third element is a boolean indicating whether the end of the window is inclusive.
+              - The fourth element is a timedelta object indicating the offset from the timestamp of the row
+                to the start of the window.
+        anchor_to_subtree_root_by_subtree_anchor: A dataframe with a row for each possible realization of an
+            anchor event for the subtree, with the corresponding row timestamp of the associated subtree
+            root event. This is used to define the starting points of possible valid window starts for the
+            eventual child anchor events.
 
     Returns:
         The summarized dataframe.
@@ -328,16 +371,16 @@ def summarize_event_bound_window(
         ...     endpoint_expr,
         ...     anchor_to_subtree_root_by_subtree_anchor,
         ... )
-            shape: (3, 6)
-            ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
-            │ subject_id ┆ timestamp           ┆ timestamp_at_anchor ┆ is_A ┆ is_B ┆ is_C │
-            │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
-            │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
-            ╞════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
-            │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1    ┆ 1    ┆ 1    │
-            │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-06 15:17:00 ┆ 3    ┆ 2    ┆ 1    │
-            │ 2          ┆ 1989-12-10 15:17:00 ┆ 1989-12-10 15:17:00 ┆ 0    ┆ 2    ┆ 1    │
-            └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        shape: (3, 6)
+        ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_anchor ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-06 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-10 15:17:00 ┆ 1989-12-10 15:17:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
     """
     st_inclusive, end_event, end_inclusive, offset = endpoint_expr
     if not offset:
