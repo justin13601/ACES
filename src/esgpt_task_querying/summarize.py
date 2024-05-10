@@ -18,13 +18,28 @@ def aggregate_temporal_window(
     """Aggregates the predicates dataframe into the specified temporal buckets.
 
     Args:
-        predicates_df: The dataframe containing the predicates. The input need not be properly sorted, though
-            this may change in future iterations.
+        predicates_df: The dataframe containing the predicates. The input must be sorted in ascending order by
+            timestamp within each subject group. It must contain the following columns:
+              - A column ``subject_id`` which contains the subject ID.
+              - A column ``timestamp`` which contains the timestamp at which the event contained in any given
+                row occurred.
+              - A set of "predicate" columns that contain counts of the number of times a given predicate
+                is satisfied in the event contained in any given row.
         endpoint_expr: The expression defining the temporal window endpoints. Can be specified as a tuple or a
-            TemporalWindowBounds object, which is just a named tuple of the expected form.
+            TemporalWindowBounds object, which is just a named tuple of the expected form. Said expected form
+            is as follows:
+              - The first element is a boolean indicating whether the start of the window is inclusive.
+              - The second element is a timedelta object indicating the size of the window.
+              - The third element is a boolean indicating whether the end of the window is inclusive.
+              - The fourth element is a timedelta object indicating the offset from the timestamp of the row
+                to the start of the window.
 
     Returns:
-        The dataframe that has been aggregated temporally according to the specified ``endpoint_expr``.
+        The dataframe that has been aggregated temporally according to the specified ``endpoint_expr``. This
+        dataframe will contain the same number of rows and be in the same order (in terms of ``subject_id``
+        and ``timestamp``) as the input dataframe. The column names will also be the same as the input
+        dataframe, but the values in the predicate columns of the output dataframe will be the sum of the
+        values in the predicate columns of the input dataframe over the specified temporal window.
 
     Examples:
         >>> import polars as pl
@@ -238,6 +253,92 @@ def summarize_event_bound_window(
     endpoint_expr: (tuple[bool, timedelta, bool, timedelta] | tuple[bool, str, bool, timedelta]),
     anchor_to_subtree_root_by_subtree_anchor: pl.LazyFrame | pl.DataFrame,
 ) -> pl.LazyFrame | pl.DataFrame:
+    """Summarizes the event bound window based on the given predicates and anchor-to-subtree-root mapping.
+
+    Args:
+        predicates_df: The dataframe containing the predicates.
+        predicate_cols: The list of predicate columns.
+        endpoint_expr: The expression defining the temporal window endpoints.
+        anchor_to_subtree_root_by_subtree_anchor: The mapping of anchor to subtree root.
+
+    Returns:
+        The summarized dataframe.
+
+    Examples:
+        >>> import polars as pl
+        >>> _ = pl.Config.set_tbl_width_chars(100)
+        >>> from datetime import datetime
+        >>> predicates_df = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 1, 1, 2, 2, 2, 2, 2],
+        ...         "timestamp": [
+        ...             # Subject 1
+        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=3, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=5, hour=15, minute=17),
+        ...             # Subject 2
+        ...             datetime(year=1989, month=12, day=2, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=4, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=6, hour=15, minute=17),
+        ...             datetime(year=1989, month=12, day=8, hour=15, minute=17),
+        ...             datetime(year=1989, month=12, day=10, hour=15, minute=17),
+        ...         ],
+        ...         "is_A": [1, 0, 1, 1, 1, 1, 0, 0],
+        ...         "is_B": [0, 1, 0, 1, 0, 1, 1, 1],
+        ...         "is_C": [0, 1, 0, 0, 0, 1, 0, 1],
+        ...     }
+        ... )
+        >>> anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 1, 1, 2, 2, 2, 2, 2],
+        ...         "timestamp": [
+        ...             # Subject 1
+        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=3, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=5, hour=15, minute=17),
+        ...             # Subject 2
+        ...             datetime(year=1989, month=12, day=2, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=4, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=6, hour=15, minute=17),
+        ...             datetime(year=1989, month=12, day=8, hour=15, minute=17),
+        ...             datetime(year=1989, month=12, day=10, hour=15, minute=17),
+        ...         ],
+        ...         "timestamp_at_anchor": [
+        ...             # Subject 1
+        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=3, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=5, hour=15, minute=17),
+        ...             # Subject 2
+        ...             datetime(year=1989, month=12, day=2, hour=12, minute=3),
+        ...             datetime(year=1989, month=12, day=4, hour=13, minute=14),
+        ...             datetime(year=1989, month=12, day=6, hour=15, minute=17),
+        ...             datetime(year=1989, month=12, day=8, hour=15, minute=17),
+        ...             datetime(year=1989, month=12, day=10, hour=15, minute=17),
+        ...         ],
+        ...         "is_A": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "is_B": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...         "is_C": [0, 0, 0, 0, 0, 0, 0, 0],
+        ...     }
+        ... )
+        >>> predicate_cols = ["is_A", "is_B", "is_C"]
+        >>> endpoint_expr = (True, "is_C", True, timedelta(days=0))
+        >>> summarize_event_bound_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+            shape: (3, 6)
+            ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+            │ subject_id ┆ timestamp           ┆ timestamp_at_anchor ┆ is_A ┆ is_B ┆ is_C │
+            │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+            │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+            ╞════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+            │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1    ┆ 1    ┆ 1    │
+            │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-06 15:17:00 ┆ 3    ┆ 2    ┆ 1    │
+            │ 2          ┆ 1989-12-10 15:17:00 ┆ 1989-12-10 15:17:00 ┆ 0    ┆ 2    ┆ 1    │
+            └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+    """
     st_inclusive, end_event, end_inclusive, offset = endpoint_expr
     if not offset:
         offset = timedelta(days=0)
@@ -245,6 +346,12 @@ def summarize_event_bound_window(
     # overall cumulative sum of predicates
     cumsum_predicates_df = predicates_df.with_columns(
         *[pl.col(c).cum_sum().over(pl.col("subject_id")).alias(f"{c}_cumsum") for c in predicate_cols],
+    )
+    cumsum_predicates_df = cumsum_predicates_df.select(
+        "subject_id",
+        "timestamp",
+        *[pl.col(f"{c}") for c in predicate_cols],
+        *[pl.col(f"{c}_cumsum") for c in predicate_cols],
     )
 
     # get the counts at the anchor
@@ -261,12 +368,6 @@ def summarize_event_bound_window(
     )
 
     # get the counts at the child anchor
-    cumsum_predicates_df = cumsum_predicates_df.select(
-        "subject_id",
-        "timestamp",
-        *[pl.col(f"{c}") for c in predicate_cols],
-        *[pl.col(f"{c}_cumsum") for c in predicate_cols],
-    )
     cumsum_predicates_df = cumsum_predicates_df.join(
         cnts_at_anchor, on=["subject_id", "timestamp"], how="left"
     ).with_columns(

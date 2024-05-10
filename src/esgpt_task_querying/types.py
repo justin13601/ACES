@@ -119,3 +119,43 @@ class TemporalWindowBounds(NamedTuple):
             offset = offset
 
         return {"period": period, "offset": offset, "closed": closed}
+
+
+class ToEventWindowBounds(NamedTuple):
+    """Named tuple to represent temporal window bounds.
+
+    Attributes:
+        start_inclusive: The start of the window, inclusive.
+        end_event: The string name of the event that bounds the end of this window. Operationally, this is
+            interpreted as the string name of the column which contains a positive value if the row
+            corresponds to the end event of this window and a zero otherwise.
+        end_inclusive: The end of the window, inclusive.
+        offset: The offset from the start of the window to the end of the window.
+
+    Example:
+        >>> bounds = ToEventWindowBounds(
+        ...     start_inclusive=True,
+        ...     end_event="foo",
+        ...     end_inclusive=False,
+        ...     offset=timedelta(hours=1)
+        ... )
+        >>> bounds # doctest: +NORMALIZE_WHITESPACE
+        ToEventWindowBounds(start_inclusive=True,
+                            end_event="foo",
+                            end_inclusive=False,
+                            offset=datetime.timedelta(seconds=3600))
+        >>> start_inclusive, end_event, end_inclusive, offset = bounds
+        >>> start_inclusive
+        True
+        >>> end_event
+        'foo'
+        >>> end_inclusive
+        False
+        >>> offset
+        datetime.timedelta(seconds=3600)
+    """
+
+    start_inclusive: bool
+    end_event: str
+    end_inclusive: bool
+    offset: timedelta | None
