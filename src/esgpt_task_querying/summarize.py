@@ -6,7 +6,7 @@ from typing import Any
 import polars as pl
 from loguru import logger
 
-from .types import TemporalWindowBounds
+from .types import TemporalWindowBounds, ToEventWindowBounds
 
 PRED_CNT_TYPE = pl.UInt16
 
@@ -422,7 +422,11 @@ def summarize_event_bound_window(
         │ 2          ┆ 1989-12-10 15:17:00 ┆ 1989-12-02 12:03:00 ┆ 3    ┆ 4    ┆ 2    │
         └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
     """
+    if not isinstance(endpoint_expr, ToEventWindowBounds):
+        endpoint_expr = ToEventWindowBounds(*endpoint_expr)
+
     st_inclusive, end_event, end_inclusive, offset = endpoint_expr
+
     if not offset:
         offset = timedelta(days=0)
 

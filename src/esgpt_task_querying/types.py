@@ -141,7 +141,7 @@ class ToEventWindowBounds(NamedTuple):
         ... )
         >>> bounds # doctest: +NORMALIZE_WHITESPACE
         ToEventWindowBounds(start_inclusive=True,
-                            end_event="foo",
+                            end_event='foo',
                             end_inclusive=False,
                             offset=datetime.timedelta(seconds=3600))
         >>> start_inclusive, end_event, end_inclusive, offset = bounds
