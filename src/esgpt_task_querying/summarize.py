@@ -277,9 +277,11 @@ def summarize_event_bound_window(
     Given an input dataframe of event-level predicate counts and a dataframe keyed by subtree anchor events,
     this function computes the counts of predicates that have occurred between successive pairs of subtree
     anchor and prospective child anchor events (as dictated by `endpoint_expr`), keyed by the child anchor.
-    This function will not output any overlapping windows (i.e., the same child anchor will not appear in the
-    output more than once), so only the nearest possible subtree anchor event will be considered for each
-    child anchor event.
+    This function will use any given child anchor node only once, as only the nearest possible subtree anchor
+    event will be considered for each child anchor event. However, the same subtree anchor event can be used
+    multiple times for different child anchor events, resulting in potentially overlapping windows that have
+    the same start time and different end times. In the event, however, of multiple possible subtree anchors
+    that could be used for a given child anchor, only the one nearest to the subtree anchor will be used.
 
     Args:
         predicates_df: The dataframe containing the predicates. The input must be sorted in ascending order by
@@ -380,6 +382,44 @@ def summarize_event_bound_window(
         │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-06 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-10 15:17:00 ┆ 1989-12-10 15:17:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> anchor_to_subtree_root_by_subtree_anchor = pl.DataFrame(
+        ...     {
+        ...         "subject_id": [1, 2],
+        ...         "timestamp": [
+        ...             # Subject 1
+        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...             # Subject 2
+        ...             datetime(year=1989, month=12, day=2, hour=12, minute=3),
+        ...         ],
+        ...         "timestamp_at_anchor": [
+        ...             # Subject 1
+        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...             # Subject 2
+        ...             datetime(year=1989, month=12, day=2, hour=12, minute=3),
+        ...         ],
+        ...         "is_A": [0, 0],
+        ...         "is_B": [0, 0],
+        ...         "is_C": [0, 0],
+        ...     }
+        ... )
+        >>> predicate_cols = ["is_A", "is_B", "is_C"]
+        >>> endpoint_expr = (True, "is_C", True, timedelta(days=0))
+        >>> summarize_event_bound_window(
+        ...     predicates_df,
+        ...     predicate_cols,
+        ...     endpoint_expr,
+        ...     anchor_to_subtree_root_by_subtree_anchor,
+        ... )
+        shape: (3, 6)
+        ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_anchor ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-01 12:03:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-02 12:03:00 ┆ 3    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 15:17:00 ┆ 1989-12-02 12:03:00 ┆ 3    ┆ 4    ┆ 2    │
         └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
     """
     st_inclusive, end_event, end_inclusive, offset = endpoint_expr
