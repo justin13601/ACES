@@ -7,6 +7,10 @@ fields are passed in the correct order.
 import dataclasses
 from datetime import timedelta
 
+import polars as pl
+
+PRED_CNT_TYPE = pl.UInt16
+
 
 @dataclasses.dataclass(order=True)
 class TemporalWindowBounds:
