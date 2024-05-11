@@ -70,14 +70,14 @@ gap:
     - is_discharge
     - is_death
     - is_covid_dx
-input:
-  end: trigger + 24h
 target:
   start: gap.end
   end: is_discharge | is_death
   label: is_death
   excludes:
     - is_covid_dx
+input:
+  end: trigger + 24h
 ```
 
 <!-- I think should include a timeline similar to the ones on the README to visualize this -->
@@ -127,37 +127,51 @@ An "event" in our dataset is a unique timestamp that occurs for a given subject.
 A "predicate" is a boolean or count function that can be applied to an event to describe the observations that
 an underlying dataset included within the timestamp of that event. They will often be boolean functions at the
 beginning of the process, but become aggregated into count functions when summarizing windows, so will be
-thought of as count functions to capture this generality throughout the algorithm as it rarely if ever is
+thought of as count functions to capture this generality throughout the algorithm as it rarely, if ever,
 necessary to distinguish between the two.
 
 ##### Window
 
 A "window" is just a time range capturing some portion of a subject's record. It can be inclusive or exclusive
 on either endpoint, and may or may not have endpoints corresponding to an extant event in the dataset, as
-opposed to a time point at which time no event occurred.
+opposed to a time point at which no event occurred.
 
-##### "Root" of a Subtree
+Time is treated as strictly increasing in our algorithm (ie. the start of a "window" will always be before or
+equal to the end of that "window").
+
+##### A "Root" of a Subtree
 
 A subtree in the hierarchy of constraint windows has a "root" node in the tree, which corresponds to the start
-or end of a window in the set of constraints. For example, the "gap end" node in the tree above is the root of
-the subtree `Gap end -> Target Start -> Target End`.
+or end of a window in the set of constraints. For example, the "Gap End" node in the tree above is the root of
+the subtree `Gap End -> Target Start -> Target End`.
 
-##### A "realized" subtree of constraint windows
+##### A "Realized" Subtree of Constraint Windows
 
 A subtree in the hierarchy of constraint windows can be _realized_ in a patient dataset by finding a set of
-timestamps such the windows of events they bound satisfy the constraints of the subtree.
+timestamps such that the windows of events they bound satisfy the constraints of the subtree. For instance,
+using our example in-hospital mortality task above, the subtree `Gap End -> Target Start -> Target End` would
+be _realized_ if, given the "Gap End" timestamp, we can find:
 
-##### "Anchor" or "Anchor Event" of a Subtree
+- A timestamp for "Target Start", which is equal to the timestamp of "Gap End" in this example.
+- A timestamp for "Target End", which should be equal to the timestamp of a `is_death` or `is_discharge` event
+  and there are no `is_covid_dx` events between the timestamp of "Target Start" and the timestamp of "Target
+  End".
 
-A subtree in the hierarchy of constraint windows that can be realized in a real patient's record will have one
-most recent ancestor node whose timestamp will correspond to the timestamp of a real event in the patient
-record in any realized subtree. This node is called the "anchor" of the subtree. For example, in any
-realization of the tree above, the admission event matched by the "trigger" node will be the anchor of the
-realization of the `Gap end -> ...` subtree, as the gap end is defined via a relative time gap to the
-admission event and thus will not guaranteeably correspond to an extant event in the patient record, whereas
-the admission event of the `Trigger` node will always exist in the dataset proper. The notion of an _anchor_
-will be useful in the algorithm proper as it will correspond to rows form which we will run database temporal
-group-bys and event-based aggregations to extract the windows that satisfy the constraints of the subtree.
+##### An "Anchor" or "Anchor Event" of a Subtree
+
+A subtree in the hierarchy of constraint windows that can be _realized_ in a real patient's record will have
+one **most recent** ancestor node whose timestamp will correspond to the timestamp of a real event in the
+patient record. This node is called the "anchor" of the subtree. For example, in any realization of the tree
+above, the admission event matched by the "Trigger" node will be the anchor of the realization of the
+`Gap End -> Target Start -> Target End` subtree, as the Gap End is defined via a relative time gap to the
+admission event and thus cannot be guaranteed to correspond to an extant event in the patient record. However,
+the admission event of the `Trigger` node will always correspond to an extant event in the patient record and
+exist in the dataset proper.
+
+This notion of an _anchor_ will be useful in the algorithm as it will correspond to rows from which we will
+perform temporal and event-based aggregations to determine whether windows satisfy subtree constraints.
+
+<!-- I think would be helpful to give the vertical tree node_A node_B example here to help visualize, else difficult to understand for the first time -->
 
 ## Algorithm Design
 
