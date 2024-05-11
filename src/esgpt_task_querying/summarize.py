@@ -269,15 +269,15 @@ def aggregate_event_bound_window(
         ...     "subject_id": [1, 1, 1, 2, 2, 2, 2, 2],
         ...     "timestamp": [
         ...         # Subject 1
-        ...         datetime(year=1989, month=12, day=1, hour=12, minute=3),
-        ...         datetime(year=1989, month=12, day=3, hour=13, minute=14),
-        ...         datetime(year=1989, month=12, day=5, hour=15, minute=17),
+        ...         datetime(year=1989, month=12, day=1,  hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=3,  hour=13, minute=14),
+        ...         datetime(year=1989, month=12, day=5,  hour=15, minute=17),
         ...         # Subject 2
-        ...         datetime(year=1989, month=12, day=2, hour=12, minute=3),
-        ...         datetime(year=1989, month=12, day=4, hour=13, minute=14),
-        ...         datetime(year=1989, month=12, day=6, hour=15, minute=17),
-        ...         datetime(year=1989, month=12, day=8, hour=15, minute=17),
-        ...         datetime(year=1989, month=12, day=10, hour=15, minute=17),
+        ...         datetime(year=1989, month=12, day=2,  hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=4,  hour=13, minute=14),
+        ...         datetime(year=1989, month=12, day=6,  hour=15, minute=17),
+        ...         datetime(year=1989, month=12, day=8,  hour=16, minute=22),
+        ...         datetime(year=1989, month=12, day=10, hour=3,  minute=7),
         ...     ],
         ...     "is_A": [1, 0, 1, 1, 1, 1, 0, 0],
         ...     "is_B": [0, 1, 0, 1, 0, 1, 1, 1],
@@ -286,9 +286,9 @@ def aggregate_event_bound_window(
         >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", True, timedelta(days=-1)))
         Traceback (most recent call last):
             ...
-        ValueError: offset must be non-negative. Got -1 days, 0:00:00.
+        ValueError: offset must be non-negative. Got -1 day, 0:00:00
         >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", True, None))
-        shape: (8, 5)
+        shape: (8, 6)
         ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
         │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
@@ -304,7 +304,7 @@ def aggregate_event_bound_window(
         │ 2          ┆ 1989-12-10 03:07:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
         >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", False, None))
-        shape: (8, 5)
+        shape: (8, 6)
         ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
         │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
@@ -320,7 +320,7 @@ def aggregate_event_bound_window(
         │ 2          ┆ 1989-12-10 03:07:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
         >>> aggregate_event_bound_window(df, ToEventWindowBounds(False, "is_C", True, None))
-        shape: (8, 5)
+        shape: (8, 6)
         ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
         │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
@@ -335,8 +335,8 @@ def aggregate_event_bound_window(
         │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-10 03:07:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", True, timedelta(days=3))
-        shape: (8, 5)
+        >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", True, timedelta(days=3)))
+        shape: (8, 6)
         ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
         │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
@@ -355,11 +355,85 @@ def aggregate_event_bound_window(
     if not isinstance(endpoint_expr, ToEventWindowBounds):
         endpoint_expr = ToEventWindowBounds(*endpoint_expr)
 
-    left_inclusive, end_event, right_inclusive, offset = endpoint_expr
+    predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
 
-    [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
+    is_end_event = pl.col(endpoint_expr.end_event) > 0
+    timestamp_at_next_end = (
+        pl.when(is_end_event)
+        .then(pl.col("timestamp"))
+        .shift(-1)
+        .fill_null(strategy="backward")
+        .alias("timestamp_at_next_end")
+    )
 
-    raise NotImplementedError("Not yet implemented.")
+    cumsum_cols = {c: pl.col(c).cum_sum().alias(f"{c}_cumsum") for c in predicate_cols}
+
+    if endpoint_expr.right_inclusive:
+        cumsum_at_next_end = {
+            c: (
+                pl.when(is_end_event)
+                .then(expr)
+                .shift(-1)
+                .fill_null(strategy="backward")
+                .alias(f"{c}_cumsum_at_next_end")
+            )
+            for c, expr in cumsum_cols.items()
+        }
+    else:
+        cumsum_at_next_end = {
+            c: (
+                pl.when(is_end_event)
+                .then(expr - pl.col(c))
+                .shift(-1)
+                .fill_null(strategy="backward")
+                .alias(f"{c}_cumsum_at_next_end")
+            )
+            for c, expr in cumsum_cols.items()
+        }
+
+    def summarize_predicate(predicate: str) -> pl.Expr:
+        cumsum_col = pl.col(f"{predicate}_cumsum")
+        cumsum_at_next_end_col = pl.col(f"{predicate}_cumsum_at_next_end")
+        raw_val_col = pl.col(predicate)
+
+        if endpoint_expr.offset == timedelta(0):
+            if endpoint_expr.left_inclusive:
+                out_val = cumsum_at_next_end_col - cumsum_col + raw_val_col
+            else:
+                out_val = cumsum_at_next_end_col - cumsum_col
+        else:
+            raise NotImplementedError
+
+        return out_val.fill_null(0).alias(predicate)
+
+    aggd_df_no_offset = (
+        predicates_df.group_by("subject_id", maintain_order=True)
+        .agg(
+            "timestamp",
+            timestamp_at_next_end,
+            *cumsum_cols.values(),
+            *cumsum_at_next_end.values(),
+            *predicate_cols,
+        )
+        .explode(
+            "timestamp",
+            "timestamp_at_next_end",
+            *(f"{c}_cumsum" for c in predicate_cols),
+            *(f"{c}_cumsum_at_next_end" for c in predicate_cols),
+            *predicate_cols,
+        )
+        .select(
+            "subject_id",
+            "timestamp",
+            pl.col("timestamp_at_next_end").alias("timestamp_at_end"),
+            *(summarize_predicate(c) for c in predicate_cols),
+        )
+    )
+
+    if endpoint_expr.offset == timedelta(0):
+        return aggd_df_no_offset
+    else:
+        raise NotImplementedError
 
 
 def summarize_temporal_window(
@@ -628,9 +702,6 @@ def summarize_event_bound_window(
         │ 2          ┆ 1989-12-10 15:17:00 ┆ 1989-12-02 12:03:00 ┆ 3    ┆ 4    ┆ 2    │
         └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
     """
-    if not isinstance(endpoint_expr, ToEventWindowBounds):
-        endpoint_expr = ToEventWindowBounds(*endpoint_expr)
-
     left_inclusive, end_event, right_inclusive, offset = endpoint_expr
 
     if not offset:

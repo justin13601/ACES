@@ -4,11 +4,12 @@ These are all simple types using named tuples so can be safely ignored by downst
 fields are passed in the correct order.
 """
 
+import dataclasses
 from datetime import timedelta
-from typing import NamedTuple
 
 
-class TemporalWindowBounds(NamedTuple):
+@dataclasses.dataclass(order=True)
+class TemporalWindowBounds:
     """Named tuple to represent temporal window bounds.
 
     Attributes:
@@ -30,7 +31,7 @@ class TemporalWindowBounds(NamedTuple):
                              right_inclusive=False,
                              offset=datetime.timedelta(seconds=3600))
         >>> left_inclusive, window_size, right_inclusive, offset = bounds
-        >>> left_inclusive
+        >>> bounds.left_inclusive
         True
         >>> window_size
         datetime.timedelta(days=1)
@@ -44,6 +45,10 @@ class TemporalWindowBounds(NamedTuple):
     window_size: timedelta
     right_inclusive: bool
     offset: timedelta | None
+
+    # Needed to make it accessible like a tuple.
+    def __iter__(self):
+        return (getattr(self, field.name) for field in dataclasses.fields(self))
 
     @property
     def polars_gp_rolling_kwargs(self) -> dict[str, str | timedelta]:
@@ -121,7 +126,8 @@ class TemporalWindowBounds(NamedTuple):
         return {"period": period, "offset": offset, "closed": closed}
 
 
-class ToEventWindowBounds(NamedTuple):
+@dataclasses.dataclass(order=True)
+class ToEventWindowBounds:
     """Named tuple to represent temporal window bounds.
 
     Attributes:
@@ -189,5 +195,9 @@ class ToEventWindowBounds(NamedTuple):
         if self.offset is None:
             self.offset = timedelta(0)
 
-        if self.offset <= timedelta(0):
+        if self.offset < timedelta(0):
             raise ValueError(f"offset must be non-negative. Got {self.offset}")
+
+    # Needed to make it accessible like a tuple.
+    def __iter__(self):
+        return (getattr(self, field.name) for field in dataclasses.fields(self))
