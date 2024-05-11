@@ -1,4 +1,2 @@
-# Overview
-
 ```{include} ../../README.md
 ```
