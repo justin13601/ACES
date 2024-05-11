@@ -4,13 +4,17 @@
 
 We will assume that we are given a dataframe `df` which details events that have happened to subjects. Each
 row in the dataframe will have a `subject_id` column which identifies the subject, and a `timestamp` column
-which identifies the time at which the event the row is describing happened. We will assume this dataframe has
-a collection of columns which describe the event in a variety of ways, limited to counting the number of times
-that certain properties hold within each row's event. We will call these additional properties/columns
-"predicates" over the events, as they can often be interpreted as boolean or count functions over the event.
+which identifies the timestamp at which the event the row is describing happened. `df` would be constructed
+to have unique `subject_id` and `timestamp` pairs.
 
-For example, we may consider a dataframe where we quantify clinical events happening to medical patients, with
-predicates `is_admission`, `is_discharge`, `is_death`, and `is_covid_dx`, looking like this:
+We will also assume this dataframe has a collection of columns which describe the event in a variety of ways.
+These columns can either have a binary value (1/0) representing whether certain properties are True/False for
+each row's event, or a count (integer) for the number of times that certain properties hold within each row's
+event. We'll call these additional properties/columns "predicates" over the events, as they can often be
+interpreted as boolean or count functions over the event.
+
+For example, we may consider a dataframe `df_clincial_events` that quantifies clinical events happening to
+patients, with predicates `is_admission`, `is_discharge`, `is_death`, and `is_covid_dx`, looking like this:
 
 | `subject_id` | `timestamp`         | `is_admission` | `is_discharge` | `is_death` | `is_covid_dx` |
 | ------------ | ------------------- | -------------- | -------------- | ---------- | ------------- |
@@ -29,28 +33,33 @@ predicates `is_admission`, `is_discharge`, `is_death`, and `is_covid_dx`, lookin
 | 3            | 2022-01-01 12:03:31 | 1              | 0              | 0          | 0             |
 | 3            | 2022-01-06 12:03:31 | 0              | 0              | 1          | 0             |
 
-In this case, we have 3 subjects, which have the respective approximate timeseries of events:
+In this case, we have 3 subjects (patients), which have the following respective approximate time series of
+events:
 
 - Subject 1 is admitted, has 3 events that don't satisfy any predicates, is discharged, dies, and has no
   further events.
-- Subject 2 is admitted, has an event that satisfies no predicate, has a covid diagnosis, dies, and has no
+- Subject 2 is admitted, has an event that satisfies no predicate, has a COVID diagnosis, dies, and has no
   further events.
-- Subject 3 is admitted, then is discharged, is admitted again, and then dies.
+- Subject 3 is admitted, then is discharged, then is admitted again, and then dies.
+
+Events that don't satisfy any predicates in this particular case could represent a variety of other events in
+the medical record, such as a lab test, a procedure, or a non-COVID diagnosis, just to name a few.
 
 Given data like this, our algorithm is designed to extract valid start and end times of "windows" within a
-subject's timeseries that satisfy certain inclusion and exclusion criteria and are defined over temporal and
+subject's time series that satisfy certain inclusion and exclusion criteria and are defined with temporal and
 event-bounded constraints. We can use this algorithm to automatically extract windows of interest from the
 record, including but not limited to data cohorts and downstream task labeled datasets for machine learning
 applications.
 
-We will specify these windows using a configuration file language that ultimately is interpreted into a tree
-structure. For example, suppose we wish to extract a dataset for prediction of in-hospital mortality from the
-data defined above, such that we wish to include data the first 24 hours of data of each hospitalization for
-input to the model, and predict whether the patient will die in the hospital, subject to the constraints that
-the admission in question must be at least 48 hours in length and that the patient must not have a covid
-diagnosis within that admission.
+We will specify these windows using a configuration file language that is ultimately interpreted into a tree
+structure. For example, suppose we wish to extract a dataset for the prediction of in-hospital mortality from
+the data defined in the above `df_clincial_events` dataframe, such that we wish to include the first 24 hours
+of data of each hospitalization as an input to a model, and predict whether the patient will die within the
+hospital. Suppose we also subject the dataset to constraints where the admission in question must be at least
+48 hours in length and that the patient must not have a COVID diagnosis within that admission.
 
-We might specify these windows as follows:
+We might then specify these windows using the defined predicates in the configuration file language as
+follows:
 
 ```yaml
 trigger: is_admission
@@ -71,12 +80,19 @@ target:
     - is_covid_dx
 ```
 
-Note that this is pseudocode, not the actual configuration language, which may look slightly different. But,
-nevertheless, we can see that this set of specifications can be realized in a "valid" form for a patient if
-there exist a set of timepoints such that within 48 hours after an admission, there are no discharges, deaths,
-or covid diagnosis events, and such that there exists a discharge or death event after the first 48 hours of
-an admission such that there are no covid diagnosis events between the end of that first 48 hours and the
-subsequent discharge or death event.
+<!-- I think should include a timeline similar to the ones on the README to visualize this -->
+
+Given that our machine learning model seeks to predict in-hospital mortality, our dataset should include both
+positive and negative samples (patients that died in the hospital and patients that didn't die). Hence, the
+`target` "window" concludes at either a `is_death` event (patients that died) or a`is_discharge` event
+(patients that didn't die).
+
+Note that this is pseudocode and not the actual configuration language, which may look slightly different.
+Nevertheless, we can see that this set of specifications can be realized in a "valid" form for a patient if
+there exist a set of time points such that, within 48 hours after an admission, there are no discharges,
+deaths, or COVID diagnoses, and that there exists a discharge or death event after the first 48 hours of
+an admission where there were no COVID diagnoses between the end of that first 48 hours and the subsequent
+discharge or death event.
 
 Note that these windows form a naturally hierarchical, tree-based structure based on their relative
 dependencies on one another. In particular, we can realize the following tree structure for the above
@@ -84,19 +100,19 @@ configuration:
 
 ```
 - Trigger
-  - Gap start (trigger)
-    - Gap end (Gap start + 48h)
-      - Target Start (Gap end)
-        - Target End (subsequent `"is_discharge"` or `"is_death"`)
+  - Gap Start (Trigger)
+    - Gap End (Gap Start + 48h)
+      - Target Start (Gap End)
+        - Target End (subsequent "is_discharge" or "is_death")
   - Input End
 ```
 
 Our algorithm will naturally rely on this hierarchical structure by performing a set of recursive database
-search operations to extract the windows that satisfy the constraints of the configuration file, recursing
+search operations to extract the windows that satisfy the constraints of the configuration file by recursing
 over each subtree to find windows that satisfy the constraints of those subtrees individually.
 
-In the rest of this document, we will detail how our algorithm to automatically extract records that meet
-these criteria works, the terminology we use to describe our algorithm (here and in the raw source code and
+In the rest of this document, we will detail how our algorithm automatically extracts records that meet
+these criteria, the terminology we use to describe our algorithm (both here and in the raw source code and
 code comments), the limitations of this algorithm and kinds of tasks it cannot express, and the true
 configuration language that we use in practice to specify these windows.
 
@@ -118,7 +134,7 @@ necessary to distinguish between the two.
 
 A "window" is just a time range capturing some portion of a subject's record. It can be inclusive or exclusive
 on either endpoint, and may or may not have endpoints corresponding to an extant event in the dataset, as
-opposed to a timepoint at which time no event occurred.
+opposed to a time point at which time no event occurred.
 
 ##### "Root" of a Subtree
 
@@ -210,10 +226,10 @@ the "target.end" node is defined as the first subsequent `"is_discharge"` or `"i
 the database that will be implemented using differences of cumulative sums within the global `predicates_df`
 dataframe. In particular, we will first construct the following three dataframes from our inputs:
 
-1. A dataframe that contains the cumultative count of all predicates seen up until each event (row) in the
+1. A dataframe that contains the cumulative count of all predicates seen up until each event (row) in the
    `predicates_df`.
 2. A dataframe that contains nulls in each row that does not correspond to a possible prospective
-   realization of a child anchor event given the edge constraints and the possible prosepctive subtree
+   realization of a child anchor event given the edge constraints and the possible prospective subtree
    anchor events and the specified offset, and contains a `True` value otherwise.
 3. A dataframe that contains nulls in each row that does not correspond to a possible prospective
    realization of this subtree's anchor event and contains a `True` value otherwise.
