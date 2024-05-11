@@ -220,25 +220,25 @@ html_theme_options = {
     "palette": [
         {"primary": "green"},
         {"accent": "green"},
-        {
-            "media": "(prefers-color-scheme: light)",
-            "scheme": "default",
-            "toggle": {
-                "icon": "material/toggle-switch-off-outline",
-                "name": "Switch to dark mode",
-            },
-        },
-        {
-            "media": "(prefers-color-scheme: dark)",
-            "scheme": "slate",
-            "toggle": {
-                "icon": "material/toggle-switch",
-                "name": "Switch to light mode",
-            },
-        },
+        # {
+        #     "media": "(prefers-color-scheme: light)",
+        #     "scheme": "default",
+        #     "toggle": {
+        #         "icon": "material/toggle-switch-off-outline",
+        #         "name": "Switch to dark mode",
+        #     },
+        # },
+        # {
+        #     "media": "(prefers-color-scheme: dark)",
+        #     "scheme": "slate",
+        #     "toggle": {
+        #         "icon": "material/toggle-switch",
+        #         "name": "Switch to light mode",
+        #     },
+        # },
     ],
-    "color_primary": "green",
-    "color_accent": "green",
+    # "color_primary": "green",
+    # "color_accent": "green",
     # Set the repo location to get a badge with stats
     "repo_url": "https://github.com/justin13601/ESGPTTaskQuerying",
     "repo_name": "ESGPTTaskQuerying",
