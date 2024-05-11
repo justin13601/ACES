@@ -23,7 +23,7 @@ maxdepth: 2
 Overview <overview>
 Usage Guide <usage>
 Sample Data Tutorial <tutorial/index>
-Configuration Reference <config>
+Algorithm & Terminology Reference <terminology>
 Module Reference <api/modules>
 License <license>
 ```
