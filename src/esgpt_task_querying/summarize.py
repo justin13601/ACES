@@ -371,6 +371,16 @@ def _aggregate_event_bound_window_with_offset(
     microsecond.
     """
 
+    time_aggd_to_subtract = aggregate_temporal_window(
+        predicates_df,
+        TemporalWindowBounds(
+            left_inclusive=False,
+            window_size=endpoint_expr.offset,
+            right_inclusive=(not endpoint_expr.left_inclusive),
+            offset=None,
+        ),
+    )
+
     predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
 
     predicates_df = (
@@ -393,7 +403,7 @@ def _aggregate_event_bound_window_with_offset(
         *(expr.alias(f"{c}_at_end") for c, expr in end_vals_for_sub.items()),
     )
 
-    return (
+    with_offset_period = (
         pl.concat(
             [
                 predicates_df.with_columns(
@@ -423,15 +433,25 @@ def _aggregate_event_bound_window_with_offset(
                 (
                     pl.col(f"{c}_at_end").fill_null(strategy="backward").over("subject_id")
                     - pl.col(f"{c}_cumsum")
-                )
-                .fill_null(0)
-                .alias(c)
+                ).alias(c)
                 for c in predicate_cols
             ),
             "is_real",
         )
         .filter("is_real")
         .drop("is_real")
+    )
+
+    return with_offset_period.join(
+        time_aggd_to_subtract,
+        on=["subject_id", "timestamp"],
+        how="left",
+        suffix="_in_offset_period",
+    ).select(
+        "subject_id",
+        "timestamp",
+        "timestamp_at_end",
+        *((pl.col(c) - pl.col(f"{c}_in_offset_period")).fill_null(0).alias(c) for c in predicate_cols),
     )
 
 
