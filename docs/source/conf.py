@@ -237,8 +237,8 @@ html_theme_options = {
             },
         },
     ],
-    # "color_primary": "",
-    # "color_accent": "",
+    "color_primary": "green",
+    "color_accent": "green",
     # Set the repo location to get a badge with stats
     "repo_url": "https://github.com/justin13601/ESGPTTaskQuerying",
     "repo_name": "ESGPTTaskQuerying",
