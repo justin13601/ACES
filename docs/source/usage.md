@@ -21,11 +21,11 @@ To extract a cohort for a particular task, you can use the `esgpt_task_querying.
 ```
 
 The `cfg` parameter must be of type `dict()`, and the `df_predicates` parameter must be of type `polars.DataFrame()`.
-Otherwise, `` {eval-rst}py:func:`esgpt_task_querying.query.query `` will raise an exception.
+Otherwise, `esgpt_task_querying.query.query()` will raise a `TypeError` exception.
 
-.. autoexception:: TypeError
+Details about the configuration language used to define the `cfg` parameter can be found in {doc}`/configuration`.
 
-For example:
+For example, assuming `cfg` and `df_predicates` are defined properly, a query can be run using:
 
 ```python
 >>> from esgpt_task_querying import query
