@@ -7,7 +7,7 @@ ______________________________________________________________________
 To use ESGPTTaskQuerying, first clone the repository and install it using pip:
 
 ```bash
-   (.venv) $ pip install .
+(.venv) $ pip install .
 ```
 
 ## Querying Tasks
@@ -21,19 +21,18 @@ To extract a cohort for a particular task, you can use the `esgpt_task_querying.
 ```
 
 The `cfg` parameter must be of type `dict()`, and the `df_predicates` parameter must be of type `polars.DataFrame()`.
-
-````{eval-rst}
----
-py:func:`esgpt_task_querying.query.query`
----
-``` Otherwise,  will raise an exception.
+Otherwise, `` {eval-rst}py:func:`esgpt_task_querying.query.query `` will raise an exception.
 
 .. autoexception:: TypeError
 
 For example:
+
 ```python
 >>> from esgpt_task_querying import query
 >>> query.query(cfg, df_predicates)
+```
+
+```
 shape: (4, 9)
 ┌───────────┬───────────┬───────────┬──────────┬──────────┬──────────┬──────────┬──────────┬───────┐
 │ subject_i ┆ trigger/t ┆ gap/times ┆ target/t ┆ input/ti ┆ gap/wind ┆ target/w ┆ input/wi ┆ label │
@@ -56,4 +55,4 @@ shape: (4, 9)
 │           ┆ 8         ┆ 9         ┆ 12       ┆ 08       ┆ ,1}      ┆ ,6}      ┆ ,2}      ┆       │
 │           ┆ 02:24:00  ┆ 02:24:00  ┆ 00:00:00 ┆ 02:22:00 ┆          ┆          ┆          ┆       │
 └───────────┴───────────┴───────────┴──────────┴──────────┴──────────┴──────────┴──────────┴───────┘
-````
+```

@@ -1,4 +1,4 @@
-# Overview of ESGPTTaskQuerying
+# Overview
 
 ```{include} ../README.md
 ```

@@ -217,7 +217,26 @@ html_theme_options = {
     # 'base_url': 'https://project.github.io/project',
     #
     # Set the color and the accent color
-    "palette": {"primary": "green", "accent": "green"},
+    "palette": [
+        {"primary": "green"},
+        {"accent": "green"},
+        {
+            "media": "(prefers-color-scheme: light)",
+            "scheme": "default",
+            "toggle": {
+                "icon": "material/toggle-switch-off-outline",
+                "name": "Switch to dark mode",
+            },
+        },
+        {
+            "media": "(prefers-color-scheme: dark)",
+            "scheme": "slate",
+            "toggle": {
+                "icon": "material/toggle-switch",
+                "name": "Switch to light mode",
+            },
+        },
+    ],
     # "color_primary": "",
     # "color_accent": "",
     # Set the repo location to get a badge with stats
