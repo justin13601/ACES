@@ -6,3 +6,4 @@ sphinx_subfigure
 nbsphinx
 myst_parser
 pypandoc
+linkify-it-py

@@ -133,6 +133,7 @@ myst_enable_extensions = [
     "deflist",
     "dollarmath",
     "html_image",
+    "linkify",
     "replacements",
     "smartquotes",
     "substitution",
