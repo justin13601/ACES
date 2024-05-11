@@ -12,37 +12,37 @@ class TemporalWindowBounds(NamedTuple):
     """Named tuple to represent temporal window bounds.
 
     Attributes:
-        start_inclusive: The start of the window, inclusive.
+        left_inclusive: The start of the window, inclusive.
         window_size: The size of the window.
-        end_inclusive: The end of the window, inclusive.
+        right_inclusive: The end of the window, inclusive.
         offset: The offset from the start of the window to the end of the window.
 
     Example:
         >>> bounds = TemporalWindowBounds(
-        ...     start_inclusive=True,
+        ...     left_inclusive=True,
         ...     window_size=timedelta(days=1),
-        ...     end_inclusive=False,
+        ...     right_inclusive=False,
         ...     offset=timedelta(hours=1)
         ... )
         >>> bounds # doctest: +NORMALIZE_WHITESPACE
-        TemporalWindowBounds(start_inclusive=True,
+        TemporalWindowBounds(left_inclusive=True,
                              window_size=datetime.timedelta(days=1),
-                             end_inclusive=False,
+                             right_inclusive=False,
                              offset=datetime.timedelta(seconds=3600))
-        >>> start_inclusive, window_size, end_inclusive, offset = bounds
-        >>> start_inclusive
+        >>> left_inclusive, window_size, right_inclusive, offset = bounds
+        >>> left_inclusive
         True
         >>> window_size
         datetime.timedelta(days=1)
-        >>> end_inclusive
+        >>> right_inclusive
         False
         >>> offset
         datetime.timedelta(seconds=3600)
     """
 
-    start_inclusive: bool
+    left_inclusive: bool
     window_size: timedelta
-    end_inclusive: bool
+    right_inclusive: bool
     offset: timedelta | None
 
     @property
@@ -51,45 +51,45 @@ class TemporalWindowBounds(NamedTuple):
 
         Examples:
             >>> TemporalWindowBounds(
-            ...     start_inclusive=True,
+            ...     left_inclusive=True,
             ...     window_size=timedelta(days=1),
-            ...     end_inclusive=True,
+            ...     right_inclusive=True,
             ...     offset=None
             ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
             {'period': datetime.timedelta(days=1),
              'offset': datetime.timedelta(0),
              'closed': 'both'}
             >>> TemporalWindowBounds(
-            ...     start_inclusive=True,
+            ...     left_inclusive=True,
             ...     window_size=timedelta(days=1),
-            ...     end_inclusive=True,
+            ...     right_inclusive=True,
             ...     offset=timedelta(hours=1)
             ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
             {'period': datetime.timedelta(days=1),
              'offset': datetime.timedelta(seconds=3600),
              'closed': 'both'}
             >>> TemporalWindowBounds(
-            ...     start_inclusive=False,
+            ...     left_inclusive=False,
             ...     window_size=timedelta(days=2),
-            ...     end_inclusive=False,
+            ...     right_inclusive=False,
             ...     offset=timedelta(minutes=1)
             ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
             {'period': datetime.timedelta(days=2),
              'offset': datetime.timedelta(seconds=60),
              'closed': 'none'}
             >>> TemporalWindowBounds(
-            ...     start_inclusive=True,
+            ...     left_inclusive=True,
             ...     window_size=timedelta(days=2),
-            ...     end_inclusive=False,
+            ...     right_inclusive=False,
             ...     offset=timedelta(minutes=1)
             ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
             {'period': datetime.timedelta(days=2),
              'offset': datetime.timedelta(seconds=60),
              'closed': 'left'}
             >>> TemporalWindowBounds(
-            ...     start_inclusive=False,
+            ...     left_inclusive=False,
             ...     window_size=timedelta(days=2),
-            ...     end_inclusive=True,
+            ...     right_inclusive=True,
             ...     offset=timedelta(minutes=1)
             ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
             {'period': datetime.timedelta(days=2),
@@ -101,11 +101,11 @@ class TemporalWindowBounds(NamedTuple):
         else:
             offset = self.offset
 
-        if self.start_inclusive and self.end_inclusive:
+        if self.left_inclusive and self.right_inclusive:
             closed = "both"
-        elif self.start_inclusive:
+        elif self.left_inclusive:
             closed = "left"
-        elif self.end_inclusive:
+        elif self.right_inclusive:
             closed = "right"
         else:
             closed = "none"
@@ -125,37 +125,69 @@ class ToEventWindowBounds(NamedTuple):
     """Named tuple to represent temporal window bounds.
 
     Attributes:
-        start_inclusive: The start of the window, inclusive.
+        left_inclusive: The start of the window, inclusive.
         end_event: The string name of the event that bounds the end of this window. Operationally, this is
             interpreted as the string name of the column which contains a positive value if the row
             corresponds to the end event of this window and a zero otherwise.
-        end_inclusive: The end of the window, inclusive.
+        right_inclusive: The end of the window, inclusive.
         offset: The offset from the start of the window to the end of the window.
+
+    Raises:
+        ValueError: If `end_event` is an empty string.
+        ValueError: If `offset` is negative.
 
     Example:
         >>> bounds = ToEventWindowBounds(
-        ...     start_inclusive=True,
+        ...     left_inclusive=True,
         ...     end_event="foo",
-        ...     end_inclusive=False,
+        ...     right_inclusive=False,
         ...     offset=timedelta(hours=1)
         ... )
         >>> bounds # doctest: +NORMALIZE_WHITESPACE
-        ToEventWindowBounds(start_inclusive=True,
+        ToEventWindowBounds(left_inclusive=True,
                             end_event='foo',
-                            end_inclusive=False,
+                            right_inclusive=False,
                             offset=datetime.timedelta(seconds=3600))
-        >>> start_inclusive, end_event, end_inclusive, offset = bounds
-        >>> start_inclusive
+        >>> left_inclusive, end_event, right_inclusive, offset = bounds
+        >>> left_inclusive
         True
         >>> end_event
         'foo'
-        >>> end_inclusive
+        >>> right_inclusive
         False
         >>> offset
         datetime.timedelta(seconds=3600)
+        >>> bounds = ToEventWindowBounds(
+        ...     left_inclusive=True,
+        ...     end_event="",
+        ...     right_inclusive=False,
+        ...     offset=timedelta(hours=1)
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: end_event must be a non-empty string
+        >>> bounds = ToEventWindowBounds(
+        ...     left_inclusive=True,
+        ...     end_event="foo",
+        ...     right_inclusive=False,
+        ...     offset=timedelta(hours=-1)
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: offset must be non-negative. Got -1 day, 23:00:00
     """
 
-    start_inclusive: bool
+    left_inclusive: bool
     end_event: str
-    end_inclusive: bool
+    right_inclusive: bool
     offset: timedelta | None
+
+    def __post_init__(self):
+        if self.end_event == "":
+            raise ValueError("end_event must be a non-empty string")
+
+        if self.offset is None:
+            self.offset = timedelta(0)
+
+        if self.offset <= timedelta(0):
+            raise ValueError(f"offset must be non-negative. Got {self.offset}")

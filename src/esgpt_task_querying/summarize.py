@@ -13,9 +13,11 @@ PRED_CNT_TYPE = pl.UInt16
 
 def aggregate_temporal_window(
     predicates_df: pl.LazyFrame | pl.DataFrame,
-    endpoint_expr: TemporalWindowBounds | tuple[bool, timedelta, bool, timedelta],
+    endpoint_expr: TemporalWindowBounds | tuple[bool, timedelta, bool, timedelta | None],
 ) -> pl.LazyFrame | pl.DataFrame:
     """Aggregates the predicates dataframe into the specified temporal buckets.
+
+    TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to add extra tests.
 
     Args:
         predicates_df: The dataframe containing the predicates. The input must be sorted in ascending order by
@@ -41,40 +43,43 @@ def aggregate_temporal_window(
         dataframe, but the values in the predicate columns of the output dataframe will be the sum of the
         values in the predicate columns of the input dataframe from the timestamp of the event in the row of
         the output dataframe spanning the specified temporal window.
+    Returns:
+        The dataframe that has been aggregated in a temporal manner according to the specified
+        ``endpoint_expr``. This aggregation means the following:
+          - The output dataframe will contain the same number of rows and be in the same order (in terms of
+            ``subject_id`` and ``timestamp``) as the input dataframe.
+          - The column names will also be the same as the input dataframe.
+          - The values in the predicate columns of the output dataframe will contain the sum of the values in
+            the predicate columns of the input dataframe from the timestamp of the event in any given row plus
+            the specified offset (``endpoint_expr[3]``) to the timestamp of the given row plus the offset plus
+            the window size (``endpoint_expr[1]``), less either the start or end of the window pending the
+            ``left_inclusive`` (``endpoint_expr[0]``) and ``right_inclusive`` (``endpoint_expr[2]``) values.
+            The sum of the predicate columns over the rows in the original dataframe spanning each row's
+            ``timestamp + offset`` to each row's ``timestamp + offset + window_size`` should be exactly equal
+            to the values in the predicate columns of the output dataframe (again, less the left or right
+            inclusive values as specified).
 
     Examples:
         >>> import polars as pl
         >>> _ = pl.Config.set_tbl_width_chars(100)
         >>> from datetime import datetime, timedelta
-        >>> predicates_df = pl.DataFrame(
-        ...     {
-        ...         "subject_id": [1, 1, 1, 1, 2, 2],
-        ...         "timestamp": [
-        ...             # Subject 1
-        ...             datetime(year=1989, month=12, day=1, hour=12, minute=3),
-        ...             datetime(year=1989, month=12, day=2, hour=5,  minute=17),
-        ...             datetime(year=1989, month=12, day=2, hour=12, minute=3),
-        ...             datetime(year=1989, month=12, day=6, hour=11, minute=0),
-        ...             # Subject 2
-        ...             datetime(year=1989, month=12, day=1, hour=13, minute=14),
-        ...             datetime(year=1989, month=12, day=3, hour=15, minute=17),
-        ...         ],
-        ...         "is_A": [1, 0, 1, 0, 0, 0],
-        ...         "is_B": [0, 1, 0, 1, 1, 0],
-        ...         "is_C": [1, 1, 0, 0, 1, 0],
-        ...     },
-        ...     schema = {
-        ...         'subject_id': pl.Int64,
-        ...         'timestamp': pl.Datetime,
-        ...         'is_A': pl.UInt16,
-        ...         'is_B': pl.UInt16,
-        ...         'is_C': pl.UInt16
-        ...     },
-        ... )
-        >>> aggregate_temporal_window(
-        ...     predicates_df,
-        ...     TemporalWindowBounds(True, timedelta(days=7), True, None),
-        ... )
+        >>> df = pl.DataFrame({
+        ...     "subject_id": [1, 1, 1, 1, 2, 2],
+        ...     "timestamp": [
+        ...         # Subject 1
+        ...         datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=2, hour=5,  minute=17),
+        ...         datetime(year=1989, month=12, day=2, hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=6, hour=11, minute=0),
+        ...         # Subject 2
+        ...         datetime(year=1989, month=12, day=1, hour=13, minute=14),
+        ...         datetime(year=1989, month=12, day=3, hour=15, minute=17),
+        ...     ],
+        ...     "is_A": [1, 0, 1, 0, 0, 0],
+        ...     "is_B": [0, 1, 0, 1, 1, 0],
+        ...     "is_C": [1, 1, 0, 0, 1, 0],
+        ... })
+        >>> aggregate_temporal_window(df, TemporalWindowBounds(True, timedelta(days=7), True, None))
         shape: (6, 5)
         ┌────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
@@ -88,10 +93,7 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(
-        ...     predicates_df,
-        ...     TemporalWindowBounds(True, timedelta(days=1), True, timedelta(days=0)),
-        ... )
+        >>> aggregate_temporal_window(df, (True, timedelta(days=1), True, timedelta(days=0)))
         shape: (6, 5)
         ┌────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
@@ -105,10 +107,7 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(
-        ...     predicates_df,
-        ...     TemporalWindowBounds(True, timedelta(days=1), False, timedelta(days=0)),
-        ... )
+        >>> aggregate_temporal_window(df, (True, timedelta(days=1), False, timedelta(days=0)))
         shape: (6, 5)
         ┌────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
@@ -122,10 +121,7 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(
-        ...     predicates_df,
-        ...     TemporalWindowBounds(False, timedelta(days=1), False, timedelta(days=0)),
-        ... )
+        >>> aggregate_temporal_window(df, (False, timedelta(days=1), False, timedelta(days=0)))
         shape: (6, 5)
         ┌────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
@@ -139,10 +135,7 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(
-        ...     predicates_df,
-        ...     TemporalWindowBounds(False, timedelta(days=-1), False, timedelta(days=0)),
-        ... )
+        >>> aggregate_temporal_window(df, (False, timedelta(days=-1), False, timedelta(days=0)))
         shape: (6, 5)
         ┌────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
@@ -156,10 +149,7 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(
-        ...     predicates_df,
-        ...     TemporalWindowBounds(False, timedelta(hours=12), False, timedelta(hours=12)),
-        ... )
+        >>> aggregate_temporal_window(df, (False, timedelta(hours=12), False, timedelta(hours=12)))
         shape: (6, 5)
         ┌────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
@@ -173,14 +163,11 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> # Note that start_inclusive and end_inclusive are relative to the temporal ordering of the window
-        >>> # and not the timestamp of the row. E.g., if start_inclusive is False, the window will not include
+        >>> # Note that left_inclusive and right_inclusive are relative to the temporal ordering of the window
+        >>> # and not the timestamp of the row. E.g., if left_inclusive is False, the window will not include
         >>> # the earliest event in the aggregation window, regardless of whether that is earlier than the
         >>> # timestamp of the row.
-        >>> aggregate_temporal_window(
-        ...     predicates_df,
-        ...     TemporalWindowBounds(False, timedelta(days=-1), True, timedelta(days=1)),
-        ... )
+        >>> aggregate_temporal_window(df, (False, timedelta(days=-1), True, timedelta(days=1)))
         shape: (6, 5)
         ┌────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
@@ -194,10 +181,7 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(
-        ...     predicates_df,
-        ...     TemporalWindowBounds(True, timedelta(days=-1), False, timedelta(days=1)),
-        ... )
+        >>> aggregate_temporal_window(df, (True, timedelta(days=-1), False, timedelta(days=1)))
         shape: (6, 5)
         ┌────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
@@ -226,6 +210,156 @@ def aggregate_temporal_window(
         .agg(*[pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols])
         .sort(by=["subject_id", "timestamp"])
     )
+
+
+def aggregate_event_bound_window(
+    predicates_df: pl.LazyFrame | pl.DataFrame,
+    endpoint_expr: ToEventWindowBounds | tuple[bool, str, bool, timedelta | None],
+) -> pl.LazyFrame | pl.DataFrame:
+    """Aggregates ``predicates_df`` between each successive row and the next per-subject matching event.
+
+    TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to test this function.
+
+    Args:
+        predicates_df: The dataframe containing the predicates. The input must be sorted in ascending order by
+            timestamp within each subject group. It must contain the following columns:
+              - A column ``subject_id`` which contains the subject ID.
+              - A column ``timestamp`` which contains the timestamp at which the event contained in any given
+                row occurred.
+              - A set of "predicate" columns that contain counts of the number of times a given predicate
+                is satisfied in the event contained in any given row.
+        endpoint_expr: The expression defining the event bound window endpoints. Can be specified as a tuple
+            or a ToEventWindowBounds object, which is just a named tuple of the expected form. Said expected
+            form is as follows:
+              - The first element is a boolean indicating whether the start of the window is inclusive.
+              - The second element is a string indicating the name of the column in which non-zero counts
+                indicate the event is a valid "end event" of the window.
+              - The third element is a boolean indicating whether the end of the window is inclusive.
+              - The fourth element is a timedelta object indicating the offset from the timestamp of the row
+                to the start of the window. The offset here can _only_ be positive.
+
+    Returns:
+        The dataframe that has been aggregated in an event bound manner according to the specified
+        ``endpoint_expr``. This aggregation means the following:
+          - The output dataframe will contain the same number of rows and be in the same order (in terms of
+            ``subject_id`` and ``timestamp``) as the input dataframe.
+          - The column names will also be the same as the input dataframe, plus there will be one additional
+            column, ``timestamp_at_end`` that contains the timestamp of the end of the aggregation window for
+            each row (or null if no such aggregation window exists).
+          - The values in the predicate columns of the output dataframe will contain the sum of the values in
+            the predicate columns of the input dataframe from the timestamp of the event in any given row plus
+            the specified offset (``endpoint_expr[3]``) to the timestamp of the next row for that subject in
+            the input dataframe such that the specified event predicate (``endpoint_expr[1]``) has a value
+            greater than zero for that patient, less either the start or end of the window pending the
+            ``left_inclusive`` (``endpoint_expr[0]``) and ``right_inclusive`` (``endpoint_expr[2]``) values.
+            If there is no valid "next row" for a given event, the values in the predicate columns of the
+            output dataframe will be 0, as the sum of an empty set is 0.
+            The sum of the predicate columns over the rows in the original dataframe spanning each row's
+            ``timestamp + offset`` to each row's ``timestamp_at_end`` should be exactly equal to the values in
+            the predicate columns of the output dataframe.
+
+    Raises:
+        ValueError: If the offset is negative.
+
+    Examples:
+        >>> import polars as pl
+        >>> _ = pl.Config.set_tbl_width_chars(100)
+        >>> from datetime import datetime
+        >>> df = pl.DataFrame({
+        ...     "subject_id": [1, 1, 1, 2, 2, 2, 2, 2],
+        ...     "timestamp": [
+        ...         # Subject 1
+        ...         datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=3, hour=13, minute=14),
+        ...         datetime(year=1989, month=12, day=5, hour=15, minute=17),
+        ...         # Subject 2
+        ...         datetime(year=1989, month=12, day=2, hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=4, hour=13, minute=14),
+        ...         datetime(year=1989, month=12, day=6, hour=15, minute=17),
+        ...         datetime(year=1989, month=12, day=8, hour=15, minute=17),
+        ...         datetime(year=1989, month=12, day=10, hour=15, minute=17),
+        ...     ],
+        ...     "is_A": [1, 0, 1, 1, 1, 1, 0, 0],
+        ...     "is_B": [0, 1, 0, 1, 0, 1, 1, 1],
+        ...     "is_C": [0, 1, 0, 0, 0, 1, 0, 1],
+        ... })
+        >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", True, timedelta(days=-1)))
+        Traceback (most recent call last):
+            ...
+        ValueError: offset must be non-negative. Got -1 days, 0:00:00.
+        >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", True, None))
+        shape: (8, 5)
+        ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-03 13:14:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ 1989-12-06 15:17:00 ┆ 3    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-10 03:07:00 ┆ 1    ┆ 3    ┆ 2    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", False, None))
+        shape: (8, 5)
+        ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-03 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-10 03:07:00 ┆ 1    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 0    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> aggregate_event_bound_window(df, ToEventWindowBounds(False, "is_C", True, None))
+        shape: (8, 5)
+        ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", True, timedelta(days=3))
+        shape: (8, 5)
+        ┌────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ 1989-12-06 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+    """
+    if not isinstance(endpoint_expr, ToEventWindowBounds):
+        endpoint_expr = ToEventWindowBounds(*endpoint_expr)
+
+    left_inclusive, end_event, right_inclusive, offset = endpoint_expr
+
+    [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
+
+    raise NotImplementedError("Not yet implemented.")
 
 
 def summarize_temporal_window(
@@ -497,7 +631,7 @@ def summarize_event_bound_window(
     if not isinstance(endpoint_expr, ToEventWindowBounds):
         endpoint_expr = ToEventWindowBounds(*endpoint_expr)
 
-    st_inclusive, end_event, end_inclusive, offset = endpoint_expr
+    left_inclusive, end_event, right_inclusive, offset = endpoint_expr
 
     if not offset:
         offset = timedelta(days=0)
@@ -543,14 +677,14 @@ def summarize_event_bound_window(
         ],
     )
 
-    # st_inclusive and end_inclusive handling
-    if st_inclusive:
+    # left_inclusive and right_inclusive handling
+    if left_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
             "subject_id",
             "timestamp",
             *[(pl.col(f"{c}_final") + pl.col(f"{c}_at_anchor")) for c in predicate_cols],
         )
-    if not end_inclusive:
+    if not right_inclusive:
         cumsum_anchor_child = cumsum_anchor_child.with_columns(
             "subject_id",
             "timestamp",
