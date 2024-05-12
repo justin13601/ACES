@@ -6,6 +6,9 @@ import polars as pl
 
 from .types import PRED_CNT_TYPE, TemporalWindowBounds, ToEventWindowBounds
 
+START_OF_RECORD_KEY = "_RECORD_START"
+# The key used in the endpoint expression to indicate the window should be aggregated to the record start.
+
 
 def aggregate_temporal_window(
     predicates_df: pl.DataFrame,
@@ -44,7 +47,10 @@ def aggregate_temporal_window(
         ``endpoint_expr``. This aggregation means the following:
           - The output dataframe will contain the same number of rows and be in the same order (in terms of
             ``subject_id`` and ``timestamp``) as the input dataframe.
-          - The column names will also be the same as the input dataframe.
+          - The column names will also be the same as the input dataframe, plus there will be two additional
+            column, ``timestamp_at_end`` that contains the timestamp of the end of the aggregation window for
+            each row (or null if no such aggregation window exists) and ``timestamp_at_start`` that contains
+            the timestamp at the start of the aggregation window corresponding to the row.
           - The values in the predicate columns of the output dataframe will contain the sum of the values in
             the predicate columns of the input dataframe from the timestamp of the event in any given row plus
             the specified offset (``endpoint_expr[3]``) to the timestamp of the given row plus the offset plus
@@ -221,7 +227,7 @@ def aggregate_event_bound_window(
     predicates_df: pl.DataFrame,
     endpoint_expr: ToEventWindowBounds | tuple[bool, str, bool, timedelta | None],
 ) -> pl.DataFrame:
-    """Aggregates ``predicates_df`` between each successive row and the next per-subject matching event.
+    """Aggregates ``predicates_df`` between each row plus an offset and the next per-subject matching event.
 
     TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to test this function.
 
@@ -248,9 +254,10 @@ def aggregate_event_bound_window(
         ``endpoint_expr``. This aggregation means the following:
           - The output dataframe will contain the same number of rows and be in the same order (in terms of
             ``subject_id`` and ``timestamp``) as the input dataframe.
-          - The column names will also be the same as the input dataframe, plus there will be one additional
+          - The column names will also be the same as the input dataframe, plus there will be two additional
             column, ``timestamp_at_end`` that contains the timestamp of the end of the aggregation window for
-            each row (or null if no such aggregation window exists).
+            each row (or null if no such aggregation window exists) and ``timestamp_at_start`` that contains
+            the timestamp at the start of the aggregation window corresponding to the row.
           - The values in the predicate columns of the output dataframe will contain the sum of the values in
             the predicate columns of the input dataframe from the timestamp of the event in any given row plus
             the specified offset (``endpoint_expr[3]``) to the timestamp of the next row for that subject in
@@ -549,3 +556,621 @@ def _aggregate_event_bound_window_no_offset(
             *(summarize_predicate(c) for c in predicate_cols),
         )
     )
+
+
+def boolean_expr_bound_sum(
+    df: pl.DataFrame,
+    boundary_expr: pl.Expr,
+    mode: str,
+    closed: str,
+    offset: timedelta = timedelta(0),
+) -> pl.DataFrame:
+    """Sums all columns of ``df`` between each row plus an offset and the next per-subject satisfying event.
+
+    TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to test this function.
+
+    Performs a boolean-expression-bounded summation over the columns of ``df``. The logic of this is as
+    follows.
+      - If ``mode`` is ``bound_to_row``, then that means that the _left_ endpoint of the
+        window must correspond to an instance where ``boundary_expr`` is `True` and the _right_ endpoint will
+        correspond to a row in the dataframe.
+      - If ``mode`` is ``row_to_bound``, then that means that the _right_ endpoint of the
+        window must correspond to an instance where ``boundary_expr`` is `True` and the _left_ endpoint will
+        correspond to a row in the dataframe.
+      - If ``closed`` is ``'none'``, then neither the associated left row endpoint nor the associated right
+        row endpoint will be included in the summation.
+      - If ``closed`` is ``'both'``, then both the associated left row endpoint and the associated right
+        row endpoint will be included in the summation.
+      - If ``closed`` is ``'left'``, then only the associated left row endpoint will be included in the
+        summation.
+      - If ``closed`` is ``'right'``, then only the associated right row endpoint will be included in the
+        summation.
+      - The output dataframe will have the same number of rows and order as the input dataframe. Each row will
+        correspond to the aggregation over the matching window that uses that row as the "row" side of the
+        terminating aggregation (regardless of whether that corresponds to the left or the right endpoint, and
+        regardless of whether that endpoint would actually be included in the calculation based on
+        ``closed``). The associated ``boundary_expr`` side of the endpoint will be the nearest possible
+        ``boundary_expr`` endpoint that produces a non-empty set of rows over which to aggregate. Note that
+        this may depend on the value of ``closed`` -- e.g., a row with ``boundary_expr`` being `True` can
+        produce a one-element set of rows to aggregate if ``closed`` is ``'both'``, but this is not possible
+        if ``closed`` is something else, and in that case that same row may instead rely on a different row to
+        fill its ``boundary_expr`` endpoint when evaluated as a "row endpoint" during calculation.
+      - Offset further modifies this logic by applying a temporal offset of fixed size to the "row" endpoint.
+        All other logic stays the same.
+
+
+    In particular, suppose that we have following rows and boolean boundary expression evaluations (for a
+    single subject):
+    ```
+    Rows:                  [0,      1,      2,      3,      4,    5,      6]
+    Boundary Expression:   [False,  True,   False,  True,   True, False,  False]
+    ```
+    Then, we would aggregate the following rows under the following specified conditions:
+    ```
+    mode         | closed | aggregate_groups
+    bound_to_row |  both  | [],     [1],    [1, 2], [3],    [4],  [4, 5], [4, 5, 6]
+    bound_to_row |  left  | [],     [],     [1],    [1, 2], [3],  [4],    [4, 5]
+    bound_to_row |  right | [],     [],     [2],    [2, 3], [4],  [5],    [5, 6]
+    bound_to_row |  none  | [],     [],     [],     [2],    [],   [],     [5]
+    -------------|--------|------------------------------------------------------
+    row_to_bound |  both  | [0, 1], [1],    [2, 3], [3],    [4],  [],     []
+    row_to_bound |  left  | [0],    [],     [2],    [],     [],   [],     []
+    row_to_bound |  right | [1],    [2, 3], [3],    [4],    [],   [],     []
+    row_to_bound |  none  | [],     [2],    [],     [],     [],   [],     []
+    ```
+
+    How to think about this? the ``closed`` parameter controls where we put the endpoints to merge for our
+    bounds. Consider the case accented with ** above, where we have the row being row 1 (indexing from 0), we
+    are in a ``row_to_bound`` setting, and we have ``closed = "none"``. For this, as the left endpoint (here
+    the row, as we are in ``row_to_bound`` is not included, so our boundary on the left is between row 2 and
+    3. Our boundary on the right is just to the left of the next row which has the True boolean value. In this
+    case, that means between row 2 and 3 (as row 1 is to the left of our left endpoint). In contrast, if
+    closed were ``"left"``, then row 1 would be a possible bound row to use on the right, and thus by virtue
+    of our right endpoint being open, we would include no rows.
+
+    Args:
+        df: The dataframe to be aggregated. The input must be sorted in ascending order by
+            timestamp within each subject group. It must contain the following columns:
+              - A column ``subject_id`` which contains the subject ID.
+              - A column ``timestamp`` which contains the timestamp at which the event contained in any given
+                row occurred.
+              - A set of other columns that will be summed over the specified windows.
+        boundary_expr: A boolean expression which can be evaluated over the passed dataframe, and defines rows
+            that can serve as valid left or right boundaries for the aggregation step. The precise window over
+            which the dataframe will be aggregated will depend on ``mode`` and ``closed``. See above for an
+            explanation of the various configurations possible.
+        mode:
+        closed:
+        offset:
+
+    Returns:
+        The dataframe that has been aggregated in an event bound manner according to the specified
+        ``endpoint_expr``. This aggregation means the following:
+          - The output dataframe will contain the same number of rows and be in the same order (in terms of
+            ``subject_id`` and ``timestamp``) as the input dataframe.
+          - The column names will also be the same as the input dataframe, plus there will be two additional
+            column, ``timestamp_at_end`` that contains the timestamp of the end of the aggregation window for
+            each row (or null if no such aggregation window exists) and ``timestamp_at_start`` that contains
+            the timestamp at the start of the aggregation window corresponding to the row.
+          - The values in the predicate columns of the output dataframe will contain the sum of the values
+            over the permissible row ranges given the input parameters. See above for an explanation.
+
+    Examples:
+        >>> import polars as pl
+        >>> _ = pl.Config.set_tbl_width_chars(150)
+        >>> from datetime import datetime
+        >>> df = pl.DataFrame({
+        ...     "subject_id": [1, 1, 1, 2, 2, 2, 2, 2],
+        ...     "timestamp": [
+        ...         # Subject 1
+        ...         datetime(year=1989, month=12, day=1,  hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=3,  hour=13, minute=14), # HAS EVENT BOUND
+        ...         datetime(year=1989, month=12, day=5,  hour=15, minute=17),
+        ...         # Subject 2
+        ...         datetime(year=1989, month=12, day=2,  hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=4,  hour=13, minute=14),
+        ...         datetime(year=1989, month=12, day=6,  hour=15, minute=17), # HAS EVENT BOUND
+        ...         datetime(year=1989, month=12, day=8,  hour=16, minute=22),
+        ...         datetime(year=1989, month=12, day=10, hour=3,  minute=7),  # HAS EVENT BOUND
+        ...     ],
+        ...     "idx":  [0, 1, 2, 3, 4, 5, 6, 7],
+        ...     "is_A": [1, 0, 1, 1, 1, 1, 0, 0],
+        ...     "is_B": [0, 1, 0, 1, 0, 1, 1, 1],
+        ...     "is_C": [0, 1, 0, 0, 0, 1, 0, 1],
+        ... })
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "bound_to_row",
+        ...     "both",
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "bound_to_row",
+        ...     "none",
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 0    ┆ 1    ┆ 0    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 2    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        TODO: HERE AND BELOW!!!
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "bound_to_row",
+        ...     "left",
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "bound_to_row",
+        ...     "right",
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "row_to_bound",
+        ...     "both",
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "row_to_bound",
+        ...     "none",
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "row_to_bound",
+        ...     "left",
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "row_to_bound",
+        ...     "right",
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> #### WITH OFFSET ####
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "bound_to_row",
+        ...     "both",
+        ...     offset = timedelta(days=3),
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "bound_to_row",
+        ...     "none",
+        ...     offset = timedelta(days=-3),
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 0    ┆ 1    ┆ 0    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 2    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "bound_to_row",
+        ...     "left",
+        ...     offset = timedelta(days=3),
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "bound_to_row",
+        ...     "right",
+        ...     offset = timedelta(days=-3),
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "row_to_bound",
+        ...     "both",
+        ...     offset = timedelta(days=3),
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "row_to_bound",
+        ...     "none",
+        ...     offset = timedelta(days=-3),
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "row_to_bound",
+        ...     "left",
+        ...     offset = timedelta(days=3),
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> boolean_expr_bound_sum(
+        ...     df,
+        ...     pl.col("idx").is_in([1, 4, 7]),
+        ...     "row_to_bound",
+        ...     "right",
+        ...     offset = timedelta(days=-3),
+        ... ).drop("idx")
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+    """
+    if mode not in ("bound_to_row", "row_to_bound"):
+        raise ValueError(f"mode {mode} invalid!")
+    if closed not in ("both", "none", "left", "right"):
+        raise ValueError(f"closed {closed} invalid!")
+
+    if offset != timedelta(0):
+        if offset > timedelta(0):
+            left_inclusive = False
+            if mode == "row_to_bound":
+                if closed in ("left", "both"):
+                    right_inclusive = False
+                else:
+                    right_inclusive = True
+            else:
+                if closed in ("right", "both"):
+                    right_inclusive = True
+                else:
+                    right_inclusive = False
+        else:
+            right_inclusive = True
+            if mode == "row_to_bound":
+                if closed in ("left", "both"):
+                    left_inclusive = True
+                else:
+                    left_inclusive = False
+            else:
+                if closed in ("right", "both"):
+                    left_inclusive = True
+                else:
+                    left_inclusive = False
+
+        aggd_over_offset = aggregate_temporal_window(
+            df,
+            TemporalWindowBounds(
+                left_inclusive=left_inclusive,
+                window_size=offset,
+                right_inclusive=right_inclusive,
+                offset=None,
+            ),
+        )
+
+    cols = [c for c in df.columns if c not in {"subject_id", "timestamp"}]
+
+    cumsum_cols = {c: pl.col(c).cum_sum().over("subject_id").alias(f"{c}_cumsum_at_row") for c in cols}
+    df = df.with_columns(*cumsum_cols.values())
+
+    cumsum_at_boundary = {c: pl.col(f"{c}_cumsum_at_row").alias(f"{c}_cumsum_at_boundary") for c in cols}
+
+    # We need to adjust `cumsum_at_boundary` to appropriately include or exclude the boundary event.
+    if mode == "bound_to_row" and closed in ("left", "both"):
+        cumsum_at_boundary = {
+            c: (expr - pl.col(c)).alias(f"{c}_cumsum_at_boundary") for c, expr in cumsum_at_boundary.items()
+        }
+    elif mode == "row_to_bound" and closed not in ("right", "both"):
+        cumsum_at_boundary = {
+            c: (expr - pl.col(c)).alias(f"{c}_cumsum_at_boundary") for c, expr in cumsum_at_boundary.items()
+        }
+
+    timestamp_offset = pl.col("timestamp") - offset
+    if mode == "bound_to_row":
+        if closed in ("left", "both"):
+            timestamp_offset -= timedelta(seconds=1e-6)
+        else:
+            timestamp_offset += timedelta(seconds=1e-6)
+
+        fill_strategy = "forward"
+        sum_exprs = {
+            c: (
+                pl.col(f"{c}_cumsum_at_row")
+                - pl.col(f"{c}_cumsum_at_boundary").fill_null(strategy=fill_strategy).over("subject_id")
+            ).alias(c)
+            for c in cols
+        }
+        if closed in ("left", "none"):
+            sum_exprs = {c: expr - pl.col(c) for c, expr in sum_exprs.items()}
+    else:
+        if closed in ("right", "both"):
+            timestamp_offset += timedelta(seconds=1e-6)
+        else:
+            timestamp_offset -= timedelta(seconds=1e-6)
+
+        fill_strategy = "backward"
+        sum_exprs = {
+            c: (
+                pl.col(f"{c}_cumsum_at_boundary").fill_null(strategy=fill_strategy).over("subject_id")
+                - pl.col(f"{c}_cumsum_at_row")
+            ).alias(c)
+            for c in cols
+        }
+        if closed in ("left", "both"):
+            sum_exprs = {c: expr + pl.col(c) for c, expr in sum_exprs.items()}
+
+    at_boundary_df = df.filter(boundary_expr).select(
+        "subject_id",
+        pl.col("timestamp").alias("timestamp_at_boundary"),
+        timestamp_offset.alias("timestamp"),
+        *cumsum_at_boundary.values(),
+        pl.lit(False).alias("is_real"),
+    )
+
+    with_at_boundary_events = (
+        pl.concat([df.with_columns(pl.lit(True).alias("is_real")), at_boundary_df], how="diagonal")
+        .sort(by=["subject_id", "timestamp"])
+        .select(
+            "subject_id",
+            "timestamp",
+            pl.col("timestamp_at_boundary").fill_null(strategy=fill_strategy).over("subject_id"),
+            *sum_exprs.values(),
+            "is_real",
+        )
+        .filter("is_real")
+        .drop("is_real")
+    )
+
+    if mode == "bound_to_row":
+        st_timestamp_expr = pl.col("timestamp_at_boundary")
+        end_timestamp_expr = pl.when(pl.col("timestamp_at_boundary").is_not_null()).then(
+            pl.col("timestamp") + offset
+        )
+    else:
+        st_timestamp_expr = pl.when(pl.col("timestamp_at_boundary").is_not_null()).then(
+            pl.col("timestamp") + offset
+        )
+        end_timestamp_expr = pl.col("timestamp_at_boundary")
+
+    if offset == timedelta(0):
+        return with_at_boundary_events.select(
+            "subject_id",
+            "timestamp",
+            st_timestamp_expr.alias("timestamp_at_start"),
+            end_timestamp_expr.alias("timestamp_at_end"),
+            *(pl.col(c).cast(PRED_CNT_TYPE).fill_null(0).alias(c) for c in cols),
+        )
+    else:
+        return with_at_boundary_events.join(
+            aggd_over_offset,
+            on=["subject_id", "timestamp"],
+            how="left",
+            suffix="_in_offset_period",
+        ).select(
+            "subject_id",
+            "timestamp",
+            st_timestamp_expr.alias("timestamp_at_start"),
+            end_timestamp_expr.alias("timestamp_at_end"),
+            *(
+                (pl.col(c) - pl.col(f"{c}_in_offset_period")).fill_null(0).cast(PRED_CNT_TYPE).alias(c)
+                for c in cols
+            ),
+        )
