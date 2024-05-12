@@ -54,6 +54,10 @@ class TemporalWindowBounds:
     def __iter__(self):
         return (getattr(self, field.name) for field in dataclasses.fields(self))
 
+    def __post_init__(self):
+        if self.offset is None:
+            self.offset = timedelta(0)
+
     @property
     def polars_gp_rolling_kwargs(self) -> dict[str, str | timedelta]:
         """Return the parameters for a group_by rolling operation in Polars.
@@ -105,11 +109,6 @@ class TemporalWindowBounds:
              'offset': datetime.timedelta(seconds=60),
              'closed': 'right'}
         """
-        if self.offset is None:
-            offset = timedelta(days=0)
-        else:
-            offset = self.offset
-
         if self.left_inclusive and self.right_inclusive:
             closed = "both"
         elif self.left_inclusive:
@@ -122,10 +121,10 @@ class TemporalWindowBounds:
         # set parameters for group_by rolling window
         if self.window_size < timedelta(days=0):
             period = -self.window_size
-            offset = -period + offset
+            offset = -period + self.offset
         else:
             period = self.window_size
-            offset = offset
+            offset = self.offset
 
         return {"period": period, "offset": offset, "closed": closed}
 
