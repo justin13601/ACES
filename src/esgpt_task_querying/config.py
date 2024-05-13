@@ -4,10 +4,10 @@ tree structure from the configuration."""
 from datetime import timedelta
 from typing import Any
 
-import polars as pl
 import ruamel.yaml
 from bigtree import Node
-from pytimeparse import parse
+
+from .utils import parse_timedelta
 
 
 def load_config(config_path: str) -> dict[str, Any]:
@@ -27,68 +27,11 @@ def get_config(cfg: dict, key: str, default: Any) -> Any:
     return cfg[key]
 
 
-def parse_timedelta(time_str: str) -> timedelta:
-    """Parse a time string and return a timedelta object.
-
-    Using time expression parser: https://github.com/wroberts/pytimeparse
-
-    Args:
-        time_str: The time string to parse.
-
-    Returns:
-        timedelta: The parsed timedelta object.
-
-    Examples:
-        >>> parse_timedelta("1 days")
-        datetime.timedelta(days=1)
-        >>> parse_timedelta("1 day")
-        datetime.timedelta(days=1)
-        >>> parse_timedelta("1 days 2 hours 3 minutes 4 seconds")
-        datetime.timedelta(days=1, seconds=7384)
-        >>> parse_timedelta('1 day, 14:20:16')
-        datetime.timedelta(days=1, seconds=51616)
-        >>> parse_timedelta('365 days')
-        datetime.timedelta(days=365)
-    """
-    if not time_str:
-        return timedelta(days=0)
-
-    return timedelta(seconds=parse(time_str))
-
-
-def get_max_duration(data: pl.DataFrame) -> timedelta:
-    """Get the maximum duration for each subject timestamps.
-
-    Args:
-        data: The data containing the events for each subject. The timestamps of the events are in the
-        column ``"timestamp"`` and the subject IDs are in the column ``"subject_id"``.
-
-    Returns:
-        The maximum duration between the latest timestamp and the earliest timestamp over all subjects.
-
-    Examples:
-        >>> from datetime import datetime
-        >>> data = pl.DataFrame({
-        ...     "subject_id": [1, 1, 2, 2],
-        ...     "timestamp": [
-        ...         datetime(2021, 1, 1), datetime(2021, 1, 2), datetime(2021, 1, 1), datetime(2021, 1, 3)
-        ...     ]
-        ... })
-        >>> get_max_duration(data)
-        datetime.timedelta(days=2)
-    """
-
-    return (
-        data.group_by("subject_id")
-        .agg((pl.col("timestamp").max() - pl.col("timestamp").min()).alias("duration"))
-        .get_column("duration")
-        .max()
-    )
-
-
 def build_tree_from_config(cfg: dict[str, Any]) -> Node:
     """Build a tree structure from the given configuration. Note: the parse_timedelta function handles
     negative durations already if duration is specified with "-".
+
+    TODO: Fix up API, configuration language, and tests.
 
     Args:
         cfg: The configuration object.

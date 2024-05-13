@@ -182,6 +182,17 @@ class ToEventWindowBounds:
         Traceback (most recent call last):
             ...
         ValueError: end_event must be a non-empty string
+        >>> bounds = ToEventWindowBounds(
+        ...     left_inclusive=True,
+        ...     end_event="_RECORD_START",
+        ...     right_inclusive=False,
+        ...     offset=timedelta(hours=1)
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: It doesn't make sense to have the start of the record _RECORD_START be an end event. Did
+        you mean to make that be the start event (which should result in the `end_event` parameter being
+        '-_RECORD_START'?
     """
 
     left_inclusive: bool
@@ -192,6 +203,13 @@ class ToEventWindowBounds:
     def __post_init__(self):
         if self.end_event == "":
             raise ValueError("end_event must be a non-empty string")
+
+        if self.end_event == START_OF_RECORD_KEY:
+            raise ValueError(
+                f"It doesn't make sense to have the start of the record {START_OF_RECORD_KEY} be an end "
+                "event. Did you mean to make that be the start event (which should result in the `end_event` "
+                f"parameter being '-{START_OF_RECORD_KEY}'?"
+            )
 
         if self.offset is None:
             self.offset = timedelta(0)
@@ -239,15 +257,6 @@ class ToEventWindowBounds:
             mode: bound_to_row
             closed: both
             offset: 2 days, 0:00:00
-            >>> print_kwargs(ToEventWindowBounds(
-            ...     left_inclusive=True,
-            ...     end_event="_RECORD_START",
-            ...     right_inclusive=True,
-            ...     offset=timedelta(days=2),
-            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
-            Traceback (most recent call last):
-                ...
-            ValueError: Cannot use _RECORD_START as an end event for row_to_bound mode
         """
 
         if self.left_inclusive and self.right_inclusive:
@@ -267,9 +276,6 @@ class ToEventWindowBounds:
             end_event = self.end_event
 
         if end_event == START_OF_RECORD_KEY:
-            if mode == "row_to_bound":
-                raise ValueError(f"Cannot use {START_OF_RECORD_KEY} as an end event for row_to_bound mode")
-
             boundary_expr = pl.col("timestamp") == pl.col("timestamp").min().over("subject_id")
         else:
             boundary_expr = pl.col(end_event) > 0
