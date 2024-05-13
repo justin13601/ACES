@@ -1103,7 +1103,9 @@ def boolean_expr_bound_sum(
             ).alias(c)
             for c in cols
         }
-        if closed in ("left", "none"):
+        if closed in ("left", "none") and offset <= timedelta(0):
+            # If offset is > 0, we definitely want to include the right endpoint as it will live in the
+            # augmented offset period, so we only remove it if offset is <= 0
             sum_exprs = {c: expr - pl.col(c) for c, expr in sum_exprs.items()}
     else:
         if closed in ("right", "both"):
