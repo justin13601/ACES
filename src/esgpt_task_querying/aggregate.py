@@ -847,8 +847,6 @@ def boolean_expr_bound_sum(
         │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
         >>> #### WITH OFFSET ####
-        >>> print(df)
-        TODO: HERE AND BELOW!!!
         >>> boolean_expr_bound_sum(
         ...     df,
         ...     pl.col("idx").is_in([1, 4, 7]),
@@ -862,15 +860,17 @@ def boolean_expr_bound_sum(
         │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
         │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ u16  ┆ u16  ┆ u16  │
         ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
-        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
-        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
-        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-05 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
-        │ 2          ┆ 1989-12-02 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
-        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1    ┆ 0    ┆ 0    │
-        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-06 15:17:00 ┆ 2    ┆ 1    ┆ 1    │
-        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-08 16:22:00 ┆ 2    ┆ 2    ┆ 1    │
-        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-04 12:03:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-06 13:14:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ 1989-12-03 13:14:00 ┆ 1989-12-08 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-05 12:03:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-07 13:14:00 ┆ 2    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-04 13:14:00 ┆ 1989-12-09 15:17:00 ┆ 2    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-11 16:22:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 1989-12-13 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> print(df)
+        TODO: HERE AND BELOW!!!
         >>> boolean_expr_bound_sum(
         ...     df,
         ...     pl.col("idx").is_in([1, 4, 7]),
@@ -1159,19 +1159,39 @@ def boolean_expr_bound_sum(
             end_timestamp_expr.alias("timestamp_at_end"),
             *(pl.col(c).cast(PRED_CNT_TYPE).fill_null(0).alias(c) for c in cols),
         )
+
+    if mode == "bound_to_row" and offset > timedelta(0):
+
+        def agg_offset_fn(c: str) -> pl.Expr:
+            return pl.col(c) + pl.col(f"{c}_in_offset_period")
+
+    elif mode == "bound_to_row" and offset < timedelta(0):
+
+        def agg_offset_fn(c: str) -> pl.Expr:
+            return pl.col(c) - pl.col(f"{c}_in_offset_period")
+
+    elif mode == "row_to_bound" and offset > timedelta(0):
+
+        def agg_offset_fn(c: str) -> pl.Expr:
+            return pl.col(c) - pl.col(f"{c}_in_offset_period")
+
+    elif mode == "row_to_bound" and offset < timedelta(0):
+
+        def agg_offset_fn(c: str) -> pl.Expr:
+            return pl.col(c) + pl.col(f"{c}_in_offset_period")
+
     else:
-        return with_at_boundary_events.join(
-            aggd_over_offset,
-            on=["subject_id", "timestamp"],
-            how="left",
-            suffix="_in_offset_period",
-        ).select(
-            "subject_id",
-            "timestamp",
-            st_timestamp_expr.alias("timestamp_at_start"),
-            end_timestamp_expr.alias("timestamp_at_end"),
-            *(
-                (pl.col(c) - pl.col(f"{c}_in_offset_period")).fill_null(0).cast(PRED_CNT_TYPE).alias(c)
-                for c in cols
-            ),
-        )
+        raise ValueError(f"mode {mode} and offset {offset} invalid!")
+
+    return with_at_boundary_events.join(
+        aggd_over_offset,
+        on=["subject_id", "timestamp"],
+        how="left",
+        suffix="_in_offset_period",
+    ).select(
+        "subject_id",
+        "timestamp",
+        st_timestamp_expr.alias("timestamp_at_start"),
+        end_timestamp_expr.alias("timestamp_at_end"),
+        *(agg_offset_fn(c).fill_null(0).cast(PRED_CNT_TYPE).alias(c) for c in cols),
+    )
