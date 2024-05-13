@@ -10,7 +10,7 @@ from bigtree import preorder_iter, print_tree
 from loguru import logger
 
 from .config import build_tree_from_config, get_config, get_max_duration
-from .summarize import summarize_subtree
+from .extract_subtree import extract_subtree
 
 
 def query(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
@@ -74,13 +74,12 @@ def query(cfg: dict, df_predicates: pl.DataFrame) -> pl.DataFrame:
                 )
             anchor_to_subtree_root_by_subtree_anchor_shape = anchor_to_subtree_root_by_subtree_anchor.shape[0]
 
-    # prepare anchor_to_subtree_root_by_subtree_anchor for summarize_subtree
     anchor_to_subtree_root_by_subtree_anchor = anchor_to_subtree_root_by_subtree_anchor.select(
         "subject_id", "timestamp", *[pl.col(c) for c in predicate_cols]
     ).with_columns("subject_id", "timestamp", *[pl.lit(0).alias(c) for c in predicate_cols])
 
     # recursively summarize the windows of the task tree
-    result = summarize_subtree(
+    result = extract_subtree(
         subtree=tree,
         anchor_to_subtree_root_by_subtree_anchor=anchor_to_subtree_root_by_subtree_anchor,
         predicates_df=df_predicates,
