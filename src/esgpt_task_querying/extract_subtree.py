@@ -66,8 +66,8 @@ def extract_subtree(
         >>> gap_node = Node("gap") # This sets the node's name.
         >>> gap_node.endpoint_expr = (True, timedelta(days=2), True)
         >>> gap_node.constraints = {
-        >>>     "is_discharge": (None, 0), "is_death": (None, 0), "is_covid_dx": (None, 0)
-        >>> }
+        ...     "is_discharge": (None, 0), "is_death": (None, 0), "is_covid_dx": (None, 0)
+        ... }
         >>> gap_node.parent = root
         >>> # Node 2 will start our target window and span until the next discharge or death event.
         >>> # There should be no covid events.
@@ -108,7 +108,7 @@ def extract_subtree(
         >>> #  - subject 2 will have an admission that won't count because they'll have too little data before
         >>> #    it, then a second admission that will count.
         >>> #  - subject 3 will have an admission that will be too short.
-        >>>
+        >>> #
         >>> predicates_df = pl.DataFrame({
         ...     "subject_id": [
         ...         1, 1, 1, 1, 1, # Pre-event, Admission, Covid, Discharge, Admission.

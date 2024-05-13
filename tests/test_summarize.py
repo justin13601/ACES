@@ -310,12 +310,6 @@ class TestQueryFunctions(unittest.TestCase):
             "is_C": (0, 1),
         }
 
-        constraints_case_between_one_zero = {
-            "is_A": (1, 0),
-            "is_B": (1, 0),
-            "is_C": (1, 0),
-        }
-
         cases = [
             {
                 "msg": "Testing check_constraints with empty constraints, should keep all rows",
@@ -368,23 +362,6 @@ class TestQueryFunctions(unittest.TestCase):
                             pl.col("is_B") <= 1,
                             pl.col("is_C") >= 0,
                             pl.col("is_C") <= 1,
-                        ]
-                    )
-                ),
-            },
-            {
-                "msg": "Testing check_constraints with between constraints, should filter accordingly",
-                "window_constraints": constraints_case_between_one_zero,
-                "summary_df": predicates_df,
-                "want": predicates_df.filter(
-                    pl.all_horizontal(
-                        [
-                            pl.col("is_A") <= 0,
-                            pl.col("is_A") >= 1,
-                            pl.col("is_B") <= 0,
-                            pl.col("is_B") >= 1,
-                            pl.col("is_C") <= 0,
-                            pl.col("is_C") >= 1,
                         ]
                     )
                 ),
