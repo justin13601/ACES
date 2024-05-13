@@ -15,6 +15,9 @@ PRED_CNT_TYPE = pl.UInt16
 # The key used in the endpoint expression to indicate the window should be aggregated to the record start.
 START_OF_RECORD_KEY = "_RECORD_START"
 
+# The key used to capture the count of events of any kind that occur in a window.
+ANY_EVENT_COLUMN = "_ANY_EVENT"
+
 
 @dataclasses.dataclass(order=True)
 class TemporalWindowBounds:

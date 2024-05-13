@@ -94,8 +94,9 @@ def extract_subtree(
         >>> pre_node_1yr.constraints = {}
         >>> pre_node_1yr.parent = root
         >>> pre_node_total = Node("pre_node_total")
-        >>> pre_node_total.endpoint_expr = (False, "_RECORD_START", False)
+        >>> pre_node_total.endpoint_expr = (False, "-_RECORD_START", False)
         >>> pre_node_total.constraints = {"*": (1, None)}
+        >>> pre_node_total.parent = pre_node_1yr
         >>> #
         >>> #### PREDICATES_DF ####
         >>> # We'll have the following patient data:
@@ -122,7 +123,7 @@ def extract_subtree(
         ...         datetime(year=1983, month=12, day=1,  hour=22, minute=2),  # Pre-event-too-close
         ...         datetime(year=1983, month=12, day=2,  hour=12, minute=3),  # Admission
         ...         datetime(year=1983, month=12, day=8,  hour=13, minute=14), # Discharge
-        ...         datetime(year=1989, month=12, day=6,  hour=15, minute=17), # Admission
+        ...         datetime(year=1989, month=12, day=6,  hour=15, minute=17), # Valid Admission
         ...         datetime(year=1989, month=12, day=10, hour=16, minute=22), # Death & Discharge
         ...         # Subject 3
         ...         datetime(year=1982, month=2,  day=13, hour=10, minute=44), # Pre-event
@@ -133,25 +134,38 @@ def extract_subtree(
         ...     "is_discharge": [0, 0, 0, 1, 0,   0, 0, 1, 0, 1,   0, 0, 1],
         ...     "is_death":     [0, 0, 0, 0, 0,   0, 0, 0, 0, 1,   0, 0, 0],
         ...     "is_covid_dx":  [0, 0, 1, 0, 0,   0, 0, 0, 0, 0,   0, 0, 0],
+        ...     "_ANY_EVENT":   [1, 1, 1, 1, 1,   1, 1, 1, 1, 1,   1, 1, 1],
         ... })
         >>> subtreee_anchor_realizations = (
         ...     predicates_df.filter(pl.col("is_admission") > 0)
         ...     .rename({"timestamp": "subtree_anchor_timestamp"})
-        ... )
+        ... ).select("subject_id", "subtree_anchor_timestamp")
         >>> print(subtreee_anchor_realizations)
-        shape: (5, 6)
-        ┌────────────┬──────────────────────────┬──────────────┬──────────────┬──────────┬─────────────┐
-        │ subject_id ┆ subtree_anchor_timestamp ┆ is_admission ┆ is_discharge ┆ is_death ┆ is_covid_dx │
-        │ ---        ┆ ---                      ┆ ---          ┆ ---          ┆ ---      ┆ ---         │
-        │ i64        ┆ datetime[μs]             ┆ i64          ┆ i64          ┆ i64      ┆ i64         │
-        ╞════════════╪══════════════════════════╪══════════════╪══════════════╪══════════╪═════════════╡
-        │ 1          ┆ 1989-12-03 13:14:00      ┆ 1            ┆ 0            ┆ 0        ┆ 0           │
-        │ 1          ┆ 1989-12-23 03:12:00      ┆ 1            ┆ 0            ┆ 0        ┆ 0           │
-        │ 2          ┆ 1983-12-02 12:03:00      ┆ 1            ┆ 0            ┆ 0        ┆ 0           │
-        │ 2          ┆ 1989-12-06 15:17:00      ┆ 1            ┆ 0            ┆ 0        ┆ 0           │
-        │ 3          ┆ 1999-12-06 15:17:00      ┆ 1            ┆ 0            ┆ 0        ┆ 0           │
-        └────────────┴──────────────────────────┴──────────────┴──────────────┴──────────┴─────────────┘
-        >>> extract_subtree(root, subtreee_anchor_realizations, predicates_df, timedelta(0))
+        shape: (5, 2)
+        ┌────────────┬──────────────────────────┐
+        │ subject_id ┆ subtree_anchor_timestamp │
+        │ ---        ┆ ---                      │
+        │ i64        ┆ datetime[μs]             │
+        ╞════════════╪══════════════════════════╡
+        │ 1          ┆ 1989-12-03 13:14:00      │
+        │ 1          ┆ 1989-12-23 03:12:00      │
+        │ 2          ┆ 1983-12-02 12:03:00      │
+        │ 2          ┆ 1989-12-06 15:17:00      │
+        │ 3          ┆ 1999-12-06 15:17:00      │
+        └────────────┴──────────────────────────┘
+        >>> out = extract_subtree(root, subtreee_anchor_realizations, predicates_df, timedelta(0))
+        >>> out.select(
+        ...     "subject_id",
+        ...     "subtree_anchor_timestamp",
+        ... )
+        shape: (1, 2)
+        ┌────────────┬──────────────────────────┐
+        │ subject_id ┆ subtree_anchor_timestamp │
+        │ ---        ┆ ---                      │
+        │ i64        ┆ datetime[μs]             │
+        ╞════════════╪══════════════════════════╡
+        │ 2          ┆ 1989-12-06 15:17:00      │
+        └────────────┴──────────────────────────┘
     """
     recursive_results = []
     predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
@@ -234,7 +248,7 @@ def extract_subtree(
                 "timestamp_at_start",
                 "timestamp_at_end",
                 *predicate_cols,
-            ),
+            ).alias(f"{child.name}_summary"),
         )
 
         recursive_results.append(

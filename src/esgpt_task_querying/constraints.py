@@ -3,6 +3,8 @@
 import polars as pl
 from loguru import logger
 
+from .types import ANY_EVENT_COLUMN
+
 
 def check_constraints(
     window_constraints: dict[str, tuple[int | None, int | None]], summary_df: pl.DataFrame
@@ -80,7 +82,7 @@ def check_constraints(
             raise ValueError(f"Invalid constraint for {col}: {valid_min_inc} - {valid_max_inc}")
 
         if col == "*":
-            col = "__ALL_EVENTS"
+            col = ANY_EVENT_COLUMN
 
         drop_expr = pl.lit(False)
         if valid_min_inc is not None:
