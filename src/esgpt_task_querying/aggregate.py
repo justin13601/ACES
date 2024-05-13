@@ -228,6 +228,10 @@ def aggregate_event_bound_window(
 
     TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to test this function.
 
+    See the testing for ``boolean_expr_bound_sum`` for more comprehensive examples and test cases for the
+    underlying API here, and the testing for ``ToEventWindowBounds`` for how the bounding syntax is converted
+    into arguments for the ``boolean_expr_bound_sum`` function.
+
     Args:
         predicates_df: The dataframe containing the predicates. The input must be sorted in ascending order by
             timestamp within each subject group. It must contain the following columns:
