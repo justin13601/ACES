@@ -874,7 +874,7 @@ def boolean_expr_bound_sum(
         ...     pl.col("idx").is_in([1, 4, 7]),
         ...     "bound_to_row",
         ...     "none",
-        ...     offset = timedelta(days=-3),
+        ...     timedelta(days=-3),
         ... ).drop("idx")
         shape: (8, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
@@ -1035,23 +1035,27 @@ def boolean_expr_bound_sum(
         if offset > timedelta(0):
             left_inclusive = False
             if mode == "row_to_bound":
+                # Here, we'll be taking cumsum_at_bound - cumsum_at_row - aggd_over_offset
                 if closed in ("left", "both"):
                     right_inclusive = False
                 else:
                     right_inclusive = True
             else:
+                # Here, we'll be taking cumsum_at_row - cumsum_at_bound + aggd_over_offset
                 if closed in ("right", "both"):
                     right_inclusive = True
                 else:
                     right_inclusive = False
         else:
-            right_inclusive = True
+            right_inclusive = False
             if mode == "row_to_bound":
+                # Here, we'll be taking cumsum_at_bound - cumsum_at_row + aggd_over_offset
                 if closed in ("left", "both"):
                     left_inclusive = True
                 else:
                     left_inclusive = False
             else:
+                # Here, we'll be taking cumsum_at_row - cumsum_at_bound - aggd_over_offset
                 if closed in ("right", "both"):
                     left_inclusive = True
                 else:
