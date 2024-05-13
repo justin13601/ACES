@@ -1057,9 +1057,9 @@ def boolean_expr_bound_sum(
             else:
                 # Here, we'll be taking cumsum_at_row - cumsum_at_bound - aggd_over_offset
                 if closed in ("right", "both"):
-                    left_inclusive = True
-                else:
                     left_inclusive = False
+                else:
+                    left_inclusive = True
 
         aggd_over_offset = aggregate_temporal_window(
             df,
@@ -1103,9 +1103,10 @@ def boolean_expr_bound_sum(
             ).alias(c)
             for c in cols
         }
-        if closed in ("left", "none") and offset <= timedelta(0):
-            # If offset is > 0, we definitely want to include the right endpoint as it will live in the
-            # augmented offset period, so we only remove it if offset is <= 0
+        if (closed in ("left", "none") and offset <= timedelta(0)) or offset < timedelta(0):
+            # If we either don't include the right endpoint due to the closed value and the lack of a positive
+            # offset or we have a negative offset, we want to remove the right endpoint's counts from the
+            # cumsum difference.
             sum_exprs = {c: expr - pl.col(c) for c, expr in sum_exprs.items()}
     else:
         if closed in ("right", "both"):
