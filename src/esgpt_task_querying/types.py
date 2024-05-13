@@ -9,7 +9,11 @@ from datetime import timedelta
 
 import polars as pl
 
+# The type used for final aggregate counts of predicates.
 PRED_CNT_TYPE = pl.UInt16
+
+# The key used in the endpoint expression to indicate the window should be aggregated to the record start.
+START_OF_RECORD_KEY = "_RECORD_START"
 
 
 @dataclasses.dataclass(order=True)
@@ -175,15 +179,6 @@ class ToEventWindowBounds:
         Traceback (most recent call last):
             ...
         ValueError: end_event must be a non-empty string
-        >>> bounds = ToEventWindowBounds(
-        ...     left_inclusive=True,
-        ...     end_event="foo",
-        ...     right_inclusive=False,
-        ...     offset=timedelta(hours=-1)
-        ... )
-        Traceback (most recent call last):
-            ...
-        ValueError: offset must be non-negative. Got -1 day, 23:00:00
     """
 
     left_inclusive: bool
@@ -198,9 +193,87 @@ class ToEventWindowBounds:
         if self.offset is None:
             self.offset = timedelta(0)
 
-        if self.offset < timedelta(0):
-            raise ValueError(f"offset must be non-negative. Got {self.offset}")
-
     # Needed to make it accessible like a tuple.
     def __iter__(self):
         return (getattr(self, field.name) for field in dataclasses.fields(self))
+
+    @property
+    def boolean_expr_bound_sum_kwargs(self) -> dict[str, str | timedelta | pl.Expr]:
+        """Return the parameters for a group_by rolling operation in Polars.
+
+        Examples:
+            >>> def print_kwargs(kwargs: dict):
+            ...     for key, value in kwargs.items():
+            ...         print(f"{key}: {value}")
+            >>> print_kwargs(ToEventWindowBounds(
+            ...     left_inclusive=True, end_event="is_A", right_inclusive=False, offset=None
+            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            boundary_expr: [(col("is_A")) > (0)]
+            mode: row_to_bound
+            closed: left
+            offset: 0:00:00
+            >>> print_kwargs(ToEventWindowBounds(
+            ...     left_inclusive=False, end_event="-is_B", right_inclusive=True, offset=None
+            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            boundary_expr: [(col("is_B")) > (0)]
+            mode: bound_to_row
+            closed: right
+            offset: 0:00:00
+            >>> print_kwargs(ToEventWindowBounds(
+            ...     left_inclusive=False, end_event="is_B", right_inclusive=False, offset=timedelta(hours=-3)
+            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            boundary_expr: [(col("is_B")) > (0)]
+            mode: row_to_bound
+            closed: none
+            offset: -1 day, 21:00:00
+            >>> print_kwargs(ToEventWindowBounds(
+            ...     left_inclusive=True,
+            ...     end_event="-_RECORD_START",
+            ...     right_inclusive=True,
+            ...     offset=timedelta(days=2),
+            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            boundary_expr: [(col("timestamp")) == (col("timestamp").min().over([col("subject_id")]))]
+            mode: bound_to_row
+            closed: both
+            offset: 2 days, 0:00:00
+            >>> print_kwargs(ToEventWindowBounds(
+            ...     left_inclusive=True,
+            ...     end_event="_RECORD_START",
+            ...     right_inclusive=True,
+            ...     offset=timedelta(days=2),
+            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Cannot use _RECORD_START as an end event for row_to_bound mode
+        """
+
+        if self.left_inclusive and self.right_inclusive:
+            closed = "both"
+        elif (not self.left_inclusive) and (not self.right_inclusive):
+            closed = "none"
+        elif self.left_inclusive:
+            closed = "left"
+        elif self.right_inclusive:
+            closed = "right"
+
+        mode = "bound_to_row" if self.end_event.startswith("-") else "row_to_bound"
+
+        if mode == "bound_to_row":
+            end_event = self.end_event[1:]
+        else:
+            end_event = self.end_event
+
+        if end_event == START_OF_RECORD_KEY:
+            if mode == "row_to_bound":
+                raise ValueError(f"Cannot use {START_OF_RECORD_KEY} as an end event for row_to_bound mode")
+
+            boundary_expr = pl.col("timestamp") == pl.col("timestamp").min().over("subject_id")
+        else:
+            boundary_expr = pl.col(end_event) > 0
+
+        return {
+            "boundary_expr": boundary_expr,
+            "mode": mode,
+            "closed": closed,
+            "offset": self.offset,
+        }

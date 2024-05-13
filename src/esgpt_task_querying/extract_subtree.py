@@ -6,11 +6,7 @@ import polars as pl
 from bigtree import Node
 from loguru import logger
 
-from .aggregate import (
-    START_OF_RECORD_KEY,
-    aggregate_event_bound_window,
-    aggregate_temporal_window,
-)
+from .aggregate import aggregate_event_bound_window, aggregate_temporal_window
 from .constraints import check_constraints
 
 
@@ -84,7 +80,7 @@ def extract_subtree(
         >>> input_end_node.constraints = {}
         >>> input_end_node.parent = root
         >>> input_start_node = Node("input_start")
-        >>> input_start_node.endpoint_expr = (True, "_RECORD_START", True)
+        >>> input_start_node.endpoint_expr = (True, "-_RECORD_START", True)
         >>> input_start_node.constraints = {}
         >>> input_start_node.parent = root
         >>> #
@@ -181,17 +177,6 @@ def extract_subtree(
                     )
                     .drop("timestamp")
                 )
-            case str() as end_event if end_event == START_OF_RECORD_KEY:
-                raise NotImplementedError
-                # child_root_offset = 0
-                # window_summary_df = (
-                #    aggregate_start_of_record_bound_window(predicates_df, endpoint_expr)
-                #    .with_columns(
-                #        pl.col("timestamp").alias("subtree_anchor_timestamp"),
-                #        pl.col("timestamp_at_start").alias("child_anchor_timestamp"),
-                #    )
-                #    .drop("timestamp")
-                # )
             case str():
                 # In an event bound case, the child root will be a proper extant event, so it will be the
                 # anchor as well, and thus the child root offset should be zero.

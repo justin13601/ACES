@@ -6,9 +6,6 @@ import polars as pl
 
 from .types import PRED_CNT_TYPE, TemporalWindowBounds, ToEventWindowBounds
 
-START_OF_RECORD_KEY = "_RECORD_START"
-# The key used in the endpoint expression to indicate the window should be aggregated to the record start.
-
 
 def aggregate_temporal_window(
     predicates_df: pl.DataFrame,
@@ -295,10 +292,6 @@ def aggregate_event_bound_window(
         ...     "is_B": [0, 1, 0, 1, 0, 1, 1, 1],
         ...     "is_C": [0, 1, 0, 0, 0, 1, 0, 1],
         ... })
-        >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", True, timedelta(days=-1)))
-        Traceback (most recent call last):
-            ...
-        ValueError: offset must be non-negative. Got -1 day, 0:00:00
         >>> aggregate_event_bound_window(df, ToEventWindowBounds(True, "is_C", True, None))
         shape: (8, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
@@ -367,195 +360,7 @@ def aggregate_event_bound_window(
     if not isinstance(endpoint_expr, ToEventWindowBounds):
         endpoint_expr = ToEventWindowBounds(*endpoint_expr)
 
-    if endpoint_expr.offset == timedelta(0):
-        return _aggregate_event_bound_window_no_offset(predicates_df, endpoint_expr)
-    else:
-        return _aggregate_event_bound_window_with_offset(predicates_df, endpoint_expr)
-
-
-def _aggregate_event_bound_window_with_offset(
-    predicates_df: pl.DataFrame,
-    endpoint_expr: ToEventWindowBounds,
-) -> pl.DataFrame:
-    """See aggregate_event_bound_window -- this case specifically has a positive offset.
-
-    Note this function assumes that no time gaps in the original data are less than or equal to one
-    microsecond.
-    """
-
-    time_aggd_to_subtract = aggregate_temporal_window(
-        predicates_df,
-        TemporalWindowBounds(
-            left_inclusive=False,
-            window_size=endpoint_expr.offset,
-            right_inclusive=(not endpoint_expr.left_inclusive),
-            offset=None,
-        ),
-    )
-
-    predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
-
-    predicates_df = (
-        predicates_df.lazy()
-        .collect()
-        .with_columns(*(pl.col(c).cum_sum().over("subject_id").alias(f"{c}_cumsum") for c in predicate_cols))
-    )
-
-    is_end_event = pl.col(endpoint_expr.end_event) > 0
-
-    if endpoint_expr.right_inclusive:
-        end_vals_for_sub = {c: pl.col(f"{c}_cumsum") for c in predicate_cols}
-    else:
-        end_vals_for_sub = {c: pl.col(f"{c}_cumsum") - pl.col(c) for c in predicate_cols}
-
-    at_end_df = predicates_df.filter(is_end_event).select(
-        "subject_id",
-        (pl.col("timestamp") - endpoint_expr.offset - timedelta(seconds=1e-6)).alias("timestamp"),
-        pl.col("timestamp").alias("timestamp_at_end"),
-        *(expr.alias(f"{c}_at_end") for c, expr in end_vals_for_sub.items()),
-    )
-
-    with_offset_period = (
-        pl.concat(
-            [
-                predicates_df.with_columns(
-                    pl.lit(True).alias("is_real"),
-                    pl.lit(None, dtype=at_end_df.schema["timestamp_at_end"]).alias("timestamp_at_end"),
-                    *(
-                        pl.lit(None, dtype=at_end_df.schema[f"{c}_at_end"]).alias(f"{c}_at_end")
-                        for c in predicate_cols
-                    ),
-                ),
-                at_end_df.with_columns(
-                    pl.lit(False).alias("is_real"),
-                    *(
-                        pl.lit(None, dtype=predicates_df.schema[f"{c}_cumsum"]).alias(f"{c}_cumsum")
-                        for c in predicate_cols
-                    ),
-                ),
-            ],
-            how="diagonal",
-        )
-        .sort(by=["subject_id", "timestamp"])
-        .select(
-            "subject_id",
-            "timestamp",
-            pl.col("timestamp_at_end").fill_null(strategy="backward").over("subject_id"),
-            *(
-                (
-                    pl.col(f"{c}_at_end").fill_null(strategy="backward").over("subject_id")
-                    - pl.col(f"{c}_cumsum")
-                ).alias(c)
-                for c in predicate_cols
-            ),
-            "is_real",
-        )
-        .filter("is_real")
-        .drop("is_real")
-    )
-
-    return with_offset_period.join(
-        time_aggd_to_subtract,
-        on=["subject_id", "timestamp"],
-        how="left",
-        suffix="_in_offset_period",
-    ).select(
-        "subject_id",
-        "timestamp",
-        (
-            pl.when(pl.col("timestamp_at_end").is_not_null())
-            .then(pl.col("timestamp") + endpoint_expr.offset)
-            .alias("timestamp_at_start")
-        ),
-        "timestamp_at_end",
-        *(
-            (pl.col(c) - pl.col(f"{c}_in_offset_period")).fill_null(0).cast(PRED_CNT_TYPE).alias(c)
-            for c in predicate_cols
-        ),
-    )
-
-
-def _aggregate_event_bound_window_no_offset(
-    predicates_df: pl.DataFrame,
-    endpoint_expr: ToEventWindowBounds,
-) -> pl.DataFrame:
-    """See aggregate_event_bound_window -- this case specifically has no offset."""
-
-    predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
-
-    is_end_event = pl.col(endpoint_expr.end_event) > 0
-    timestamp_at_next_end = (
-        pl.when(is_end_event)
-        .then(pl.col("timestamp"))
-        .shift(-1)
-        .fill_null(strategy="backward")
-        .alias("timestamp_at_next_end")
-    )
-
-    cumsum_cols = {c: pl.col(c).cum_sum().alias(f"{c}_cumsum") for c in predicate_cols}
-
-    if endpoint_expr.right_inclusive:
-        cumsum_at_next_end = {
-            c: (
-                pl.when(is_end_event)
-                .then(expr)
-                .shift(-1)
-                .fill_null(strategy="backward")
-                .alias(f"{c}_cumsum_at_next_end")
-            )
-            for c, expr in cumsum_cols.items()
-        }
-    else:
-        cumsum_at_next_end = {
-            c: (
-                pl.when(is_end_event)
-                .then(expr - pl.col(c))
-                .shift(-1)
-                .fill_null(strategy="backward")
-                .alias(f"{c}_cumsum_at_next_end")
-            )
-            for c, expr in cumsum_cols.items()
-        }
-
-    def summarize_predicate(predicate: str) -> pl.Expr:
-        cumsum_col = pl.col(f"{predicate}_cumsum")
-        cumsum_at_next_end_col = pl.col(f"{predicate}_cumsum_at_next_end")
-
-        if endpoint_expr.left_inclusive:
-            out_val = cumsum_at_next_end_col - cumsum_col + pl.col(predicate)
-        else:
-            out_val = cumsum_at_next_end_col - cumsum_col
-
-        return out_val.fill_null(0).cast(PRED_CNT_TYPE).alias(predicate)
-
-    return (
-        predicates_df.group_by("subject_id", maintain_order=True)
-        .agg(
-            "timestamp",
-            timestamp_at_next_end,
-            *cumsum_cols.values(),
-            *cumsum_at_next_end.values(),
-            *predicate_cols,
-        )
-        .explode(
-            "timestamp",
-            "timestamp_at_next_end",
-            *(f"{c}_cumsum" for c in predicate_cols),
-            *(f"{c}_cumsum_at_next_end" for c in predicate_cols),
-            *predicate_cols,
-        )
-        .select(
-            "subject_id",
-            "timestamp",
-            (
-                pl.when(pl.col("timestamp_at_next_end").is_not_null())
-                .then(pl.col("timestamp") + endpoint_expr.offset)
-                .alias("timestamp_at_start")
-            ),
-            pl.col("timestamp_at_next_end").alias("timestamp_at_end"),
-            *(summarize_predicate(c) for c in predicate_cols),
-        )
-    )
+    return boolean_expr_bound_sum(predicates_df, **endpoint_expr.boolean_expr_bound_sum_kwargs)
 
 
 def boolean_expr_bound_sum(
