@@ -1,6 +1,8 @@
 """This module contains functions for loading and parsing the configuration file and subsequently building a
 tree structure from the configuration."""
 
+from __future__ import annotations
+
 import dataclasses
 from datetime import timedelta
 from pathlib import Path
@@ -29,6 +31,7 @@ class DerivedPredicateConfig:
 
 @dataclasses.dataclass
 class WindowConfig:
+    name: str
     start: str
     end: str
     start_inclusive: bool
@@ -37,8 +40,18 @@ class WindowConfig:
 
 
 @dataclasses.dataclass
+class EventConfig:
+    predicate: str
+
+    @property
+    def name(self) -> str:
+        return self.predicate
+
+
+@dataclasses.dataclass
 class TaskExtractorConfig:
-    predicates: dict[str, PlainPredictateConfig | DerivedPredicateConfig]
+    predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
+    trigger_event: EventConfig
     windows: dict[str, WindowConfig]
 
     @classmethod
@@ -118,19 +131,19 @@ class TaskExtractorConfig:
                 f"Got: {', '.join(raw_input.keys())}"
             )
 
-        predicates = cls._parse_predicates(raw_input.pop(predicates))
-        windows = cls._parse_windows(raw_input.pop(windows), predicates)
+        predicates = cls._parse_predicates(raw_input.pop("predicates"))
+        windows, trigger_event = cls._parse_windows(raw_input.pop("windows"), predicates)
 
-        return cls(predicates=predicates, windows=windows)
+        return cls(predicates=predicates, windows=windows, trigger_event=trigger_event)
 
     @classmethod
-    def _parse_predicates(cls, predicates: dict) -> dict[str, PlainPredictateConfig | DerivedPredicateConfig]:
+    def _parse_predicates(cls, predicates: dict) -> dict[str, PlainPredicateConfig | DerivedPredicateConfig]:
         raise NotImplementedError
 
     @classmethod
     def _parse_windows(
-        cls, windows: dict, predicates: dict[str, PlainPredictateConfig | DerivedPredicateConfig]
-    ) -> dict[str, WindowConfig]:
+        cls, windows: dict, predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
+    ) -> dict[str, WindowConfig] | EventConfig:
         raise NotImplementedError
 
     def __post_init__(self):

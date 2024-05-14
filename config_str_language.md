@@ -1,4 +1,4 @@
-# Configuration Language Specification
+Configuration Language Specification
 
 ## Introduction and Terminology
 
@@ -48,8 +48,8 @@ Next, we will detail each of these configuration objects.
 
 These configs consist of the following four fields:
 
-- `code`: The sting value for the categorical code object that is relevant for this predicate. An
-  observation will only satisfy this predicate if there is an occurence of this code in the observation.
+- `code`: The string value for the categorical code object that is relevant for this predicate. An
+  observation will only satisfy this predicate if there is an occurrence of this code in the observation.
 - `value_min`: If specified, an observation will only satisfy this predicate if the occurrence of the
   underlying `code` with a reported numerical value that is either greater than or greater than or equal to
   `value_min` (with these options being decided on the basis of `value_min_inclusive`, where
@@ -96,12 +96,82 @@ accepted operations that can be applied to other predicates, containing precisel
 Note that, currently, `and`s and `or`s cannot be nested. Upon user request, we may support further advanced
 analytic operations over predicates.
 
-### Windows: `WindowConfig`
+### Windows and Events:
 
-```
-    start: str
-    end: str
-    start_inclusive: bool
-    end_inclusive: bool
-    has: dict[str, str]
-```
+#### Windows: `WindowConfig`
+
+Windows contain a tracking `name` field, and otherwise are specified with two parts: (1) A set of four
+parameters (`start`, `end`, `start_inclusive`, and `end_inclusive`) that specify the time range of the window,
+and (2) a set of constraints specified through two fields, dictionary of constraints (the `has` field) that
+specify the constraints that must be satisfied over the defined predicates for a possible realization of this
+window to be valid.
+
+##### The Time Range Fields
+
+###### `start` and `end`
+
+Valid windows always progress in time from the `start` field to the `end` field. These two fields define, in
+symbolic form, the relationship between the start and end time of the window. These two fields must obey the
+following rules:
+
+_Linkage to other windows_: Firstly, exactly one of these two fields must reference an external event, as
+specified either through the name of the trigger event or the start or end event of another window. The other
+field must either be `null`/`None`/omitted (which has a very specific meaning, to be explained shortly) or
+must reference the field that references the external event.
+
+_Linkage reference language_: Secondly, for both events, regardless of whether they reference an external
+event or an internal event, that reference must be expressed in one of the following ways.
+
+1. `$REFERENCING = $REFERENCED + $TIME_DELTA`, `$REFERENCING = $REFERENCED - $TIME_DELTA`, etc.
+   In this case, the referencing event (either the start or end of the window) will be defined as occurring
+   exactly `$TIME_DELTA` either after or before the event being referenced (either the external event or the
+   end or start of the window).
+   Note that if `$REFERENCED` is the `start` field, then `$TIME_DELTA` must be positive, and if
+   `$REFERENCED` is the `end` field, then `$TIME_DELTA` must be negative to preserve the time ordering of
+   the window fields.
+2. `$REFERENCING = $REFERENCED -> $PREDICATE`, `$REFERENCING = $PREDICATE -> $REFERENCED`
+   In this case, the referencing event will be defined as the next or previous event satisfying the
+   predicate, `$PREDICATE`. Note that `<-` is not a valid operator, only `->` and one must swap the order of
+   the predicate and referenced event to change the directionality of the search. Further, note that if the
+   `$REFERENCED` is the `start` field, then the "next predicate ordering" (`$REFERENCED -> $PREDICATE`) must
+   be used, and if the `$REFERENCED` is the `end` field, then the "previous predicate ordering"
+   (`$PREDICATE -> $REFERENCED`) must be used to preserve the time ordering of the window fields. Note that
+   these forms can lead to windows being defined as single pointe vents, if the `$REFERENCED` event itself
+   satisfies `$PREDICATE` and the appropriate constraints are satisfied and inclusive values are set.
+
+_`null`/`None`/omitted_: If `start` is `null`/`None`/omitted, then the window will start at the beginning of
+the patient's record. If `end` is `null`/`None`/omitted, then the window will end at the end of the patient's
+record. In either of these cases, the other field must reference an external event, per rule 1.
+
+###### `start_inclusive` and `end_inclusive`
+
+These two fields specify whether the start and end of the window are inclusive or exclusive, respectively.
+This applies both to whether they are included in the calculation of the predicate values over the windows,
+but also, in the `$REFERENCING = $REFERENCED -> $PREDICATE` and `$REFERENCING = $PREDICATE -> $REFERENCED`
+cases, to which events are possible to use for valid next or prior `$PREDCIATE` events. E.g., if we have that
+`start_inclusive=False` and the `end` field is equal to `start -> $PREDICATE`, and it so happens that the
+`start` event itself satisfies `$PREDICATE`, the fact that `start_inclusive=False` will mean that we do not
+consider the `start` event itself to be a valid start to any window that ends at the same `start` event, as
+its timestamp when considered as the prospective "window start timestamp" occurs "after" the effective
+timestamp of itself when considered as the `$PREDICATE` event that marks the window end given that
+`start_inclusive=False` and thus we will think of the window as truly starting an iota after the timestamp of
+the `start` event itself.
+
+##### The Constraints Field
+
+The constraints field is a dictionary that maps predicate names to tuples of the form `(min_valid, max_valid)`
+that define the valid range the count of observations of the named predicate that must be found in a window
+for it to be considered valid. Either `min_valid` or `max_valid` constraints can be `None`, in which case
+those endpoints are left unconstrained. Likewise, unreferenced predicates are also left unconstrained. Note
+that as predicate counts are always integral, this specification does not need an additional
+inclusive/exclusive endpoint field, as one can simply increment the bound by one in the appropriate direction
+to achieve the result. Instead, this bound is always interpreted to be inclusive, so a window would satisfy
+the constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of predicate
+`name` in a window was either 1 or 2. All constraints in the dictionary must be satisfied on a window for it
+to be included.
+
+#### Events: `EventConfig`
+
+The event config consists of only a single field, `predicate`, which specifies the predicate that must be
+observed with value greater than one to satisfy the event. There can only be one defined "event" with an
+"EventConfig" in a valid configuration, and it will define the "trigger" event of the cohort.
