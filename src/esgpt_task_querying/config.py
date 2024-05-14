@@ -8,6 +8,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
+import polars as pl
 import ruamel.yaml
 from bigtree import Node
 from loguru import logger
@@ -22,6 +23,74 @@ class PlainPredicateConfig:
     value_max: float | None
     value_min_inclusive: bool
     value_max_inclusive: bool
+
+    def MEDS_eval_expr(self) -> pl.Expr:
+        """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
+
+        Examples:
+            >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [([([(col("code")) == (String(BP//systolic))]) &
+               ([(col("value")) >= (120)])]) &
+               ([(col("value")) < (140)])]
+        """
+
+        criteria = [pl.col("code") == self.code]
+
+        if self.value_min is not None:
+            if self.value_min_inclusive:
+                criteria.append(pl.col("value") >= self.value_min)
+            else:
+                criteria.append(pl.col("value") > self.value_min)
+        if self.value_max is not None:
+            if self.value_max_inclusive:
+                criteria.append(pl.col("value") <= self.value_max)
+            else:
+                criteria.append(pl.col("value") < self.value_max)
+
+        return pl.all_horizontal(criteria)
+
+    def ESGPT_eval_expr(self, values_column: str | None = None) -> pl.Expr:
+        """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
+
+        Examples:
+            >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).ESGPT_eval_expr("BP_value")
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [([([(col("BP")) == (String(systolic))]) &
+               ([(col("BP_value")) >= (120)])]) &
+               ([(col("BP_value")) < (140)])]
+        """
+        code_is_in_parts = "//" in self.code
+
+        if code_is_in_parts:
+            measurement_name, code = self.code.split("//")
+            criteria = [pl.col(measurement_name) == code]
+
+        elif (self.value_min is None) and (self.value_max is None):
+            return pl.col(code).is_not_null()
+        else:
+            values_column = self.code
+
+        if self.value_min is not None:
+            if values_column is None:
+                raise ValueError(
+                    f"Must specify a values column for ESGPT predicates with a value_min = {self.value_min}"
+                )
+            if self.value_min_inclusive:
+                criteria.append(pl.col(values_column) >= self.value_min)
+            else:
+                criteria.append(pl.col(values_column) > self.value_min)
+        if self.value_max is not None:
+            if values_column is None:
+                raise ValueError(
+                    f"Must specify a values column for ESGPT predicates with a value_max = {self.value_max}"
+                )
+            if self.value_max_inclusive:
+                criteria.append(pl.col(values_column) <= self.value_max)
+            else:
+                criteria.append(pl.col(values_column) < self.value_max)
+
+        return pl.all_horizontal(criteria)
 
 
 @dataclasses.dataclass
@@ -64,9 +133,6 @@ class TaskExtractorConfig:
         Raises:
             FileNotFoundError: If the file does not exist.
             ValueError: If the file is not a ".yaml" file.
-
-        Examples:
-            >>> raise NotImplementedError
         """
         if isinstance(config_path, str):
             config_path = Path(config_path)
@@ -90,9 +156,6 @@ class TaskExtractorConfig:
         Raises:
             FileExistsError: If there exists a file at the given location and ``do_overwrite`` is not `True`.
             ValueError: If the filepath is not a ".yaml" file.
-
-        Examples:
-            >>> raise NotImplementedError
         """
         if isinstance(config_path, str):
             config_path = Path(config_path)
@@ -108,14 +171,20 @@ class TaskExtractorConfig:
         else:
             raise ValueError(f"Only supports writing to '.yaml' files currently. Got {config_path.suffix}")
 
+    def __post_init__(self):
+        raise NotImplementedError
+
+    @property
+    def tree(self) -> Node:
+        raise NotImplementedError
+
+    # Simple Form Parsing Methods
+
     @classmethod
     def parse(cls, raw_input: str | dict) -> TaskExtractorConfig:
         """Parses a simple form suitable for user input into a full configuration object.
 
         TODO: docstring.
-
-        Examples:
-            >>> raise NotImplementedError
         """
         logger.info("Parsing raw input:")
         logger.info(str(raw_input))
@@ -137,20 +206,25 @@ class TaskExtractorConfig:
         return cls(predicates=predicates, windows=windows, trigger_event=trigger_event)
 
     @classmethod
+    def _parse_predicate(cls, predicate_dict: dict) -> PlainPredicateConfig | DerivedPredicateConfig:
+        raise NotImplementedError
+
+    @classmethod
     def _parse_predicates(cls, predicates: dict) -> dict[str, PlainPredicateConfig | DerivedPredicateConfig]:
+        # base_predicates = {n: cls._parse_predicate(p) for n, p in predicates.items()}
+
+        raise NotImplementedError
+
+    @classmethod
+    def _parse_window(cls, window: dict) -> WindowConfig:
         raise NotImplementedError
 
     @classmethod
     def _parse_windows(
         cls, windows: dict, predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
     ) -> dict[str, WindowConfig] | EventConfig:
-        raise NotImplementedError
+        # base_windows = {n: cls._parse_window(w) for n, w in windows.items()}
 
-    def __post_init__(self):
-        raise NotImplementedError
-
-    @property
-    def tree(self) -> Node:
         raise NotImplementedError
 
 

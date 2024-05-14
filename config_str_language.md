@@ -70,7 +70,11 @@ on its source format.
 
 1. If the source data is in [MEDS](https://github.com/Medical-Event-Data-Standard/meds) format
    (recommended), then the `code` will be checked directly against MEDS' `code` field and the `value_min`
-   and `value_max` constraints will be compared against MEDS' `numerical_value` field.
+   and `value_max` constraints will be compared against MEDS' `numerical_value` field. **Note**: This syntax
+   does not currently support defining predicates that also rely on matching other, optional fields in the
+   MEDS syntax; if this is a desired feature for you, please let us know by filing a GitHub issue or pull
+   request or upvoting any existing issue/PR that requests/implements this feature, and we will add support
+   for this capability.
 2. If the source data is in [ESGPT](https://eventstreamml.readthedocs.io/en/latest/) format, then the
    `code` will be interpreted in the following manner:
    a. If the code contains a `"//"`, it will be interpreted as being a two element list joined by the
