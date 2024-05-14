@@ -1,24 +1,144 @@
 """This module contains functions for loading and parsing the configuration file and subsequently building a
 tree structure from the configuration."""
 
+import dataclasses
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 
 import ruamel.yaml
 from bigtree import Node
+from loguru import logger
 
 from .utils import parse_timedelta
 
 
-def load_config(config_path: str) -> dict[str, Any]:
-    """Load a configuration file from the given path and return it as a dict.
+@dataclasses.dataclass
+class PlainPredicateConfig:
+    code: str
+    value_min: float | None
+    value_max: float | None
+    value_min_inclusive: bool
+    value_max_inclusive: bool
 
-    Args:
-        config_path (str): The path to the configuration file.
-    """
-    yaml = ruamel.yaml.YAML(typ="safe", pure=True)
-    with open(config_path) as file:
-        return yaml.load(file)
+
+@dataclasses.dataclass
+class DerivedPredicateConfig:
+    expr: str
+
+
+@dataclasses.dataclass
+class WindowConfig:
+    start: str
+    end: str
+    start_inclusive: bool
+    end_inclusive: bool
+    has: dict[str, str]
+
+
+@dataclasses.dataclass
+class TaskExtractorConfig:
+    predicates: dict[str, PlainPredictateConfig | DerivedPredicateConfig]
+    windows: dict[str, WindowConfig]
+
+    @classmethod
+    def load(cls, config_path: str | Path) -> TaskExtractorConfig:
+        """Load a configuration file from the given path and return it as a dict.
+
+        Args:
+            config_path: The path to which a configuration object will be read from in YAML form.
+
+        Raises:
+            FileNotFoundError: If the file does not exist.
+            ValueError: If the file is not a ".yaml" file.
+
+        Examples:
+            >>> raise NotImplementedError
+        """
+        if isinstance(config_path, str):
+            config_path = Path(config_path)
+
+        if not config_path.is_file():
+            raise FileNotFoundError(f"Cannot load missing configuration file {str(config_path.resolve())}!")
+
+        if config_path.suffix == ".yaml":
+            yaml = ruamel.yaml.YAML(typ="safe", pure=True)
+            return cls(**yaml.load(config_path.read_text()))
+        else:
+            raise ValueError(f"Only supports reading from '.yaml' files currently. Got {config_path.suffix}")
+
+    def save(self, config_path: str | Path, do_overwrite: bool = False):
+        """Load a configuration file from the given path and return it as a dict.
+
+        Args:
+            config_path: The path to which the calling object will be saved in YAML form.
+            do_overwrite: Whether or not to overwrite any existing saved configuration file at that filepath.
+
+        Raises:
+            FileExistsError: If there exists a file at the given location and ``do_overwrite`` is not `True`.
+            ValueError: If the filepath is not a ".yaml" file.
+
+        Examples:
+            >>> raise NotImplementedError
+        """
+        if isinstance(config_path, str):
+            config_path = Path(config_path)
+
+        if config_path.is_file() and not do_overwrite:
+            raise FileExistsError(
+                f"Can't overwrite extant {str(config_path.resolve())} as do_overwrite={do_overwrite}"
+            )
+
+        if config_path.suffix == ".yaml":
+            yaml = ruamel.yaml.YAML(typ="safe", pure=True)
+            config_path.write_text(yaml.dump(self.to_dict()))
+        else:
+            raise ValueError(f"Only supports writing to '.yaml' files currently. Got {config_path.suffix}")
+
+    @classmethod
+    def parse(cls, raw_input: str | dict) -> TaskExtractorConfig:
+        """Parses a simple form suitable for user input into a full configuration object.
+
+        TODO: docstring.
+
+        Examples:
+            >>> raise NotImplementedError
+        """
+        logger.info("Parsing raw input:")
+        logger.info(str(raw_input))
+
+        if isinstance(raw_input, str):
+            logger.info("Parsing string input via YAML")
+            yaml = ruamel.yaml.YAML(typ="safe", pure=True)
+            raw_input = yaml.load(raw_input)
+
+        if set(raw_input.keys()) != {"predicates", "windows"}:
+            raise ValueError(
+                "Raw input is malformed; must have keys 'predicates' and 'windows' (and no others). "
+                f"Got: {', '.join(raw_input.keys())}"
+            )
+
+        predicates = cls._parse_predicates(raw_input.pop(predicates))
+        windows = cls._parse_windows(raw_input.pop(windows), predicates)
+
+        return cls(predicates=predicates, windows=windows)
+
+    @classmethod
+    def _parse_predicates(cls, predicates: dict) -> dict[str, PlainPredictateConfig | DerivedPredicateConfig]:
+        raise NotImplementedError
+
+    @classmethod
+    def _parse_windows(
+        cls, windows: dict, predicates: dict[str, PlainPredictateConfig | DerivedPredicateConfig]
+    ) -> dict[str, WindowConfig]:
+        raise NotImplementedError
+
+    def __post_init__(self):
+        raise NotImplementedError
+
+    @property
+    def tree(self) -> Node:
+        raise NotImplementedError
 
 
 def get_config(cfg: dict, key: str, default: Any) -> Any:
