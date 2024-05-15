@@ -288,6 +288,8 @@ class WindowConfig:
                              window_size=datetime.timedelta(days=2),
                              right_inclusive=False,
                              offset=datetime.timedelta(0))
+        >>> input_window.root_node
+        'end'
         >>> gap_window = WindowConfig(
         ...     start="input.end",
         ...     end="start + 24h",
@@ -306,6 +308,8 @@ class WindowConfig:
                              window_size=datetime.timedelta(days=1),
                              right_inclusive=True,
                              offset=datetime.timedelta(0))
+        >>> gap_window.root_node
+        'start'
         >>> target_window = WindowConfig(
         ...     start="gap.end",
         ...     end="start -> discharge_or_death",
@@ -324,6 +328,8 @@ class WindowConfig:
                             end_event='discharge_or_death',
                             right_inclusive=True,
                             offset=datetime.timedelta(0))
+        >>> target_window.root_node
+        'start'
         >>> invalid_window = WindowConfig(
         ...     start=None, end=None, start_inclusive=True, end_inclusive=True, has={}
         ... )
@@ -491,6 +497,11 @@ class WindowConfig:
                 "Exactly one of the start or end of the window must reference the other. "
                 f"Got: {self.start} -> {self.end}"
             )
+
+    @property
+    def root_node(self) -> str:
+        """Returns 'start' if the end of the window is defined relative to the start and 'end' otherwise."""
+        return "end" if self._start_references_end else "start"
 
     @property
     def referenced_event(self) -> tuple[str]:
@@ -740,7 +751,7 @@ class TaskExtractorConfig:
         for name in self.windows:
             if re.match(r"^\w+$", name) is None:
                 raise ValueError(
-                    f"Predicate name '{name}' is invalid; must be composed of alphanumeric or '_' characters."
+                    f"Window name '{name}' is invalid; must be composed of alphanumeric or '_' characters."
                 )
 
         if self.trigger_event.predicate not in self.predicates:
@@ -749,7 +760,72 @@ class TaskExtractorConfig:
                 f"{', '.join(self.predicates.keys())}"
             )
 
-        raise NotImplementedError
+        trigger_node = Node("trigger")
+
+        window_nodes = {"trigger": trigger_node}
+
+        for name, window in self.windows.items():
+            start_node = Node(f"{name}.start", endpoint_expr=window.start_endpoint_expr)
+            end_node = Node(f"{name}.end", endpoint_expr=window.end_endpoint_expr)
+
+            if window.root_node == "end":
+                # In this case, the end_node will bound an unconstrained window, as it is the window between
+                # a prior window and the defined anchor for this window, so it has no constraints. But the
+                # start_node will have the constraints corresponding to this window, as it is defined relative
+                # to the end node.
+                end_node.constraints = {}
+                start_node.constraints = window.has
+                start_node.parent = end_node
+            else:
+                # In this case, the start_node will bound an unconstrained window, as it is the window between
+                # a prior window and the defined anchor for this window, so it has no constraints. But the
+                # start_node will have the constraints corresponding to this window, as it is defined relative
+                # to the end node.
+                end_node.constraints = window.has
+                start_node.constraints = {}
+                end_node.parent = start_node
+
+            window_nodes[f"{name}.start"] = start_node
+            window_nodes[f"{name}.end"] = end_node
+
+        for name, window in self.windows.items():
+            for predicate in window.referenced_predicates:
+                if predicate not in self.predicates:
+                    raise KeyError(
+                        f"Window '{name}' references undefined predicate '{predicate}'.\n"
+                        f"Window predicates: {', '.join(window.referenced_predicates)}\n"
+                        f"Defined predicates: {', '.join(self.predicates.keys())}"
+                    )
+
+            if len(window.referenced_event) == 1:
+                event = window.referenced_event[0]
+                if event != "trigger":
+                    raise KeyError(
+                        f"Window '{name}' references undefined trigger event '{event}' -- must be trigger!"
+                    )
+
+                window_nodes[f"{name}.{window.root_node}"].parent = window_nodes[event]
+
+            elif len(window.referenced_event) == 2:
+                referenced_window, referenced_event = window.referenced_event
+                if referenced_window not in self.windows:
+                    raise KeyError(
+                        f"Window '{name}' references undefined window '{referenced_window}' "
+                        f"for event '{referenced_event}'. Allowed windows: {', '.join(self.windows.keys())}"
+                    )
+                if referenced_event not in {"start", "end"}:
+                    raise KeyError(
+                        f"Window '{name}' references undefined event '{referenced_event}' "
+                        f"for window '{referenced_window}'. Allowed events: 'start', 'end'"
+                    )
+
+                parent_node = f"{referenced_window}.{referenced_event}"
+                window_nodes[f"{name}.{window.root_node}"].parent = window_nodes[parent_node]
+            else:
+                raise ValueError(
+                    f"Window '{name}' references invalid event '{window.referenced_event}' "
+                    "must be of length 1 or 2."
+                )
 
     def __post_init__(self):
         self._initialize_predicates()
@@ -757,7 +833,7 @@ class TaskExtractorConfig:
 
     @property
     def window_tree(self) -> Node:
-        raise NotImplementedError
+        return self.window_nodes["trigger"]
 
     @property
     def predicates_DAG(self) -> nx.DiGraph:

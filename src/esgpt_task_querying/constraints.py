@@ -11,6 +11,8 @@ def check_constraints(
 ) -> pl.DataFrame:
     """Checks the constraints on the counts of predicates in the summary dataframe.
 
+    TODO(mmd): integrate this function into the Window object for ease of use.
+
     Args:
         window_constraints: constraints on counts of predicates that must
             be satsified, organized as a dictionary from predicate column name to the lowerbound and upper
