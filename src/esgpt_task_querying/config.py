@@ -16,6 +16,7 @@ from bigtree import Node
 from loguru import logger
 
 from .types import (
+    ANY_EVENT_COLUMN,
     END_OF_RECORD_KEY,
     START_OF_RECORD_KEY,
     TemporalWindowBounds,
@@ -261,9 +262,142 @@ class WindowConfig:
             satisfied on a window for it to be included.
 
     Raises:
-        TODO
+        ValueError: If the window is misconfigured in any of a variety of ways; see below for examples.
 
-    Examples: TODO
+    Examples:
+        >>> input_window = WindowConfig(
+        ...     start=None,
+        ...     end="trigger + 2 days",
+        ...     start_inclusive=True,
+        ...     end_inclusive=True,
+        ...     has={"_ANY_EVENT": (5, None)}
+        ... )
+        >>> input_window.referenced_event
+        ('trigger',)
+        >>> # This window does not reference any "true" external predicates, only implicit predicates like
+        >>> # start, end, and * events, so this list should be empty.
+        >>> sorted(input_window.referenced_predicates)
+        []
+        >>> input_window.start_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
+        ToEventWindowBounds(left_inclusive=True,
+                            end_event='-_RECORD_START',
+                            right_inclusive=True,
+                            offset=datetime.timedelta(0))
+        >>> input_window.end_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
+        TemporalWindowBounds(left_inclusive=False,
+                             window_size=datetime.timedelta(days=2),
+                             right_inclusive=False,
+                             offset=datetime.timedelta(0))
+        >>> gap_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="start + 24h",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        >>> gap_window.referenced_event
+        ('input', 'end')
+        >>> sorted(gap_window.referenced_predicates)
+        ['death', 'discharge']
+        >>> gap_window.start_endpoint_expr is None
+        True
+        >>> gap_window.end_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
+        TemporalWindowBounds(left_inclusive=False,
+                             window_size=datetime.timedelta(days=1),
+                             right_inclusive=True,
+                             offset=datetime.timedelta(0))
+        >>> target_window = WindowConfig(
+        ...     start="gap.end",
+        ...     end="start -> discharge_or_death",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={}
+        ... )
+        >>> target_window.referenced_event
+        ('gap', 'end')
+        >>> sorted(target_window.referenced_predicates)
+        ['discharge_or_death']
+        >>> target_window.start_endpoint_expr is None
+        True
+        >>> target_window.end_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
+        ToEventWindowBounds(left_inclusive=False,
+                            end_event='discharge_or_death',
+                            right_inclusive=True,
+                            offset=datetime.timedelta(0))
+        >>> invalid_window = WindowConfig(
+        ...     start=None, end=None, start_inclusive=True, end_inclusive=True, has={}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window cannot progress from the start of the record to the end of the record.
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="start - 2d",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window start will not occur before window end! Got: input.end -> start - 2d
+        >>> invalid_window = WindowConfig(
+        ...     start="end -> predicate",
+        ...     end="input.end",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window start will not occur before window end! Got: end -> predicate -> input.end
+        >>> invalid_window = WindowConfig(
+        ...     start="end - 24h", end="start + 1d", start_inclusive=True, end_inclusive=True, has={}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Exactly one of the start or end of the window must reference the other.
+        Got: end - 24h -> start + 1d
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="input.end + 2d",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Exactly one of the start or end of the window must reference the other.
+        Got: input.end -> input.end + 2d
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="start + -24h",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window boundary cannot contain both '+' and '-' operators.
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="start + invalid time string.",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Failed to parse timedelta from window offset for 'invalid time string.'
+        >>> target_window = WindowConfig(
+        ...     start="gap.end",
+        ...     end="start <-> discharge_or_death",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window boundary cannot contain both '->' and '<-' operators.
     """
 
     start: str | None
@@ -275,7 +409,9 @@ class WindowConfig:
     @classmethod
     def _parse_boundary(cls, boundary: str) -> dict[str, str]:
         if "->" in boundary or "<-" in boundary:
-            if "->" in boundary:
+            if "->" in boundary and "<-" in boundary:
+                raise ValueError("Window boundary cannot contain both '->' and '<-' operators.")
+            elif "->" in boundary:
                 ref, predicate = (x.strip() for x in boundary.split("->"))
             else:
                 ref, predicate = (x.strip() for x in boundary.split("<-"))
@@ -289,8 +425,7 @@ class WindowConfig:
         elif "+" in boundary or "-" in boundary:
             if "+" in boundary and "-" in boundary:
                 raise ValueError("Window boundary cannot contain both '+' and '-' operators.")
-
-            if "+" in boundary:
+            elif "+" in boundary:
                 ref, offset = (x.strip() for x in boundary.split("+"))
             else:
                 ref, offset = (x.strip() for x in boundary.split("-"))
@@ -301,8 +436,8 @@ class WindowConfig:
                 if parsed_offset == timedelta(0):
                     logger.warning(f"Window offset for {boundary} is zero; this may not be intended.")
                     return {"referenced": ref, "offset": None, "event_bound": None, "occurs_before": None}
-            except ValueError as e:
-                raise ValueError(f"Failed to parse timedelta from window offset for {boundary}!") from e
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Failed to parse timedelta from window offset for '{offset}'") from e
 
             return {"referenced": ref, "offset": offset, "event_bound": None, "occurs_before": "-" in offset}
         else:
@@ -317,16 +452,27 @@ class WindowConfig:
                 "referenced": "end",
                 "offset": None,
                 "event_bound": f"-{START_OF_RECORD_KEY}",
+                "occurs_before": True,
             }
         else:
             self._parsed_start = self._parse_boundary(self.start)
 
         if self.end is None:
-            self._parsed_end = {"referenced": "start", "offset": None, "event_bound": END_OF_RECORD_KEY}
+            self._parsed_end = {
+                "referenced": "start",
+                "offset": None,
+                "event_bound": END_OF_RECORD_KEY,
+                "occurs_before": False,
+            }
         else:
             self._parsed_end = self._parse_boundary(self.end)
 
-        if self._parsed_start["referenced"] == "end":
+        if self._parsed_start["referenced"] == "end" and self._parsed_end["referenced"] == "start":
+            raise ValueError(
+                "Exactly one of the start or end of the window must reference the other. "
+                f"Got: {self.start} -> {self.end}"
+            )
+        elif self._parsed_start["referenced"] == "end":
             self._start_references_end = True
             # We use `is False` because it may be None, which is distinct from True or False
             if self._parsed_start["occurs_before"] is False:
@@ -342,7 +488,7 @@ class WindowConfig:
                 )
         else:
             raise ValueError(
-                "Window must have either the start reference the end or the end reference the start. "
+                "Exactly one of the start or end of the window must reference the other. "
                 f"Got: {self.start} -> {self.end}"
             )
 
@@ -355,11 +501,13 @@ class WindowConfig:
 
     @property
     def referenced_predicates(self) -> set[str]:
-        predicates = set()
+        predicates = set(self.has.keys())
         if self._parsed_start["event_bound"]:
             predicates.add(self._parsed_start["event_bound"].replace("-", ""))
         if self._parsed_end["event_bound"]:
             predicates.add(self._parsed_end["event_bound"].replace("-", ""))
+
+        predicates -= {START_OF_RECORD_KEY, END_OF_RECORD_KEY, ANY_EVENT_COLUMN}
         return predicates
 
     @property
