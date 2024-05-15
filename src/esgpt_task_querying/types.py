@@ -56,7 +56,7 @@ class TemporalWindowBounds:
     left_inclusive: bool
     window_size: timedelta
     right_inclusive: bool
-    offset: timedelta | None
+    offset: timedelta | None = None
 
     # Needed to make it accessible like a tuple.
     def __iter__(self):
@@ -199,7 +199,7 @@ class ToEventWindowBounds:
     left_inclusive: bool
     end_event: str
     right_inclusive: bool
-    offset: timedelta | None
+    offset: timedelta | None = None
 
     def __post_init__(self):
         if self.end_event == "":

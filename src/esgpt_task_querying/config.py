@@ -15,7 +15,12 @@ import ruamel.yaml
 from bigtree import Node
 from loguru import logger
 
-from .types import END_OF_RECORD_KEY, START_OF_RECORD_KEY
+from .types import (
+    END_OF_RECORD_KEY,
+    START_OF_RECORD_KEY,
+    TemporalWindowBounds,
+    ToEventWindowBounds,
+)
 from .utils import parse_timedelta
 
 
@@ -275,16 +280,33 @@ class WindowConfig:
             else:
                 ref, predicate = (x.strip() for x in boundary.split("<-"))
                 predicate = "-" + predicate
-            return {"referenced": ref, "offset": None, "event_bound": predicate}
+            return {
+                "referenced": ref,
+                "offset": None,
+                "event_bound": predicate,
+                "occurs_before": "-" in predicate,
+            }
         elif "+" in boundary or "-" in boundary:
+            if "+" in boundary and "-" in boundary:
+                raise ValueError("Window boundary cannot contain both '+' and '-' operators.")
+
             if "+" in boundary:
                 ref, offset = (x.strip() for x in boundary.split("+"))
             else:
                 ref, offset = (x.strip() for x in boundary.split("-"))
                 offset = "-" + offset
-            return {"referenced": ref, "offset": offset, "event_bound": None}
+
+            try:
+                parsed_offset = parse_timedelta(offset)
+                if parsed_offset == timedelta(0):
+                    logger.warning(f"Window offset for {boundary} is zero; this may not be intended.")
+                    return {"referenced": ref, "offset": None, "event_bound": None, "occurs_before": None}
+            except ValueError as e:
+                raise ValueError(f"Failed to parse timedelta from window offset for {boundary}!") from e
+
+            return {"referenced": ref, "offset": offset, "event_bound": None, "occurs_before": "-" in offset}
         else:
-            return {"referenced": boundary, "offset": None, "event_bound": None}
+            return {"referenced": boundary, "offset": None, "event_bound": None, "occurs_before": None}
 
     def __post_init__(self):
         if self.start is None and self.end is None:
@@ -306,15 +328,23 @@ class WindowConfig:
 
         if self._parsed_start["referenced"] == "end":
             self._start_references_end = True
+            # We use `is False` because it may be None, which is distinct from True or False
+            if self._parsed_start["occurs_before"] is False:
+                raise ValueError(
+                    f"Window start will not occur before window end! Got: {self.start} -> {self.end}"
+                )
         elif self._parsed_end["referenced"] == "start":
             self._start_references_end = False
+            # We use `is True` because it may be None, which is distinct from True or False
+            if self._parsed_end["occurs_before"] is True:
+                raise ValueError(
+                    f"Window start will not occur before window end! Got: {self.start} -> {self.end}"
+                )
         else:
             raise ValueError(
                 "Window must have either the start reference the end or the end reference the start. "
                 f"Got: {self.start} -> {self.end}"
             )
-
-        raise NotImplementedError
 
     @property
     def referenced_event(self) -> tuple[str]:
@@ -331,6 +361,66 @@ class WindowConfig:
         if self._parsed_end["event_bound"]:
             predicates.add(self._parsed_end["event_bound"].replace("-", ""))
         return predicates
+
+    @property
+    def start_endpoint_expr(self) -> None | ToEventWindowBounds | TemporalWindowBounds:
+        if self._start_references_end:
+            # If end references start, then end will occur after start, so `left_inclusive` corresponds to
+            # `start_inclusive` and `right_inclusive` corresponds to `end_inclusive`.
+            left_inclusive = self.start_inclusive
+            right_inclusive = self.end_inclusive
+        else:
+            # If this window references end from start, then the end event window expression will not have
+            # any constraints as it will reference an external event, and therefore the inclusive
+            # parameters don't matter.
+            # TODO(mmd): This may not be the best API.
+            left_inclusive = False
+            right_inclusive = False
+
+        if self._parsed_start["event_bound"]:
+            return ToEventWindowBounds(
+                end_event=self._parsed_start["event_bound"],
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
+        elif self._parsed_start["offset"]:
+            return TemporalWindowBounds(
+                window_size=parse_timedelta(self._parsed_start["offset"]),
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
+        else:
+            return None
+
+    @property
+    def end_endpoint_expr(self) -> None | ToEventWindowBounds | TemporalWindowBounds:
+        if self._start_references_end:
+            # If this window references end from start, then the end event window expression will not have
+            # any constraints as it will reference an external event, and therefore the inclusive
+            # parameters don't matter.
+            # TODO(mmd): This may not be the best API.
+            left_inclusive = False
+            right_inclusive = False
+        else:
+            # If end references start, then end will occur after start, so `left_inclusive` corresponds to
+            # `start_inclusive` and `right_inclusive` corresponds to `end_inclusive`.
+            left_inclusive = self.start_inclusive
+            right_inclusive = self.end_inclusive
+
+        if self._parsed_end["event_bound"]:
+            return ToEventWindowBounds(
+                end_event=self._parsed_end["event_bound"],
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
+        elif self._parsed_end["offset"]:
+            return TemporalWindowBounds(
+                window_size=parse_timedelta(self._parsed_end["offset"]),
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
+        else:
+            return None
 
 
 @dataclasses.dataclass
