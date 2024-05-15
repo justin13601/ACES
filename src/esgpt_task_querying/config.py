@@ -19,10 +19,10 @@ from .utils import parse_timedelta
 @dataclasses.dataclass
 class PlainPredicateConfig:
     code: str
-    value_min: float | None
-    value_max: float | None
-    value_min_inclusive: bool
-    value_max_inclusive: bool
+    value_min: float | None = None
+    value_max: float | None = None
+    value_min_inclusive: bool | None = None
+    value_max_inclusive: bool | None = None
 
     def MEDS_eval_expr(self) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
@@ -33,6 +33,14 @@ class PlainPredicateConfig:
             [([([(col("code")) == (String(BP//systolic))]) &
                ([(col("value")) >= (120)])]) &
                ([(col("value")) < (140)])]
+            >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
+            >>> expr = cfg.MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [([(col("code")) == (String(BP//systolic))]) & ([(col("value")) > (120)])]
+            >>> cfg = PlainPredicateConfig("BP//diastolic")
+            >>> expr = cfg.MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("code")) == (String(BP//diastolic))]
         """
 
         criteria = [pl.col("code") == self.code]
@@ -48,7 +56,10 @@ class PlainPredicateConfig:
             else:
                 criteria.append(pl.col("value") < self.value_max)
 
-        return pl.all_horizontal(criteria)
+        if len(criteria) == 1:
+            return criteria[0]
+        else:
+            return pl.all_horizontal(criteria)
 
     def ESGPT_eval_expr(self, values_column: str | None = None) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
@@ -59,12 +70,25 @@ class PlainPredicateConfig:
             [([([(col("BP")) == (String(systolic))]) &
                ([(col("BP_value")) >= (120)])]) &
                ([(col("BP_value")) < (140)])]
+            >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
+            >>> expr = cfg.ESGPT_eval_expr("blood_pressure_value")
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [([(col("BP")) == (String(systolic))]) & ([(col("blood_pressure_value")) > (120)])]
+            >>> expr = PlainPredicateConfig("BP//diastolic").ESGPT_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("BP")) == (String(diastolic))]
+            >>> expr = PlainPredicateConfig("event_type//ADMISSION").ESGPT_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            col("event_type").strict_cast(String).str.split([String(&)]).list.contains([String(ADMISSION)])
         """
         code_is_in_parts = "//" in self.code
 
         if code_is_in_parts:
             measurement_name, code = self.code.split("//")
-            criteria = [pl.col(measurement_name) == code]
+            if measurement_name.lower() == "event_type":
+                criteria = [pl.col("event_type").cast(pl.Utf8).str.split("&").list.contains(code)]
+            else:
+                criteria = [pl.col(measurement_name) == code]
 
         elif (self.value_min is None) and (self.value_max is None):
             return pl.col(code).is_not_null()
@@ -90,7 +114,10 @@ class PlainPredicateConfig:
             else:
                 criteria.append(pl.col(values_column) < self.value_max)
 
-        return pl.all_horizontal(criteria)
+        if len(criteria) == 1:
+            return criteria[0]
+        else:
+            return pl.all_horizontal(criteria)
 
 
 @dataclasses.dataclass
