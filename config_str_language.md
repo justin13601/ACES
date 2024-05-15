@@ -133,15 +133,16 @@ event or an internal event, that reference must be expressed in one of the follo
    Note that if `$REFERENCED` is the `start` field, then `$TIME_DELTA` must be positive, and if
    `$REFERENCED` is the `end` field, then `$TIME_DELTA` must be negative to preserve the time ordering of
    the window fields.
-2. `$REFERENCING = $REFERENCED -> $PREDICATE`, `$REFERENCING = $PREDICATE -> $REFERENCED`
+2. `$REFERENCING = $REFERENCED -> $PREDICATE`, `$REFERENCING = $REFERENCED <- $PREDICATE`
    In this case, the referencing event will be defined as the next or previous event satisfying the
-   predicate, `$PREDICATE`. Note that `<-` is not a valid operator, only `->` and one must swap the order of
-   the predicate and referenced event to change the directionality of the search. Further, note that if the
-   `$REFERENCED` is the `start` field, then the "next predicate ordering" (`$REFERENCED -> $PREDICATE`) must
-   be used, and if the `$REFERENCED` is the `end` field, then the "previous predicate ordering"
-   (`$PREDICATE -> $REFERENCED`) must be used to preserve the time ordering of the window fields. Note that
-   these forms can lead to windows being defined as single pointe vents, if the `$REFERENCED` event itself
-   satisfies `$PREDICATE` and the appropriate constraints are satisfied and inclusive values are set.
+   predicate, `$PREDICATE`. Note that if the `$REFERENCED` is the `start` field, then the "next predicate
+   ordering" (`$REFERENCED -> $PREDICATE`) must be used, and if the `$REFERENCED` is the `end` field, then the
+   "previous predicate ordering" (`$REFERENCED <- $PREDICATE`) must be used to preserve the time ordering of
+   the window fields. Note that these forms can lead to windows being defined as single pointe vents, if the
+   `$REFERENCED` event itself satisfies `$PREDICATE` and the appropriate constraints are satisfied and
+   inclusive values are set.
+3. `$REFERENCING = $REFERENCED`
+   In this case, the referencing event will be defined as the same event as the referenced event.
 
 _`null`/`None`/omitted_: If `start` is `null`/`None`/omitted, then the window will start at the beginning of
 the patient's record. If `end` is `null`/`None`/omitted, then the window will end at the end of the patient's

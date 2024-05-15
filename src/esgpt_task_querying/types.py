@@ -14,6 +14,7 @@ PRED_CNT_TYPE = pl.UInt16
 
 # The key used in the endpoint expression to indicate the window should be aggregated to the record start.
 START_OF_RECORD_KEY = "_RECORD_START"
+END_OF_RECORD_KEY = "_RECORD_END"
 
 # The key used to capture the count of events of any kind that occur in a window.
 ANY_EVENT_COLUMN = "_ANY_EVENT"
@@ -210,6 +211,12 @@ class ToEventWindowBounds:
                 "event. Did you mean to make that be the start event (which should result in the `end_event` "
                 f"parameter being '-{START_OF_RECORD_KEY}'?"
             )
+        elif self.end_event == f"-{END_OF_RECORD_KEY}":
+            raise ValueError(
+                f"It doesn't make sense to have the end of the record {END_OF_RECORD_KEY} be a start "
+                "event. Did you mean to make that be the end event (which should result in the `end_event` "
+                f"parameter being '{END_OF_RECORD_KEY}'?"
+            )
 
         if self.offset is None:
             self.offset = timedelta(0)
@@ -257,6 +264,16 @@ class ToEventWindowBounds:
             mode: bound_to_row
             closed: both
             offset: 2 days, 0:00:00
+            >>> print_kwargs(ToEventWindowBounds(
+            ...     left_inclusive=False,
+            ...     end_event="_RECORD_END",
+            ...     right_inclusive=True,
+            ...     offset=timedelta(days=1),
+            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            boundary_expr: [(col("timestamp")) == (col("timestamp").max().over([col("subject_id")]))]
+            mode: row_to_bound
+            closed: right
+            offset: 1 day, 0:00:00
         """
 
         if self.left_inclusive and self.right_inclusive:
@@ -277,6 +294,8 @@ class ToEventWindowBounds:
 
         if end_event == START_OF_RECORD_KEY:
             boundary_expr = pl.col("timestamp") == pl.col("timestamp").min().over("subject_id")
+        elif end_event == END_OF_RECORD_KEY:
+            boundary_expr = pl.col("timestamp") == pl.col("timestamp").max().over("subject_id")
         else:
             boundary_expr = pl.col(end_event) > 0
 
