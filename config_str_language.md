@@ -26,10 +26,6 @@ Constraints are specified in terms of time-points that can be bounded by events 
 temporal relationships on said events. The windows between these time-points can then either be constrained to
 contain events that satisfy certain aggregation functions over predicates for these time frames.
 
-## Simplified Form (for human input)
-
-TODO
-
 ## Machine Form (what is used by the algorithm)
 
 In the machine form, the configuration file consists of two parts:
