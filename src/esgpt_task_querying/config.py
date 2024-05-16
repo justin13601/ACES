@@ -331,6 +331,19 @@ class WindowConfig:
         >>> target_window.root_node
         'start'
         >>> invalid_window = WindowConfig(
+        ...     start="gap.end gap.start",
+        ...     end="start -> discharge_or_death",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Window boundary reference must be either a valid alphanumeric/'_' string or a reference to
+            another window's start or end event, formatted as a valid alphanumeric/'_' string, followed by
+            '.start' or '.end'.
+            Got: 'gap.end gap.start'
+        >>> invalid_window = WindowConfig(
         ...     start=None, end=None, start_inclusive=True, end_inclusive=True, has={}
         ... )
         Traceback (most recent call last):
@@ -413,6 +426,25 @@ class WindowConfig:
     has: dict[str, str]
 
     @classmethod
+    def _check_reference(cls, reference: str):
+        """Checks to ensure referenced events are valid."""
+
+        err_str = (
+            "Window boundary reference must be either a valid alphanumeric/'_' string "
+            "or a reference to another window's start or end event, formatted as a valid "
+            f"alphanumeric/'_' string, followed by '.start' or '.end'. Got: '{reference}'"
+        )
+
+        if "." in reference:
+            if reference.count(".") > 1:
+                raise ValueError(err_str)
+            window, event = reference.split(".")
+            if event not in {"start", "end"} or not re.match(r"^\w+$", window):
+                raise ValueError(err_str)
+        elif not re.match(r"^\w+$", reference):
+            raise ValueError(err_str)
+
+    @classmethod
     def _parse_boundary(cls, boundary: str) -> dict[str, str]:
         if "->" in boundary or "<-" in boundary:
             if "->" in boundary and "<-" in boundary:
@@ -422,6 +454,9 @@ class WindowConfig:
             else:
                 ref, predicate = (x.strip() for x in boundary.split("<-"))
                 predicate = "-" + predicate
+
+            cls._check_reference(ref)
+
             return {
                 "referenced": ref,
                 "offset": None,
@@ -437,6 +472,8 @@ class WindowConfig:
                 ref, offset = (x.strip() for x in boundary.split("-"))
                 offset = "-" + offset
 
+            cls._check_reference(ref)
+
             try:
                 parsed_offset = parse_timedelta(offset)
                 if parsed_offset == timedelta(0):
@@ -447,7 +484,9 @@ class WindowConfig:
 
             return {"referenced": ref, "offset": offset, "event_bound": None, "occurs_before": "-" in offset}
         else:
-            return {"referenced": boundary, "offset": None, "event_bound": None, "occurs_before": None}
+            ref = boundary.strip()
+            cls._check_reference(ref)
+            return {"referenced": ref, "offset": None, "event_bound": None, "occurs_before": None}
 
     def __post_init__(self):
         if self.start is None and self.end is None:
@@ -623,7 +662,71 @@ class TaskExtractorConfig:
     Raises:
         ValueError: If any window or predicate names are not composed of alphanumeric or "_" characters.
 
-    Examples: TODO
+    Examples:
+        >>> from bigtree import print_tree
+        >>> predicates = {
+        ...     "admission": PlainPredicateConfig("admission"),
+        ...     "discharge": PlainPredicateConfig("discharge"),
+        ...     "death": PlainPredicateConfig("death"),
+        ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
+        ... }
+        >>> trigger_event = EventConfig("admission")
+        >>> windows = {
+        ...     "input": WindowConfig(
+        ...         start=None,
+        ...         end="trigger + 24h",
+        ...         start_inclusive=True,
+        ...         end_inclusive=True,
+        ...         has={"_ANY_EVENT": (32, None)},
+        ...     ),
+        ...     "gap": WindowConfig(
+        ...         start="input.end",
+        ...         end="start + 24h",
+        ...         start_inclusive=False,
+        ...         end_inclusive=True,
+        ...         has={"death_or_discharge": (None, 0), "admission": (None, 0)},
+        ...     ),
+        ...     "target": WindowConfig(
+        ...         start="gap.end",
+        ...         end="start -> death_or_discharge",
+        ...         start_inclusive=False,
+        ...         end_inclusive=True,
+        ...         has={},
+        ...     ),
+        ... }
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger_event=trigger_event, windows=windows)
+        >>> print(config.plain_predicates) # doctest: +NORMALIZE_WHITESPACE
+        [PlainPredicateConfig(code='admission',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None),
+         PlainPredicateConfig(code='discharge',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None),
+         PlainPredicateConfig(code='death',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None)]
+
+        >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
+        [DerivedPredicateConfig(expr='or(death, discharge)')]
+        >>> print(nx.write_network_text(config.predicates_DAG))
+        ╟── death
+        ╎   └─╼ death_or_discharge ╾ discharge
+        ╙── discharge
+            └─╼  ...
+        >>> print_tree(config.window_tree)
+        trigger
+        └── input.end
+            ├── input.start
+            ├── gap.start
+            └── gap.end
+                ├── target.start
+                └── target.end
     """
 
     predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
@@ -738,7 +841,7 @@ class TaskExtractorConfig:
             raise ValueError(
                 "Predicate graph is not a directed acyclic graph!\n"
                 f"Cycle found: {nx.find_cycle(self._predicate_dag_graph)}\n"
-                f"Graph: {nx.generate_network_text(self._predicate_dag_graph)}"
+                f"Graph: {nx.write_network_text(self._predicate_dag_graph)}"
             )
 
     def _initialize_windows(self):
@@ -763,7 +866,6 @@ class TaskExtractorConfig:
         trigger_node = Node("trigger")
 
         window_nodes = {"trigger": trigger_node}
-
         for name, window in self.windows.items():
             start_node = Node(f"{name}.start", endpoint_expr=window.start_endpoint_expr)
             end_node = Node(f"{name}.end", endpoint_expr=window.end_endpoint_expr)
@@ -826,6 +928,17 @@ class TaskExtractorConfig:
                     f"Window '{name}' references invalid event '{window.referenced_event}' "
                     "must be of length 1 or 2."
                 )
+
+        # Clean up the tree
+        final_node_names = []
+        for n, node in window_nodes.items():
+            if n == "trigger" or node.endpoint_expr is not None:
+                final_node_names.append(n)
+            else:
+                for child in node.children:
+                    child.parent = node.parent
+
+        self.window_nodes = {n: window_nodes[n] for n in final_node_names}
 
     def __post_init__(self):
         self._initialize_predicates()
