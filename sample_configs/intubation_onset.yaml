@@ -1,0 +1,45 @@
+# https://www.nature.com/articles/s41598-020-77893-3
+
+# TODO: Express "END_OF_RECORD" or "START_OF_RECORD" predicate
+predicates:
+  intubation_onset: ???
+  icu_admission: ???
+  icu_discharge: ???
+  hospital_discharge: ???
+  death: ???
+  blood_gas: ???
+  icu_end_of_stay:
+    expr: or(icu_discharge, death, hospital_discharge, END_OF_RECORD)
+
+trigger_event: *
+
+# TODO: may express this in a better way
+windows:
+  pre_trigger_icu_admit:
+    start: trigger
+    end: start <- icu_admission
+    has:
+      icu_end_of_stay: (None, 0)
+  post_trigger_icu_end_of_stay:
+    start: trigger
+    end: start -> icu_end_of_stay
+    has:
+      icu_admission: (None, 0)
+  input:
+    start: None
+    end: trigger
+    start_inclusive: True
+    end_inclusive: True
+  BG_meas:
+    start: trigger
+    end: start - 24h
+    start_inclusive: True
+    end_inclusive: True
+    has:
+      blood_gas: (1, None)
+  target:
+    start: trigger
+    end: start + 24h
+    start_inclusive: False
+    end_inclusive: True
+    label: intubation_onset
