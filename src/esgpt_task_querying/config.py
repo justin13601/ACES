@@ -77,10 +77,8 @@ class PlainPredicateConfig:
 
         Examples:
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).ESGPT_eval_expr("BP_value")
-            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [([([(col("BP")) == (String(systolic))]) &
-               ([(col("BP_value")) >= (120)])]) &
-               ([(col("BP_value")) < (140)])]
+            >>> expr == [([([(col("BP")) == (String(systolic))]) & ([(col("BP_value")) >= (120)])]) &
+            ... ([(col("BP_value")) < (140)])]
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
             >>> expr = cfg.ESGPT_eval_expr("blood_pressure_value")
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
@@ -758,7 +756,6 @@ class TaskExtractorConfig:
             FileNotFoundError: If the file does not exist.
             ValueError: If the file is not a ".yaml" file.
         """
-        logger.debug("Reading config...")
         if isinstance(config_path, str):
             config_path = Path(config_path)
 
