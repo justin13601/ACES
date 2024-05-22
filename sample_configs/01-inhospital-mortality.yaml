@@ -13,7 +13,7 @@ trigger_event: admission
 windows:
   input:
     start: NULL
-    end: trigger
+    end: trigger + 24h
     start_inclusive: True
     end_inclusive: True
   gap:
