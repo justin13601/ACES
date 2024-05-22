@@ -284,8 +284,6 @@ def extract_subtree(
             subtree_anchor_realizations, on=["subject_id", "subtree_anchor_timestamp"], how="inner"
         )
 
-        print(child)
-
         # Step 3: Filter to where constraints are valid
         window_summary_df = check_constraints(child.constraints, window_summary_df)
 
