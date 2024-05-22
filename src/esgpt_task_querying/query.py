@@ -5,15 +5,15 @@ It accepts the configuration file and predicate columns, builds the tree, and re
 
 
 import polars as pl
-from bigtree import preorder_iter, print_tree
+from bigtree import print_tree
 from loguru import logger
 
-from .config import build_tree_from_config, get_config
+from .config import TaskExtractorConfig
 from .constraints import check_constraints
 from .extract_subtree import extract_subtree
 
 
-def query(cfg: dict, predicates_df: pl.DataFrame) -> pl.DataFrame:
+def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame:
     """Query a task using the provided configuration file and predicates dataframe.
 
     Args:
@@ -26,31 +26,23 @@ def query(cfg: dict, predicates_df: pl.DataFrame) -> pl.DataFrame:
     if not isinstance(predicates_df, pl.DataFrame):
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got {type(predicates_df)}.")
 
-    logger.debug("Building tree...")
-    tree = build_tree_from_config(cfg)
-    print_tree(tree, style="const_bold")
+    print_tree(cfg.window_tree, style="const_bold")
 
     logger.debug("Beginning query...")
-    prospective_root_anchors = check_constraints(tree.constraints, predicates_df).select(
-        "subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp")
-    )
+    prospective_root_anchors = check_constraints(
+        {cfg.trigger_event.predicate: (1, None)}, predicates_df
+    ).select("subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp"))
 
-    result = extract_subtree(tree, prospective_root_anchors, predicates_df)
+    result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)
     logger.debug("Done.")
-
-    # reorder columns in output dataframe
-    output_order = [node for node in preorder_iter(tree)]
-    result = result.select("subject_id", "timestamp", *(f"{c.name}_summary" for c in output_order[1:]))
 
     # add label column if specified
     label_window = None
-    for window, window_info in cfg["windows"].items():
-        if get_config(window_info, "label", None):
-            label_window = window
+    for name, window in cfg.windows.items():
+        if window.label:
+            label = window.label
+            label_window = name
             break
     if label_window:
-        label = cfg["windows"][label_window]["label"]
-        result = result.with_columns(
-            pl.col(f"{label_window}_summary").struct.field(f"is_{label}").alias("label")
-        )
+        result = result.with_columns(pl.col(f"{label_window}.end_summary").struct.field(label).alias("label"))
     return result

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import dataclasses
 import re
+from collections import OrderedDict
+from dataclasses import field
 from datetime import timedelta
 from pathlib import Path
 
@@ -27,6 +29,7 @@ from .utils import parse_timedelta
 @dataclasses.dataclass
 class PlainPredicateConfig:
     code: str
+    values_column: str | None = None
     value_min: float | None = None
     value_max: float | None = None
     value_min_inclusive: bool | None = None
@@ -422,7 +425,8 @@ class WindowConfig:
     end: str | None
     start_inclusive: bool
     end_inclusive: bool
-    has: dict[str, str]
+    has: dict[str, str] = field(default_factory=dict)
+    label: str | None = None
 
     @classmethod
     def _check_reference(cls, reference: str):
@@ -488,6 +492,15 @@ class WindowConfig:
             return {"referenced": ref, "offset": None, "event_bound": None, "occurs_before": None}
 
     def __post_init__(self):
+        # Parse the has constraints from the string representation to the tuple representation
+        if self.has is not None:
+            for each_constraint in self.has:
+                elements = self.has[each_constraint].strip("()").split(",")
+                elements = [element.strip() for element in elements]
+                self.has[each_constraint] = tuple(
+                    int(element) if element != "None" else None for element in elements
+                )
+
         if self.start is None and self.end is None:
             raise ValueError("Window cannot progress from the start of the record to the end of the record.")
 
@@ -550,6 +563,8 @@ class WindowConfig:
 
     @property
     def referenced_predicates(self) -> set[str]:
+        if not self.has:
+            return set()
         predicates = set(self.has.keys())
         if self._parsed_start["event_bound"]:
             predicates.add(self._parsed_start["event_bound"].replace("-", ""))
@@ -743,6 +758,7 @@ class TaskExtractorConfig:
             FileNotFoundError: If the file does not exist.
             ValueError: If the file is not a ".yaml" file.
         """
+        logger.debug("Reading config...")
         if isinstance(config_path, str):
             config_path = Path(config_path)
 
@@ -762,11 +778,16 @@ class TaskExtractorConfig:
         if loaded_dict:
             raise ValueError(f"Unrecognized keys in configuration file: {', '.join(loaded_dict.keys())}")
 
+        logger.debug("Parsing predicates...")
         predicates = {
             n: DerivedPredicateConfig(**p) if "expr" in p else PlainPredicateConfig(**p)
             for n, p in predicates.items()
         }
-        trigger_event = EventConfig(**trigger_event)
+
+        logger.debug("Parsing trigger event...")
+        trigger_event = EventConfig(trigger_event)
+
+        logger.debug("Parsing windows...")
         windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
         return cls(predicates=predicates, trigger_event=trigger_event, windows=windows)
@@ -929,15 +950,31 @@ class TaskExtractorConfig:
                 )
 
         # Clean up the tree
-        final_node_names = []
-        for n, node in window_nodes.items():
-            if n == "trigger" or node.endpoint_expr is not None:
-                final_node_names.append(n)
-            else:
-                for child in node.children:
-                    child.parent = node.parent
+        nodes_to_remove = []
 
-        self.window_nodes = {n: window_nodes[n] for n in final_node_names}
+        # First pass: identify nodes to remove, reassign children's parent
+        for n, node in window_nodes.items():
+            if n != "trigger" and node.endpoint_expr is None:
+                nodes_to_remove.append(n)
+                for child in node.children:
+                    # Reassign
+                    child.parent = node.parent
+                    if node.parent:
+                        if child not in node.parent.children:
+                            node.parent.children += (child,)
+
+        # Second pass: remove nodes from parent's children
+        for node_name in nodes_to_remove:
+            node = window_nodes[node_name]
+            if node.parent:
+                # Remove
+                node.parent.children = [child for child in node.parent.children if child.name != node_name]
+
+        # Delete nodes_to_remove
+        for node_name in nodes_to_remove:
+            del window_nodes[node_name]
+
+        self.window_nodes = window_nodes
 
     def __post_init__(self):
         self._initialize_predicates()
@@ -952,15 +989,16 @@ class TaskExtractorConfig:
         return self._predicate_dag_graph
 
     @property
-    def plain_predicates(self) -> list[PlainPredicateConfig]:
-        """Returns a list of plain predicates."""
-        return [cfg for p, cfg in self.predicates.items() if cfg.is_plain]
+    def plain_predicates(self) -> dict[str:PlainPredicateConfig]:
+        """Returns a dictionary of plain predicates in {name: code} format."""
+        return {p: cfg for p, cfg in self.predicates.items() if cfg.is_plain}
 
     @property
-    def derived_predicates(self) -> list[DerivedPredicateConfig]:
-        """Returns a list of derived predicates in an order that permits iterative evaluation."""
-        return [
-            self.predicates[p]
+    def derived_predicates(self) -> OrderedDict[str:DerivedPredicateConfig]:
+        """Returns an ordered dictionary of derived predicates in {name: code} format in an order that permits
+        iterative evaluation."""
+        return {
+            p: self.predicates[p]
             for p in nx.topological_sort(self.predicates_DAG)
             if not self.predicates[p].is_plain
-        ]
+        }

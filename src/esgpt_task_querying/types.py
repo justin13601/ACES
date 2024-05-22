@@ -62,6 +62,10 @@ class TemporalWindowBounds:
     def __iter__(self):
         return (getattr(self, field.name) for field in dataclasses.fields(self))
 
+    # Needed to make it scriptable.
+    def __getitem__(self, key):
+        return tuple(getattr(self, field.name) for field in dataclasses.fields(self))[key]
+
     def __post_init__(self):
         if self.offset is None:
             self.offset = timedelta(0)
@@ -224,6 +228,10 @@ class ToEventWindowBounds:
     # Needed to make it accessible like a tuple.
     def __iter__(self):
         return (getattr(self, field.name) for field in dataclasses.fields(self))
+
+    # Needed to make it scriptable.
+    def __getitem__(self, key):
+        return tuple(getattr(self, field.name) for field in dataclasses.fields(self))[key]
 
     @property
     def boolean_expr_bound_sum_kwargs(self) -> dict[str, str | timedelta | pl.Expr]:

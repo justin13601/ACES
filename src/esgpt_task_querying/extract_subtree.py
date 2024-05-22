@@ -250,11 +250,12 @@ def extract_subtree(
 
         # Step 1: Summarize the window from the subtree.root to child
         # TODO(mmd): Make this more object oriented using the dataclasses.
-        endpoint_expr = child.endpoint_expr + (subtree_root_offset,)
+        endpoint_expr = child.endpoint_expr
+        endpoint_expr.offset += subtree_root_offset
 
-        match child.endpoint_expr[1]:
+        match endpoint_expr[1]:
             case timedelta():
-                child_root_offset = subtree_root_offset + child.endpoint_expr[1]
+                child_root_offset = subtree_root_offset + endpoint_expr[1]
                 window_summary_df = (
                     aggregate_temporal_window(predicates_df, endpoint_expr)
                     .with_columns(
@@ -282,6 +283,8 @@ def extract_subtree(
         window_summary_df = window_summary_df.join(
             subtree_anchor_realizations, on=["subject_id", "subtree_anchor_timestamp"], how="inner"
         )
+
+        print(child)
 
         # Step 3: Filter to where constraints are valid
         window_summary_df = check_constraints(child.constraints, window_summary_df)

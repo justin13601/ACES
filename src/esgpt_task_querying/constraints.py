@@ -94,7 +94,7 @@ def check_constraints(
 
         logger.debug(
             f"Excluding {summary_df.select(drop_expr.sum()).item()} rows "
-            f"as they fail to satisfy {valid_min_inc} <= {col} <= {valid_max_inc}."
+            f"as they failed to satisfy {valid_min_inc} <= {col} <= {valid_max_inc}."
         )
 
         should_drop = should_drop | drop_expr
