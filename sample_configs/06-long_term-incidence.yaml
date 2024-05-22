@@ -1,52 +1,33 @@
 predicates:
   admission:
-    column: event_type
-    value: ADMISSION
-    system: boolean
+    code: event_type//ADMISSION
   discharge:
-    column: event_type
-    value: DISCHARGE
-    system: boolean
+    code: event_type//DISCHARGE
   diagnosis_1:
-    column: dx
-    value: ICD9CM/41071
-    system: boolean
+    code: dx//ICD9CM/41071
   diagnosis_2:
-    column: dx
-    value: ICD10CM/I214
-    system: boolean
+    code: dx//ICD10CM/I214
   myocardial_infarction:
-    type: ANY
-    predicates: [diagnosis_1, diagnosis_2]
-    system: boolean
-  any:
-    type: special
+    expr: or(diagnosis_1, diagnosis_2)
+
+trigger_event: discharge
 
 windows:
-  trigger:
-    start: discharge
-    end: discharge
-    st_inclusive: False
-    end_inclusive: True
-  gap:
-    start: trigger.end
-    duration: 365 days
-    excludes:
-      - predicate: myocardial_infarction
-    st_inclusive: False
-    end_inclusive: True
-  target:
-    start: gap.end
-    duration: 1095 days
-    st_inclusive: False
-    end_inclusive: True
-    label: myocardial_infarction
   input:
     start: admission
-    end: trigger.start
-    includes:
-      - predicate: discharge
-        min: 1
-        max: 1
-    st_inclusive: False
+    end: trigger
+    start_inclusive: False
     end_inclusive: True
+  gap:
+    start: trigger
+    end: start + 365 days
+    start_inclusive: False
+    end_inclusive: True
+    has:
+      myocardial_infarction: (None, 0)
+  target:
+    start: gap.end
+    end: start + 1095 days
+    start_inclusive: False
+    end_inclusive: True
+    label: myocardial_infarction

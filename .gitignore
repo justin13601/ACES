@@ -163,3 +163,4 @@ cython_debug/
 .vscode/
 passwords.txt
 outputs/
+result.csv

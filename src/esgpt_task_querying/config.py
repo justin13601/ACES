@@ -1,218 +1,1003 @@
 """This module contains functions for loading and parsing the configuration file and subsequently building a
 tree structure from the configuration."""
 
-from datetime import timedelta
-from typing import Any
+from __future__ import annotations
 
+import dataclasses
+import re
+from collections import OrderedDict
+from dataclasses import field
+from datetime import timedelta
+from pathlib import Path
+
+import networkx as nx
 import polars as pl
 import ruamel.yaml
 from bigtree import Node
-from pytimeparse import parse
+from loguru import logger
+
+from .types import (
+    ANY_EVENT_COLUMN,
+    END_OF_RECORD_KEY,
+    START_OF_RECORD_KEY,
+    TemporalWindowBounds,
+    ToEventWindowBounds,
+)
+from .utils import parse_timedelta
 
 
-def load_config(config_path: str) -> dict[str, Any]:
-    """Load a configuration file from the given path and return it as a dict.
+@dataclasses.dataclass
+class PlainPredicateConfig:
+    code: str
+    values_column: str | None = None
+    value_min: float | None = None
+    value_max: float | None = None
+    value_min_inclusive: bool | None = None
+    value_max_inclusive: bool | None = None
+
+    def MEDS_eval_expr(self) -> pl.Expr:
+        """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
+
+        Examples:
+            >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [([([(col("code")) == (String(BP//systolic))]) &
+               ([(col("value")) >= (120)])]) &
+               ([(col("value")) < (140)])]
+            >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
+            >>> expr = cfg.MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [([(col("code")) == (String(BP//systolic))]) & ([(col("value")) > (120)])]
+            >>> cfg = PlainPredicateConfig("BP//diastolic")
+            >>> expr = cfg.MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("code")) == (String(BP//diastolic))]
+        """
+
+        criteria = [pl.col("code") == self.code]
+
+        if self.value_min is not None:
+            if self.value_min_inclusive:
+                criteria.append(pl.col("value") >= self.value_min)
+            else:
+                criteria.append(pl.col("value") > self.value_min)
+        if self.value_max is not None:
+            if self.value_max_inclusive:
+                criteria.append(pl.col("value") <= self.value_max)
+            else:
+                criteria.append(pl.col("value") < self.value_max)
+
+        if len(criteria) == 1:
+            return criteria[0]
+        else:
+            return pl.all_horizontal(criteria)
+
+    def ESGPT_eval_expr(self, values_column: str | None = None) -> pl.Expr:
+        """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
+
+        Examples:
+            >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).ESGPT_eval_expr("BP_value")
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [([([(col("BP")) == (String(systolic))]) &
+               ([(col("BP_value")) >= (120)])]) &
+               ([(col("BP_value")) < (140)])]
+            >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
+            >>> expr = cfg.ESGPT_eval_expr("blood_pressure_value")
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [([(col("BP")) == (String(systolic))]) & ([(col("blood_pressure_value")) > (120)])]
+            >>> expr = PlainPredicateConfig("BP//diastolic").ESGPT_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("BP")) == (String(diastolic))]
+            >>> expr = PlainPredicateConfig("event_type//ADMISSION").ESGPT_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            col("event_type").strict_cast(String).str.split([String(&)]).list.contains([String(ADMISSION)])
+        """
+        code_is_in_parts = "//" in self.code
+
+        if code_is_in_parts:
+            measurement_name, code = self.code.split("//")
+            if measurement_name.lower() == "event_type":
+                criteria = [pl.col("event_type").cast(pl.Utf8).str.split("&").list.contains(code)]
+            else:
+                criteria = [pl.col(measurement_name) == code]
+
+        elif (self.value_min is None) and (self.value_max is None):
+            return pl.col(code).is_not_null()
+        else:
+            values_column = self.code
+
+        if self.value_min is not None:
+            if values_column is None:
+                raise ValueError(
+                    f"Must specify a values column for ESGPT predicates with a value_min = {self.value_min}"
+                )
+            if self.value_min_inclusive:
+                criteria.append(pl.col(values_column) >= self.value_min)
+            else:
+                criteria.append(pl.col(values_column) > self.value_min)
+        if self.value_max is not None:
+            if values_column is None:
+                raise ValueError(
+                    f"Must specify a values column for ESGPT predicates with a value_max = {self.value_max}"
+                )
+            if self.value_max_inclusive:
+                criteria.append(pl.col(values_column) <= self.value_max)
+            else:
+                criteria.append(pl.col(values_column) < self.value_max)
+
+        if len(criteria) == 1:
+            return criteria[0]
+        else:
+            return pl.all_horizontal(criteria)
+
+    @property
+    def is_plain(self) -> bool:
+        return True
+
+
+@dataclasses.dataclass
+class DerivedPredicateConfig:
+    """A configuration object for derived predicates, which are composed of multiple input predicates.
 
     Args:
-        config_path (str): The path to the configuration file.
-    """
-    yaml = ruamel.yaml.YAML(typ="safe", pure=True)
-    with open(config_path) as file:
-        return yaml.load(file)
+        expr: The expression defining the derived predicate in terms of other predicates.
 
-
-def get_config(cfg: dict, key: str, default: Any) -> Any:
-    if key not in cfg or cfg[key] is None:
-        return default
-    return cfg[key]
-
-
-def parse_timedelta(time_str: str) -> timedelta:
-    """Parse a time string and return a timedelta object.
-
-    Using time expression parser: https://github.com/wroberts/pytimeparse
-
-    Args:
-        time_str: The time string to parse.
-
-    Returns:
-        timedelta: The parsed timedelta object.
+    Raises:
+        ValueError: If the expression is empty, does not start with 'and(' or 'or(', or does not contain at
+            least two input predicates.
 
     Examples:
-        >>> parse_timedelta("1 days")
-        datetime.timedelta(days=1)
-        >>> parse_timedelta("1 day")
-        datetime.timedelta(days=1)
-        >>> parse_timedelta("1 days 2 hours 3 minutes 4 seconds")
-        datetime.timedelta(days=1, seconds=7384)
-        >>> parse_timedelta('1 day, 14:20:16')
-        datetime.timedelta(days=1, seconds=51616)
-        >>> parse_timedelta('365 days')
-        datetime.timedelta(days=365)
+        >>> pred = DerivedPredicateConfig("and(P1, P2, P3)")
+        >>> pred = DerivedPredicateConfig("and()") # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Derived predicate expression must have at least two input predicates (comma separated),
+        got and()
+        >>> pred = DerivedPredicateConfig("or(PA, PB)")
+        >>> pred = DerivedPredicateConfig("PA + PB")
+        Traceback (most recent call last):
+            ...
+        ValueError: Derived predicate expression must start with 'and(' or 'or(', got PA + PB
     """
-    if not time_str:
-        return timedelta(days=0)
 
-    return timedelta(seconds=parse(time_str))
+    expr: str
+
+    def __post_init__(self):
+        if not self.expr:
+            raise ValueError("Derived predicates must have a non-empty expression field.")
+
+        self.is_and = self.expr.startswith("and(") and self.expr.endswith(")")
+        self.is_or = self.expr.startswith("or(") and self.expr.endswith(")")
+        if not (self.is_and or self.is_or):
+            raise ValueError(f"Derived predicate expression must start with 'and(' or 'or(', got {self.expr}")
+
+        if self.is_and:
+            self.input_predicates = [x.strip() for x in self.expr[4:-1].split(",")]
+        elif self.is_or:
+            self.input_predicates = [x.strip() for x in self.expr[3:-1].split(",")]
+
+        if len(self.input_predicates) < 2:
+            raise ValueError(
+                "Derived predicate expression must have at least two input predicates (comma separated), "
+                f"got {self.expr}"
+            )
+
+    def eval_expr(self) -> pl.Expr:
+        """Returns a Polars expression that evaluates this predicate against necessary dependent predicates.
+
+        Examples:
+            >>> expr = DerivedPredicateConfig("and(P1, P2, P3)").eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [([([(col("P1")) > (0)]) &
+               ([(col("P2")) > (0)])]) &
+               ([(col("P3")) > (0)])]
+            >>> expr = DerivedPredicateConfig("or(PA, PB)").eval_expr()
+            >>> print(expr)
+            [([(col("PA")) > (0)]) | ([(col("PB")) > (0)])]
+        """
+        if self.is_and:
+            return pl.all_horizontal([pl.col(pred) > 0 for pred in self.input_predicates])
+        elif self.is_or:
+            return pl.any_horizontal([pl.col(pred) > 0 for pred in self.input_predicates])
+
+    @property
+    def is_plain(self) -> bool:
+        return False
 
 
-def get_max_duration(data: pl.DataFrame) -> timedelta:
-    """Get the maximum duration for each subject timestamps.
+@dataclasses.dataclass
+class WindowConfig:
+    """A configuration object for defining a window in the task extraction process.
+
+    This defines the boundary points and constraints for a window in the patient record in the task extraction
+    process.
 
     Args:
-        data: The data containing the events for each subject. The timestamps of the events are in the
-        column ``"timestamp"`` and the subject IDs are in the column ``"subject_id"``.
+        start: The boundary conditions for the start of the window. This (like ``end``) can either be `None`,
+            in which case the window starts at the beginning of the patient record, or is expressed through a
+            string language that expresses a relative startpoint to this window either in reference to (a)
+            another window's start or end event, (b) this window's `end` event. In case (a), this window's end
+            event must either be `None` or reference this window's start event, and in case (b), this window's
+            end event must reference a different window's start or end event.
+            The string language is as follows:
+              - ``None``: The window starts at the beginning of the patient record.
+              - ``$REFERENCED <- $PREDICATE`` or ``$REFERENCED -> $PREDICATE``: The window starts at the
+                closest event satisfying the predicate ``$PREDICATE`` relative to the ``$REFERENCED`` event.
+                Form ``$REFERENCED <- $PREDICATE`` means that the window starts at the closest event _prior
+                to_ the ``$REFERENCED`` event that satisfies the predicate ``$PREDICATE``, and the other form
+                is analogous but with the closest event _after_ the ``$REFERENCED`` event.
+              - ``$REFERENCED +- timedelta``: The window starts at the ``$REFERENCED`` event plus or minus the
+                specified timedelta. The timedelta is expressed through the string language specified in the
+                `utils.parse_timedelta` function.
+              - ``$REFERENCED``: The window starts at the ``$REFERENCED`` event.
+            In all cases, the ``$REFERENCED`` event must be either
+              - The name of another window's start or end event, as specified by ``$WINDOW_NAME.start`` or
+                ``$WINDOW_NAME.end``.
+              - This window's end event, as specified by ``end``.
+            In the case that ``$REFERENCED`` is this window's end event, the window must be defined such that
+            ``start`` would precede ``end`` in the order of the patient record (e.g., ``$PREDICATE -> end`` is
+            invalid, and ``end - timedelta`` is invalid).
+        end: The name of the event that ends the window. See the documentation for ``start`` for more details
+            on the specification language.
+        start_inclusive: Whether or not the start event is included in the window. Note that this term can not
+            only dictate whether an event's counts are included in the summarization of the window, but also
+            whether or not an event satisfying ``$PREDICATE`` can be used as the boundary of an event. E.g.,
+            if we have that `start_inclusive=False` and the `end` field is equal to `start -> $PREDICATE`, and
+            it so happens that the `start` event itself satisfies `$PREDICATE`, the fact that
+            `start_inclusive=False` will mean that we do not consider the `start` event itself to be a valid
+            start to any window that ends at the same `start` event, as its timestamp when considered as the
+            prospective "window start timestamp" occurs "after" the effective timestamp of itself when
+            considered as the `$PREDICATE` event that marks the window end given that `start_inclusive=False`
+            and thus we will think of the window as truly starting an iota after the timestamp of the `start`
+            event itself.
+        end_inclusive: Whether or not the end event is included in the window.
+        has: A dictionary of predicates that must be present in the window, mapped to tuples of the form
+            `(min_valid, max_valid)` that define the valid range the count of observations of the named
+            predicate that must be found in a window for it to be considered valid. Either `min_valid` or
+            `max_valid` constraints can be `None`, in which case those endpoints are left unconstrained.
+            Likewise, unreferenced predicates are also left unconstrained. Note that as predicate counts are
+            always integral, this specification does not need an additional inclusive/exclusive endpoint
+            field, as one can simply increment the bound by one in the appropriate direction to achieve the
+            result. Instead, this bound is always interpreted to be inclusive, so a window would satisfy the
+            constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of
+            predicate `name` in a window was either 1 or 2. All constraints in the dictionary must be
+            satisfied on a window for it to be included.
 
-    Returns:
-        The maximum duration between the latest timestamp and the earliest timestamp over all subjects.
+    Raises:
+        ValueError: If the window is misconfigured in any of a variety of ways; see below for examples.
 
     Examples:
-        >>> from datetime import datetime
-        >>> data = pl.DataFrame({
-        ...     "subject_id": [1, 1, 2, 2],
-        ...     "timestamp": [
-        ...         datetime(2021, 1, 1), datetime(2021, 1, 2), datetime(2021, 1, 1), datetime(2021, 1, 3)
-        ...     ]
-        ... })
-        >>> get_max_duration(data)
-        datetime.timedelta(days=2)
+        >>> input_window = WindowConfig(
+        ...     start=None,
+        ...     end="trigger + 2 days",
+        ...     start_inclusive=True,
+        ...     end_inclusive=True,
+        ...     has={"_ANY_EVENT": (5, None)}
+        ... )
+        >>> input_window.referenced_event
+        ('trigger',)
+        >>> # This window does not reference any "true" external predicates, only implicit predicates like
+        >>> # start, end, and * events, so this list should be empty.
+        >>> sorted(input_window.referenced_predicates)
+        []
+        >>> input_window.start_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
+        ToEventWindowBounds(left_inclusive=True,
+                            end_event='-_RECORD_START',
+                            right_inclusive=True,
+                            offset=datetime.timedelta(0))
+        >>> input_window.end_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
+        TemporalWindowBounds(left_inclusive=False,
+                             window_size=datetime.timedelta(days=2),
+                             right_inclusive=False,
+                             offset=datetime.timedelta(0))
+        >>> input_window.root_node
+        'end'
+        >>> gap_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="start + 24h",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        >>> gap_window.referenced_event
+        ('input', 'end')
+        >>> sorted(gap_window.referenced_predicates)
+        ['death', 'discharge']
+        >>> gap_window.start_endpoint_expr is None
+        True
+        >>> gap_window.end_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
+        TemporalWindowBounds(left_inclusive=False,
+                             window_size=datetime.timedelta(days=1),
+                             right_inclusive=True,
+                             offset=datetime.timedelta(0))
+        >>> gap_window.root_node
+        'start'
+        >>> target_window = WindowConfig(
+        ...     start="gap.end",
+        ...     end="start -> discharge_or_death",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={}
+        ... )
+        >>> target_window.referenced_event
+        ('gap', 'end')
+        >>> sorted(target_window.referenced_predicates)
+        ['discharge_or_death']
+        >>> target_window.start_endpoint_expr is None
+        True
+        >>> target_window.end_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
+        ToEventWindowBounds(left_inclusive=False,
+                            end_event='discharge_or_death',
+                            right_inclusive=True,
+                            offset=datetime.timedelta(0))
+        >>> target_window.root_node
+        'start'
+        >>> invalid_window = WindowConfig(
+        ...     start="gap.end gap.start",
+        ...     end="start -> discharge_or_death",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Window boundary reference must be either a valid alphanumeric/'_' string or a reference to
+            another window's start or end event, formatted as a valid alphanumeric/'_' string, followed by
+            '.start' or '.end'.
+            Got: 'gap.end gap.start'
+        >>> invalid_window = WindowConfig(
+        ...     start=None, end=None, start_inclusive=True, end_inclusive=True, has={}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window cannot progress from the start of the record to the end of the record.
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="start - 2d",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window start will not occur before window end! Got: input.end -> start - 2d
+        >>> invalid_window = WindowConfig(
+        ...     start="end -> predicate",
+        ...     end="input.end",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window start will not occur before window end! Got: end -> predicate -> input.end
+        >>> invalid_window = WindowConfig(
+        ...     start="end - 24h", end="start + 1d", start_inclusive=True, end_inclusive=True, has={}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Exactly one of the start or end of the window must reference the other.
+        Got: end - 24h -> start + 1d
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="input.end + 2d",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Exactly one of the start or end of the window must reference the other.
+        Got: input.end -> input.end + 2d
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="start + -24h",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window boundary cannot contain both '+' and '-' operators.
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="start + invalid time string.",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Failed to parse timedelta from window offset for 'invalid time string.'
+        >>> target_window = WindowConfig(
+        ...     start="gap.end",
+        ...     end="start <-> discharge_or_death",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={}
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Window boundary cannot contain both '->' and '<-' operators.
     """
 
-    return (
-        data.group_by("subject_id")
-        .agg((pl.col("timestamp").max() - pl.col("timestamp").min()).alias("duration"))
-        .get_column("duration")
-        .max()
-    )
+    start: str | None
+    end: str | None
+    start_inclusive: bool
+    end_inclusive: bool
+    has: dict[str, str] = field(default_factory=dict)
+    label: str | None = None
 
+    @classmethod
+    def _check_reference(cls, reference: str):
+        """Checks to ensure referenced events are valid."""
 
-def build_tree_from_config(cfg: dict[str, Any]) -> Node:
-    """Build a tree structure from the given configuration. Note: the parse_timedelta function handles
-    negative durations already if duration is specified with "-".
+        err_str = (
+            "Window boundary reference must be either a valid alphanumeric/'_' string "
+            "or a reference to another window's start or end event, formatted as a valid "
+            f"alphanumeric/'_' string, followed by '.start' or '.end'. Got: '{reference}'"
+        )
 
-    Args:
-        cfg: The configuration object.
+        if "." in reference:
+            if reference.count(".") > 1:
+                raise ValueError(err_str)
+            window, event = reference.split(".")
+            if event not in {"start", "end"} or not re.match(r"^\w+$", window):
+                raise ValueError(err_str)
+        elif not re.match(r"^\w+$", reference):
+            raise ValueError(err_str)
 
-    Returns:
-        Node: The root node of the built tree.
+    @classmethod
+    def _parse_boundary(cls, boundary: str) -> dict[str, str]:
+        if "->" in boundary or "<-" in boundary:
+            if "->" in boundary and "<-" in boundary:
+                raise ValueError("Window boundary cannot contain both '->' and '<-' operators.")
+            elif "->" in boundary:
+                ref, predicate = (x.strip() for x in boundary.split("->"))
+            else:
+                ref, predicate = (x.strip() for x in boundary.split("<-"))
+                predicate = "-" + predicate
 
-    Examples:
-        >>> cfg = {
-        ...     "windows": {
-        ...         "window1": {
-        ...             "start": 'event1',
-        ...             "duration": "24 hours",
-        ...             "offset": None,
-        ...             "excludes": [],
-        ...             "includes": [],
-        ...             "st_inclusive": False,
-        ...             "end_inclusive": True,
-        ...         },
-        ...         "window2": {
-        ...             "start": "window1.end",
-        ...             "duration": "24 hours",
-        ...             "end": None,
-        ...             "excludes": [],
-        ...             "st_inclusive": False,
-        ...             "end_inclusive": True,
-        ...         },
-        ...     }
-        ... }
-        >>> build_tree_from_config(cfg) # doctest: +NORMALIZE_WHITESPACE
-        Node(/window1,
-             constraints={},
-             endpoint_expr=(False, datetime.timedelta(days=1), True, datetime.timedelta(0)))
-    """
-    nodes = {}
-    windows = [name for name, _ in cfg["windows"].items()]
-    for window_name, window_info in cfg["windows"].items():
-        defined_keys = [
-            key for key in ["start", "end", "duration"] if get_config(window_info, key, None) is not None
-        ]
-        if len(defined_keys) != 2:
-            error_keys = [f"{key}: {window_info[key]}" for key in defined_keys]
+            cls._check_reference(ref)
 
-            error_lines = [
-                f"Invalid window specification for '{window_name}'",
-                (
-                    "Must specify non-None values for exactly two fields of ['start', 'end', 'duration'], "
-                    "and if 'start' is not one of those two, then 'end' must be specified. Got:"
-                ),
-                ", ".join(error_keys),
-            ]
-            raise ValueError("\n".join(error_lines))
+            return {
+                "referenced": ref,
+                "offset": None,
+                "event_bound": predicate,
+                "occurs_before": "-" in predicate,
+            }
+        elif "+" in boundary or "-" in boundary:
+            if "+" in boundary and "-" in boundary:
+                raise ValueError("Window boundary cannot contain both '+' and '-' operators.")
+            elif "+" in boundary:
+                ref, offset = (x.strip() for x in boundary.split("+"))
+            else:
+                ref, offset = (x.strip() for x in boundary.split("-"))
+                offset = "-" + offset
 
-        node = Node(window_name)
+            cls._check_reference(ref)
 
-        # set node end_event
-        duration = get_config(window_info, "duration", None)
-        match duration:
-            case timedelta():
-                end_event = window_info["duration"]
-            case str():
-                end_event = parse_timedelta(window_info["duration"])
-            case False | None:
-                end_event = f"is_{window_info['end']}"
-            case _:
-                raise ValueError(f"Invalid duration in '{window_name}': {window_info['duration']}")
+            try:
+                parsed_offset = parse_timedelta(offset)
+                if parsed_offset == timedelta(0):
+                    logger.warning(f"Window offset for {boundary} is zero; this may not be intended.")
+                    return {"referenced": ref, "offset": None, "event_bound": None, "occurs_before": None}
+            except (ValueError, TypeError) as e:
+                raise ValueError(f"Failed to parse timedelta from window offset for '{offset}'") from e
 
-        # set node st_inclusive and end_inclusive
-        st_inclusive = get_config(window_info, "st_inclusive", False)
-        end_inclusive = get_config(window_info, "end_inclusive", False)
+            return {"referenced": ref, "offset": offset, "event_bound": None, "occurs_before": "-" in offset}
+        else:
+            ref = boundary.strip()
+            cls._check_reference(ref)
+            return {"referenced": ref, "offset": None, "event_bound": None, "occurs_before": None}
 
-        # set node offset
-        offset = get_config(window_info, "offset", None)
-        offset = parse_timedelta(offset)
-
-        node.endpoint_expr = (st_inclusive, end_event, end_inclusive, offset)
-
-        # set node exclude constraints
-        constraints = {}
-        for each_exclusion in get_config(window_info, "excludes", []):
-            if each_exclusion["predicate"]:
-                constraints[f"is_{each_exclusion['predicate']}"] = (None, 0)
-
-        # set node include constraints, using min and max values and None if not specified
-        for each_inclusion in get_config(window_info, "includes", []):
-            if each_inclusion["predicate"]:
-                constraints[f"is_{each_inclusion['predicate']}"] = (
-                    (
-                        int(each_inclusion["min"])
-                        if "min" in each_inclusion and each_inclusion["min"] is not None
-                        else None
-                    ),
-                    (
-                        int(each_inclusion["max"])
-                        if "max" in each_inclusion and each_inclusion["max"] is not None
-                        else None
-                    ),
+    def __post_init__(self):
+        # Parse the has constraints from the string representation to the tuple representation
+        if self.has is not None:
+            for each_constraint in self.has:
+                elements = self.has[each_constraint].strip("()").split(",")
+                elements = [element.strip() for element in elements]
+                self.has[each_constraint] = tuple(
+                    int(element) if element != "None" else None for element in elements
                 )
 
-        node.constraints = constraints
+        if self.start is None and self.end is None:
+            raise ValueError("Window cannot progress from the start of the record to the end of the record.")
 
-        # search for the parent node in tree
-        if get_config(window_info, "start", None):
-            root_name = window_info["start"].split(".")[0]
-            node_root = next(
-                (substring for substring in windows if substring == root_name),
-                None,
+        if self.start is None:
+            self._parsed_start = {
+                "referenced": "end",
+                "offset": None,
+                "event_bound": f"-{START_OF_RECORD_KEY}",
+                "occurs_before": True,
+            }
+        else:
+            self._parsed_start = self._parse_boundary(self.start)
+
+        if self.end is None:
+            self._parsed_end = {
+                "referenced": "start",
+                "offset": None,
+                "event_bound": END_OF_RECORD_KEY,
+                "occurs_before": False,
+            }
+        else:
+            self._parsed_end = self._parse_boundary(self.end)
+
+        if self._parsed_start["referenced"] == "end" and self._parsed_end["referenced"] == "start":
+            raise ValueError(
+                "Exactly one of the start or end of the window must reference the other. "
+                f"Got: {self.start} -> {self.end}"
             )
-        elif get_config(window_info, "end", None):
-            root_name = window_info["end"].split(".")[0]
-            node_root = next(
-                (substring for substring in windows if substring == root_name),
-                None,
+        elif self._parsed_start["referenced"] == "end":
+            self._start_references_end = True
+            # We use `is False` because it may be None, which is distinct from True or False
+            if self._parsed_start["occurs_before"] is False:
+                raise ValueError(
+                    f"Window start will not occur before window end! Got: {self.start} -> {self.end}"
+                )
+        elif self._parsed_end["referenced"] == "start":
+            self._start_references_end = False
+            # We use `is True` because it may be None, which is distinct from True or False
+            if self._parsed_end["occurs_before"] is True:
+                raise ValueError(
+                    f"Window start will not occur before window end! Got: {self.start} -> {self.end}"
+                )
+        else:
+            raise ValueError(
+                "Exactly one of the start or end of the window must reference the other. "
+                f"Got: {self.start} -> {self.end}"
             )
 
-        if node_root:
-            node.parent = nodes[node_root]
+    @property
+    def root_node(self) -> str:
+        """Returns 'start' if the end of the window is defined relative to the start and 'end' otherwise."""
+        return "end" if self._start_references_end else "start"
 
-        nodes[window_name] = node
+    @property
+    def referenced_event(self) -> tuple[str]:
+        if self._start_references_end:
+            return tuple(self._parsed_end["referenced"].split("."))
+        else:
+            return tuple(self._parsed_start["referenced"].split("."))
 
-    for node in nodes.values():
-        if node.parent:
-            node.parent = nodes[node.parent.name]
+    @property
+    def referenced_predicates(self) -> set[str]:
+        if not self.has:
+            return set()
+        predicates = set(self.has.keys())
+        if self._parsed_start["event_bound"]:
+            predicates.add(self._parsed_start["event_bound"].replace("-", ""))
+        if self._parsed_end["event_bound"]:
+            predicates.add(self._parsed_end["event_bound"].replace("-", ""))
 
-    root = next(iter(nodes.values())).root
+        predicates -= {START_OF_RECORD_KEY, END_OF_RECORD_KEY, ANY_EVENT_COLUMN}
+        return predicates
 
-    return root
+    @property
+    def start_endpoint_expr(self) -> None | ToEventWindowBounds | TemporalWindowBounds:
+        if self._start_references_end:
+            # If end references start, then end will occur after start, so `left_inclusive` corresponds to
+            # `start_inclusive` and `right_inclusive` corresponds to `end_inclusive`.
+            left_inclusive = self.start_inclusive
+            right_inclusive = self.end_inclusive
+        else:
+            # If this window references end from start, then the end event window expression will not have
+            # any constraints as it will reference an external event, and therefore the inclusive
+            # parameters don't matter.
+            # TODO(mmd): This may not be the best API.
+            left_inclusive = False
+            right_inclusive = False
+
+        if self._parsed_start["event_bound"]:
+            return ToEventWindowBounds(
+                end_event=self._parsed_start["event_bound"],
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
+        elif self._parsed_start["offset"]:
+            return TemporalWindowBounds(
+                window_size=parse_timedelta(self._parsed_start["offset"]),
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
+        else:
+            return None
+
+    @property
+    def end_endpoint_expr(self) -> None | ToEventWindowBounds | TemporalWindowBounds:
+        if self._start_references_end:
+            # If this window references end from start, then the end event window expression will not have
+            # any constraints as it will reference an external event, and therefore the inclusive
+            # parameters don't matter.
+            # TODO(mmd): This may not be the best API.
+            left_inclusive = False
+            right_inclusive = False
+        else:
+            # If end references start, then end will occur after start, so `left_inclusive` corresponds to
+            # `start_inclusive` and `right_inclusive` corresponds to `end_inclusive`.
+            left_inclusive = self.start_inclusive
+            right_inclusive = self.end_inclusive
+
+        if self._parsed_end["event_bound"]:
+            return ToEventWindowBounds(
+                end_event=self._parsed_end["event_bound"],
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
+        elif self._parsed_end["offset"]:
+            return TemporalWindowBounds(
+                window_size=parse_timedelta(self._parsed_end["offset"]),
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
+        else:
+            return None
+
+
+@dataclasses.dataclass
+class EventConfig:
+    """A configuration object for defining the event that triggers the task extraction process.
+
+    This is defined by all events that match a simple predicate. This event serves as the root of the window
+    tree, and its form is dictated by the fact that we must be able to localize the tree to identify valid
+    realizations of the tree.
+
+    Examples:
+        >>> event = EventConfig("event_type//ADMISSION")
+        >>> event.predicate
+        'event_type//ADMISSION'
+    """
+
+    predicate: str
+
+
+@dataclasses.dataclass
+class TaskExtractorConfig:
+    """A configuration object for parsing the plain-data stored in a task extractor config.
+
+    This class can be serialized to and deserialized from a YAML file, and is largely a collection of
+    utilities to parse, validate, and leverage task extraction configuration data in practice. There is no
+    state stored in this class that is not present or recoverable from the source YAML file on disk. It also
+    can be read from a simplified, "user-friendly" language, which can also be stored on or read from disk,
+    which is ultimately parsed into the expansive, full specification contained in the YAML file referenced
+    above.
+
+    Args:
+        predicates: A dictionary of predicate configurations, stored as either plain or derived predicate
+            configuration objects (which are simple dataclasses with utility functions over plain
+            dictionaries).
+        trigger_event: The event configuration that triggers the task extraction process. This is a simple
+            dataclass with a single field, the name of the predicate that triggers the task extraction and
+            serves as the root of the window tree.
+        windows: A dictionary of window configurations. Each window configuration is a simple dataclass with
+            that can be materialized to/from a simple, POD dictionary.
+
+    Raises:
+        ValueError: If any window or predicate names are not composed of alphanumeric or "_" characters.
+
+    Examples:
+        >>> from bigtree import print_tree
+        >>> predicates = {
+        ...     "admission": PlainPredicateConfig("admission"),
+        ...     "discharge": PlainPredicateConfig("discharge"),
+        ...     "death": PlainPredicateConfig("death"),
+        ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
+        ... }
+        >>> trigger_event = EventConfig("admission")
+        >>> windows = {
+        ...     "input": WindowConfig(
+        ...         start=None,
+        ...         end="trigger + 24h",
+        ...         start_inclusive=True,
+        ...         end_inclusive=True,
+        ...         has={"_ANY_EVENT": (32, None)},
+        ...     ),
+        ...     "gap": WindowConfig(
+        ...         start="input.end",
+        ...         end="start + 24h",
+        ...         start_inclusive=False,
+        ...         end_inclusive=True,
+        ...         has={"death_or_discharge": (None, 0), "admission": (None, 0)},
+        ...     ),
+        ...     "target": WindowConfig(
+        ...         start="gap.end",
+        ...         end="start -> death_or_discharge",
+        ...         start_inclusive=False,
+        ...         end_inclusive=True,
+        ...         has={},
+        ...     ),
+        ... }
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger_event=trigger_event, windows=windows)
+        >>> print(config.plain_predicates) # doctest: +NORMALIZE_WHITESPACE
+        [PlainPredicateConfig(code='admission',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None),
+         PlainPredicateConfig(code='discharge',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None),
+         PlainPredicateConfig(code='death',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None)]
+
+        >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
+        [DerivedPredicateConfig(expr='or(death, discharge)')]
+        >>> print(nx.write_network_text(config.predicates_DAG))
+        ╟── death
+        ╎   └─╼ death_or_discharge ╾ discharge
+        ╙── discharge
+            └─╼  ...
+        >>> print_tree(config.window_tree)
+        trigger
+        └── input.end
+            ├── input.start
+            ├── gap.start
+            └── gap.end
+                ├── target.start
+                └── target.end
+    """
+
+    predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
+    trigger_event: EventConfig
+    windows: dict[str, WindowConfig]
+
+    @classmethod
+    def load(cls, config_path: str | Path) -> TaskExtractorConfig:
+        """Load a configuration file from the given path and return it as a dict.
+
+        Args:
+            config_path: The path to which a configuration object will be read from in YAML form.
+
+        Raises:
+            FileNotFoundError: If the file does not exist.
+            ValueError: If the file is not a ".yaml" file.
+        """
+        if isinstance(config_path, str):
+            config_path = Path(config_path)
+
+        if not config_path.is_file():
+            raise FileNotFoundError(f"Cannot load missing configuration file {str(config_path.resolve())}!")
+
+        if config_path.suffix == ".yaml":
+            yaml = ruamel.yaml.YAML(typ="safe", pure=True)
+            loaded_dict = yaml.load(config_path.read_text())
+        else:
+            raise ValueError(f"Only supports reading from '.yaml' files currently. Got {config_path.suffix}")
+
+        predicates = loaded_dict.pop("predicates")
+        trigger_event = loaded_dict.pop("trigger_event")
+        windows = loaded_dict.pop("windows")
+
+        if loaded_dict:
+            raise ValueError(f"Unrecognized keys in configuration file: {', '.join(loaded_dict.keys())}")
+
+        logger.debug("Parsing predicates...")
+        predicates = {
+            n: DerivedPredicateConfig(**p) if "expr" in p else PlainPredicateConfig(**p)
+            for n, p in predicates.items()
+        }
+
+        logger.debug("Parsing trigger event...")
+        trigger_event = EventConfig(trigger_event)
+
+        logger.debug("Parsing windows...")
+        windows = {n: WindowConfig(**w) for n, w in windows.items()}
+
+        return cls(predicates=predicates, trigger_event=trigger_event, windows=windows)
+
+    def save(self, config_path: str | Path, do_overwrite: bool = False):
+        """Load a configuration file from the given path and return it as a dict.
+
+        Args:
+            config_path: The path to which the calling object will be saved in YAML form.
+            do_overwrite: Whether or not to overwrite any existing saved configuration file at that filepath.
+
+        Raises:
+            FileExistsError: If there exists a file at the given location and ``do_overwrite`` is not `True`.
+            ValueError: If the filepath is not a ".yaml" file.
+        """
+        if isinstance(config_path, str):
+            config_path = Path(config_path)
+
+        if config_path.is_file() and not do_overwrite:
+            raise FileExistsError(
+                f"Can't overwrite extant {str(config_path.resolve())} as do_overwrite={do_overwrite}"
+            )
+
+        if config_path.suffix == ".yaml":
+            yaml = ruamel.yaml.YAML(typ="safe", pure=True)
+            config_path.write_text(yaml.dump(dataclasses.asdict(self)))
+        else:
+            raise ValueError(f"Only supports writing to '.yaml' files currently. Got {config_path.suffix}")
+
+    def _initialize_predicates(self):
+        """Initialize the predicates tree from the configuration object and check validity.
+
+        Raises:
+            ValueError: TODO
+        """
+
+        dag_relationships = []
+
+        for name, predicate in self.predicates.items():
+            if re.match(r"^\w+$", name) is None:
+                raise ValueError(
+                    f"Predicate name '{name}' is invalid; must be composed of alphanumeric or '_' characters."
+                )
+
+            match predicate:
+                case PlainPredicateConfig():
+                    pass
+                case DerivedPredicateConfig():
+                    for pred in predicate.input_predicates:
+                        dag_relationships.append((pred, name))
+                case _:
+                    raise ValueError(
+                        f"Invalid predicate configuration for '{name}': {predicate}. "
+                        "Must be either a PlainPredicateConfig or DerivedPredicateConfig object. "
+                        f"Got: {type(predicate)}"
+                    )
+
+        missing_predicates = []
+        for parent, child in dag_relationships:
+            if parent not in self.predicates:
+                missing_predicates.append(
+                    f"Derived predicate '{child}' references undefined predicate '{parent}'"
+                )
+        if missing_predicates:
+            raise KeyError(
+                f"Missing {len(missing_predicates)} relationships:\n" + "\n".join(missing_predicates)
+            )
+
+        self._predicate_dag_graph = nx.DiGraph(dag_relationships)
+        if not nx.is_directed_acyclic_graph(self._predicate_dag_graph):
+            raise ValueError(
+                "Predicate graph is not a directed acyclic graph!\n"
+                f"Cycle found: {nx.find_cycle(self._predicate_dag_graph)}\n"
+                f"Graph: {nx.write_network_text(self._predicate_dag_graph)}"
+            )
+
+    def _initialize_windows(self):
+        """Initialize the windows tree from the configuration object and check validity.
+
+        Raises:
+            ValueError: TODO
+        """
+
+        for name in self.windows:
+            if re.match(r"^\w+$", name) is None:
+                raise ValueError(
+                    f"Window name '{name}' is invalid; must be composed of alphanumeric or '_' characters."
+                )
+
+        if self.trigger_event.predicate not in self.predicates:
+            raise KeyError(
+                f"Trigger event predicate '{self.trigger_event.predicate}' not found in predicates: "
+                f"{', '.join(self.predicates.keys())}"
+            )
+
+        trigger_node = Node("trigger")
+
+        window_nodes = {"trigger": trigger_node}
+        for name, window in self.windows.items():
+            start_node = Node(f"{name}.start", endpoint_expr=window.start_endpoint_expr)
+            end_node = Node(f"{name}.end", endpoint_expr=window.end_endpoint_expr)
+
+            if window.root_node == "end":
+                # In this case, the end_node will bound an unconstrained window, as it is the window between
+                # a prior window and the defined anchor for this window, so it has no constraints. But the
+                # start_node will have the constraints corresponding to this window, as it is defined relative
+                # to the end node.
+                end_node.constraints = {}
+                start_node.constraints = window.has
+                start_node.parent = end_node
+            else:
+                # In this case, the start_node will bound an unconstrained window, as it is the window between
+                # a prior window and the defined anchor for this window, so it has no constraints. But the
+                # start_node will have the constraints corresponding to this window, as it is defined relative
+                # to the end node.
+                end_node.constraints = window.has
+                start_node.constraints = {}
+                end_node.parent = start_node
+
+            window_nodes[f"{name}.start"] = start_node
+            window_nodes[f"{name}.end"] = end_node
+
+        for name, window in self.windows.items():
+            for predicate in window.referenced_predicates:
+                if predicate not in self.predicates:
+                    raise KeyError(
+                        f"Window '{name}' references undefined predicate '{predicate}'.\n"
+                        f"Window predicates: {', '.join(window.referenced_predicates)}\n"
+                        f"Defined predicates: {', '.join(self.predicates.keys())}"
+                    )
+
+            if len(window.referenced_event) == 1:
+                event = window.referenced_event[0]
+                if event != "trigger":
+                    raise KeyError(
+                        f"Window '{name}' references undefined trigger event '{event}' -- must be trigger!"
+                    )
+
+                window_nodes[f"{name}.{window.root_node}"].parent = window_nodes[event]
+
+            elif len(window.referenced_event) == 2:
+                referenced_window, referenced_event = window.referenced_event
+                if referenced_window not in self.windows:
+                    raise KeyError(
+                        f"Window '{name}' references undefined window '{referenced_window}' "
+                        f"for event '{referenced_event}'. Allowed windows: {', '.join(self.windows.keys())}"
+                    )
+                if referenced_event not in {"start", "end"}:
+                    raise KeyError(
+                        f"Window '{name}' references undefined event '{referenced_event}' "
+                        f"for window '{referenced_window}'. Allowed events: 'start', 'end'"
+                    )
+
+                parent_node = f"{referenced_window}.{referenced_event}"
+                window_nodes[f"{name}.{window.root_node}"].parent = window_nodes[parent_node]
+            else:
+                raise ValueError(
+                    f"Window '{name}' references invalid event '{window.referenced_event}' "
+                    "must be of length 1 or 2."
+                )
+
+        # Clean up the tree
+        nodes_to_remove = []
+
+        # First pass: identify nodes to remove, reassign children's parent
+        for n, node in window_nodes.items():
+            if n != "trigger" and node.endpoint_expr is None:
+                nodes_to_remove.append(n)
+                for child in node.children:
+                    # Reassign
+                    child.parent = node.parent
+                    if node.parent:
+                        if child not in node.parent.children:
+                            node.parent.children += (child,)
+
+        # Second pass: remove nodes from parent's children
+        for node_name in nodes_to_remove:
+            node = window_nodes[node_name]
+            if node.parent:
+                # Remove
+                node.parent.children = [child for child in node.parent.children if child.name != node_name]
+
+        # Delete nodes_to_remove
+        for node_name in nodes_to_remove:
+            del window_nodes[node_name]
+
+        self.window_nodes = window_nodes
+
+    def __post_init__(self):
+        self._initialize_predicates()
+        self._initialize_windows()
+
+    @property
+    def window_tree(self) -> Node:
+        return self.window_nodes["trigger"]
+
+    @property
+    def predicates_DAG(self) -> nx.DiGraph:
+        return self._predicate_dag_graph
+
+    @property
+    def plain_predicates(self) -> dict[str:PlainPredicateConfig]:
+        """Returns a dictionary of plain predicates in {name: code} format."""
+        return {p: cfg for p, cfg in self.predicates.items() if cfg.is_plain}
+
+    @property
+    def derived_predicates(self) -> OrderedDict[str:DerivedPredicateConfig]:
+        """Returns an ordered dictionary of derived predicates in {name: code} format in an order that permits
+        iterative evaluation."""
+        return {
+            p: self.predicates[p]
+            for p in nx.topological_sort(self.predicates_DAG)
+            if not self.predicates[p].is_plain
+        }

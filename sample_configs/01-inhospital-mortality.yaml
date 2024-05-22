@@ -1,51 +1,33 @@
 predicates:
   admission:
-    column: event_type
-    value: ADMISSION
-    system: boolean
+    code: event_type//ADMISSION
   discharge:
-    column: event_type
-    value: DISCHARGE
-    system: boolean
+    code: event_type//DISCHARGE
   death:
-    column: event_type
-    value: DEATH
-    system: boolean
+    code: event_type//DEATH
   discharge_or_death:
-    type: ANY
-    predicates: [discharge, death]
-    system: boolean
-  any:
-    type: special
+    expr: or(discharge, death)
+
+trigger_event: admission
 
 windows:
-  trigger:
-    start: admission
-    end: admission
-    st_inclusive: False
+  input:
+    start: NULL
+    end: trigger
+    start_inclusive: True
     end_inclusive: True
   gap:
-    start: trigger.end
-    duration: 24 hours
-    excludes:
-      - predicate: admission
-      - predicate: discharge
-      - predicate: death
-    st_inclusive: False
+    start: input.end
+    end: start + 24h
+    start_inclusive: False
     end_inclusive: True
+    has:
+      admission: (None, 0)
+      discharge: (None, 0)
+      death: (None, 0)
   target:
     start: gap.end
-    end: discharge_or_death
-    includes:
-      - predicate: discharge_or_death
-        min: 1
-        max: 1
-    excludes:
-    st_inclusive: False
+    end: start -> discharge_or_death
+    start_inclusive: False
     end_inclusive: True
     label: death
-  input:
-    start: None
-    end: trigger.start
-    st_inclusive: False
-    end_inclusive: True

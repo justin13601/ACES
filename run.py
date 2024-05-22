@@ -12,7 +12,8 @@ from omegaconf import DictConfig
 from esgpt_task_querying import config, predicates, query
 
 
-def load_using_esgpt(cfg, path):
+def load_using_directory(cfg, path):
+    # currently only supports ESGPT dataset when loading from directory
     try:
         ESD = Dataset.load(path)
     except Exception as e:
@@ -25,24 +26,29 @@ def load_using_esgpt(cfg, path):
     dynamic_measurements_df = ESD.dynamic_measurements_df
 
     try:
-        df_predicates = predicates.generate_predicate_columns(cfg, [events_df, dynamic_measurements_df])
+        predicates_df = predicates.generate_predicates_df(
+            cfg, [events_df, dynamic_measurements_df], standard="ESGPT"
+        )
     except Exception as e:
         raise ValueError(
             "Error generating predicate columns from configuration file! "
             "Check to make sure the format of the configuration file is valid."
         ) from e
 
-    return df_predicates
+    return predicates_df
 
 
-def load_using_csv(cfg, path):
-    if path.suffix.lower() != ".csv":
-        logger.error(f"File {path} is not a csv file.")
-        return
-
-    df_data = pl.read_csv(path).with_columns(
-        pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
-    )
+def load_using_file(cfg, path):
+    # .csv file
+    if path.suffix.lower() == ".csv":
+        df_data = pl.read_csv(path).with_columns(
+            pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
+        )
+    # .parquet file (for MEDS)
+    elif path.suffix.lower() == ".parquet":
+        df_data = pl.read_parquet(path).with_columns(
+            pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
+        )
 
     # check if data is in correct format
     if df_data.shape[0] == 0:
@@ -52,14 +58,25 @@ def load_using_csv(cfg, path):
     if "timestamp" not in df_data.columns:
         raise ValueError("Provided dataset does not have timestamp column!")
 
-    try:
-        df_predicates = predicates.generate_predicate_columns(cfg, df_data)
-    except Exception as e:
-        raise ValueError(
-            "Error generating predicate columns from configuration file! "
-            "Check to make sure the format of the configuration file is valid."
-        ) from e
-    return df_predicates
+    # .csv file
+    if path.suffix.lower() == ".csv":
+        try:
+            predicates_df = predicates.generate_predicates_df(cfg, df_data, standard="CSV")
+        except Exception as e:
+            raise ValueError(
+                "Error generating predicate columns from configuration file! "
+                "Check to make sure the format of the configuration file is valid."
+            ) from e
+    # .parquet file (for MEDS)
+    elif path.suffix.lower() == ".parquet":
+        try:
+            predicates_df = predicates.generate_predicates_df(cfg, df_data, standard="MEDS")
+        except Exception as e:
+            raise ValueError(
+                "Error generating predicate columns from configuration file! "
+                "Check to make sure the format of the configuration file is valid."
+            ) from e
+    return predicates_df
 
 
 @hydra.main(version_base=None, config_path="", config_name="run")
@@ -75,7 +92,7 @@ def run(cfg: DictConfig) -> None:
     # load configuration
     logger.debug("Loading config...")
     task_cfg_path = Path(cfg["config_path"])
-    task_cfg = config.load_config(task_cfg_path)
+    task_cfg = config.TaskExtractorConfig.load(task_cfg_path)
 
     # load data
     logger.debug("Loading data...")
@@ -85,20 +102,18 @@ def run(cfg: DictConfig) -> None:
         return
 
     if data_path.is_dir():
-        # ESGPT data
-        logger.debug("Data path provided, loading using ESGPT...")
-        df_predicates = load_using_esgpt(task_cfg, data_path)
-        result = query.query(task_cfg, df_predicates)
+        # load directory
+        logger.debug("Directory provided, checking directory...")
+        predicates_df = load_using_directory(task_cfg, data_path)
     else:
-        # CSV data
-        logger.debug("File path provided, loading file...")
-        df_predicates = load_using_csv(task_cfg, data_path)
-        result = query.query(task_cfg, df_predicates)
+        # load file
+        logger.debug("File path provided, checking file...")
+        predicates_df = load_using_file(task_cfg, data_path)
 
+    result = query.query(task_cfg, predicates_df)
     result = result.with_columns(
-        *[pl.col(col).struct.json_encode() for col in result.columns if "window_summary" in col]
+        *[pl.col(col).struct.json_encode() for col in result.columns if "summary" in col]
     )
-
     result.write_csv(
         os.path.join(output_path, "result.csv"),
         include_header=True,
