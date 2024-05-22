@@ -1,20 +1,13 @@
 predicates:
   death:
-    column: event_type
-    value: DEATH
-    system: boolean
-  any:
-    type: special
+    code: event_type//DEATH
+
+trigger_event: _ANY_EVENT
 
 windows:
-  trigger: # triggers on any event
-    start: any
-    end: any
-    st_inclusive: False
-    end_inclusive: True
   target:
-    start: trigger.end
-    duration: 24 hours
-    st_inclusive: True
+    start: trigger
+    end: start + 24 hours
+    start_inclusive: True
     end_inclusive: True
     label: death

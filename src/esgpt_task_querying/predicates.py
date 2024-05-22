@@ -45,7 +45,9 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data: pl.DataFrame, standar
             for name, plain_predicate in cfg.plain_predicates.items():
                 if "event_type" in plain_predicate.code:
                     data[0] = data[0].with_columns(
-                        plain_predicate.ESGPT_eval_expr().cast(pl.UInt16).alias(name)
+                        plain_predicate.ESGPT_eval_expr(plain_predicate.values_column)
+                        .cast(pl.UInt16)
+                        .alias(name)
                     )
                 else:
                     data[1] = data[1].with_columns(
