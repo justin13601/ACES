@@ -5,12 +5,12 @@ It accepts the configuration file and predicate columns, builds the tree, and re
 
 
 import polars as pl
-from bigtree import print_tree
 from loguru import logger
 
 from .config import TaskExtractorConfig
 from .constraints import check_constraints
 from .extract_subtree import extract_subtree
+from .utils import log_tree
 
 
 def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame:
@@ -26,7 +26,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     if not isinstance(predicates_df, pl.DataFrame):
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got {type(predicates_df)}.")
 
-    logger.info(print_tree(cfg.window_tree, style="const_bold"))
+    log_tree(cfg.window_tree)
 
     logger.info("Beginning query...")
     prospective_root_anchors = check_constraints(

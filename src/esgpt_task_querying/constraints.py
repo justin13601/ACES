@@ -93,7 +93,7 @@ def check_constraints(
             drop_expr = drop_expr | (pl.col(col) > valid_max_inc)
 
         logger.info(
-            f"Excluding {summary_df.select(drop_expr.sum()).item()} rows "
+            f"Excluding {summary_df.select(drop_expr.sum()).item():,} rows "
             f"as they failed to satisfy {valid_min_inc} <= {col} <= {valid_max_inc}."
         )
 

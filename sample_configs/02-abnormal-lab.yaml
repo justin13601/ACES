@@ -1,18 +1,18 @@
 predicates:
   spo2:
-    code: lab_name//SpO2
+    code: lab//O2 saturation pulseoxymetry (%)
   normal_spo2:
-    code: lab_name//SpO2
+    code: lab//O2 saturation pulseoxymetry (%)
     value_min: 90
     value_max: 120
     value_min_inclusive: True
     value_max_inclusive: True
   abnormally_low_spo2:
-    code: lab_name//SpO2
+    code: lab//O2 saturation pulseoxymetry (%)
     value_max: 90
     value_max_inclusive: False
   abnormally_high_spo2:
-    code: lab_name//SpO2
+    code: lab//O2 saturation pulseoxymetry (%)
     value_min: 120
     value_min_inclusive: False
   abnormal_spo2:

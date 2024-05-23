@@ -4,11 +4,29 @@ predicates:
   discharge:
     code: event_type//DISCHARGE
   diagnosis_ICD9CM/41071:
-    code: dx//ICD9CM/41071
+    code: diagnosis//ICD9CM/41071
   diagnosis_ICD10CM/I214:
-    code: dx//ICD10CM/I214
+    code: diagnosis//ICD10CM/I214
+  # diagnosis_ICD10CM/I21A1:
+  #   code: diagnosis//ICD10CM/I21A1
+  # diagnosis_ICD9CM/41041:
+  #   code: diagnosis//ICD9CM/41041
+  # diagnosis_ICD9CM/41011:
+  #   code: diagnosis//ICD9CM/41011
+  # diagnosis_ICD9CM/41091:
+  #   code: diagnosis//ICD9CM/41091
+  # diagnosis_ICD10CM/I2119:
+  #   code: diagnosis//ICD10CM/I2119
+  # diagnosis_ICD9CM/41072:
+  #   code: diagnosis//ICD9CM/41072
+  # diagnosis_ICD10CM/I2109:
+  #   code: diagnosis//ICD10CM/I2109
+  # diagnosis_ICD10CM/I213:
+  #   code: diagnosis//ICD10CM/I213
   myocardial_infarction:
-    expr: or(diagnosis_1, diagnosis_2)
+    expr: or(diagnosis_ICD9CM/41071, diagnosis_ICD10CM/I214)
+  # myocardial_infarction:
+  #   expr: or(diagnosis_ICD9CM/41071, diagnosis_ICD10CM/I214, diagnosis_ICD10CM/I21A1, diagnosis_ICD9CM/41041, diagnosis_ICD9CM/41011, diagnosis_ICD9CM/41091, diagnosis_ICD10CM/I2119, diagnosis_ICD9CM/41072, diagnosis_ICD10CM/I2109, diagnosis_ICD10CM/I213)
 
 trigger_event: discharge
 
