@@ -815,7 +815,7 @@ class TaskExtractorConfig:
         """Initialize the predicates tree from the configuration object and check validity.
 
         Raises:
-            ValueError: TODO
+            ValueError: If the predicate name is not valid.
         """
 
         dag_relationships = []
@@ -862,7 +862,7 @@ class TaskExtractorConfig:
         """Initialize the windows tree from the configuration object and check validity.
 
         Raises:
-            ValueError: TODO
+            ValueError: If the window name is not valid.
         """
 
         for name in self.windows:
@@ -989,8 +989,7 @@ class TaskExtractorConfig:
 
     @property
     def derived_predicates(self) -> OrderedDict[str:DerivedPredicateConfig]:
-        """Returns an ordered dictionary of derived predicates in {name: code} format in an order that permits
-        iterative evaluation."""
+        """Returns an ordered dictionary mapping derived predicates to their configs in a proper order."""
         return {
             p: self.predicates[p]
             for p in nx.topological_sort(self.predicates_DAG)
