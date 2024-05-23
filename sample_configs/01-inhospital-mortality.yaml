@@ -16,6 +16,8 @@ windows:
     end: trigger + 24h
     start_inclusive: True
     end_inclusive: True
+    has:
+      _ANY_EVENT: (5, None)
   gap:
     start: input.end
     end: start + 24h

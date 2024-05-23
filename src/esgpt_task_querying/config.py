@@ -29,7 +29,6 @@ from .utils import parse_timedelta
 @dataclasses.dataclass
 class PlainPredicateConfig:
     code: str
-    values_column: str | None = None
     value_min: float | None = None
     value_max: float | None = None
     value_min_inclusive: bool | None = None
@@ -272,7 +271,7 @@ class WindowConfig:
         ...     end="trigger + 2 days",
         ...     start_inclusive=True,
         ...     end_inclusive=True,
-        ...     has={"_ANY_EVENT": (5, None)}
+        ...     has={"_ANY_EVENT": "(5, None)"}
         ... )
         >>> input_window.referenced_event
         ('trigger',)
@@ -297,7 +296,7 @@ class WindowConfig:
         ...     end="start + 24h",
         ...     start_inclusive=False,
         ...     end_inclusive=True,
-        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ...     has={"discharge": "(None, 0)", "death": "(None, 0)"}
         ... )
         >>> gap_window.referenced_event
         ('input', 'end')
@@ -356,7 +355,7 @@ class WindowConfig:
         ...     end="start - 2d",
         ...     start_inclusive=False,
         ...     end_inclusive=True,
-        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ...     has={"discharge": "(None, 0)", "death": "(None, 0)"}
         ... )
         Traceback (most recent call last):
             ...
@@ -366,7 +365,7 @@ class WindowConfig:
         ...     end="input.end",
         ...     start_inclusive=False,
         ...     end_inclusive=True,
-        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ...     has={"discharge": "(None, 0)", "death": "(None, 0)"}
         ... )
         Traceback (most recent call last):
             ...
@@ -383,7 +382,7 @@ class WindowConfig:
         ...     end="input.end + 2d",
         ...     start_inclusive=False,
         ...     end_inclusive=True,
-        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ...     has={"discharge": "(None, 0)", "death": "(None, 0)"}
         ... ) # doctest: +NORMALIZE_WHITESPACE
         Traceback (most recent call last):
             ...
@@ -394,7 +393,7 @@ class WindowConfig:
         ...     end="start + -24h",
         ...     start_inclusive=False,
         ...     end_inclusive=True,
-        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ...     has={"discharge": "(None, 0)", "death": "(None, 0)"}
         ... )
         Traceback (most recent call last):
             ...
@@ -404,7 +403,7 @@ class WindowConfig:
         ...     end="start + invalid time string.",
         ...     start_inclusive=False,
         ...     end_inclusive=True,
-        ...     has={"discharge": (None, 0), "death": (None, 0)}
+        ...     has={"discharge": "(None, 0)", "death": "(None, 0)"}
         ... )
         Traceback (most recent call last):
             ...
@@ -563,8 +562,6 @@ class WindowConfig:
 
     @property
     def referenced_predicates(self) -> set[str]:
-        if not self.has:
-            return set()
         predicates = set(self.has.keys())
         if self._parsed_start["event_bound"]:
             predicates.add(self._parsed_start["event_bound"].replace("-", ""))
@@ -691,14 +688,14 @@ class TaskExtractorConfig:
         ...         end="trigger + 24h",
         ...         start_inclusive=True,
         ...         end_inclusive=True,
-        ...         has={"_ANY_EVENT": (32, None)},
+        ...         has={"_ANY_EVENT": "(32, None)"},
         ...     ),
         ...     "gap": WindowConfig(
         ...         start="input.end",
         ...         end="start + 24h",
         ...         start_inclusive=False,
         ...         end_inclusive=True,
-        ...         has={"death_or_discharge": (None, 0), "admission": (None, 0)},
+        ...         has={"death_or_discharge": "(None, 0)", "admission": "(None, 0)"},
         ...     ),
         ...     "target": WindowConfig(
         ...         start="gap.end",
@@ -710,24 +707,24 @@ class TaskExtractorConfig:
         ... }
         >>> config = TaskExtractorConfig(predicates=predicates, trigger_event=trigger_event, windows=windows)
         >>> print(config.plain_predicates) # doctest: +NORMALIZE_WHITESPACE
-        [PlainPredicateConfig(code='admission',
+        {'admission': PlainPredicateConfig(code='admission',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
                               value_max_inclusive=None),
-         PlainPredicateConfig(code='discharge',
+         'discharge': PlainPredicateConfig(code='discharge',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
                               value_max_inclusive=None),
-         PlainPredicateConfig(code='death',
+         'death': PlainPredicateConfig(code='death',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
-                              value_max_inclusive=None)]
+                              value_max_inclusive=None)}
 
         >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
-        [DerivedPredicateConfig(expr='or(death, discharge)')]
+        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)')}
         >>> print(nx.write_network_text(config.predicates_DAG))
         ╟── death
         ╎   └─╼ death_or_discharge ╾ discharge
@@ -737,9 +734,7 @@ class TaskExtractorConfig:
         trigger
         └── input.end
             ├── input.start
-            ├── gap.start
             └── gap.end
-                ├── target.start
                 └── target.end
     """
 
@@ -777,16 +772,16 @@ class TaskExtractorConfig:
         if loaded_dict:
             raise ValueError(f"Unrecognized keys in configuration file: {', '.join(loaded_dict.keys())}")
 
-        logger.debug("Parsing predicates...")
+        logger.info("Parsing predicates...")
         predicates = {
             n: DerivedPredicateConfig(**p) if "expr" in p else PlainPredicateConfig(**p)
             for n, p in predicates.items()
         }
 
-        logger.debug("Parsing trigger event...")
+        logger.info("Parsing trigger event...")
         trigger_event = EventConfig(trigger_event)
 
-        logger.debug("Parsing windows...")
+        logger.info("Parsing windows...")
         windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
         return cls(predicates=predicates, trigger_event=trigger_event, windows=windows)

@@ -1,4 +1,4 @@
-# Algorithm Terminology & Design
+# Algorithm & Design
 
 ## Introduction
 

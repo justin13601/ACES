@@ -1,5 +1,10 @@
+import io
+import sys
+from contextlib import contextmanager
 from datetime import timedelta
 
+from bigtree import print_tree
+from loguru import logger
 from pytimeparse import parse
 
 
@@ -30,3 +35,22 @@ def parse_timedelta(time_str: str) -> timedelta:
         return timedelta(days=0)
 
     return timedelta(seconds=parse(time_str))
+
+
+@contextmanager
+def capture_output():
+    """A context manager to capture stdout output."""
+    new_out = io.StringIO()  # Create a StringIO object to capture output
+    old_out = sys.stdout  # Save the current stdout so we can restore it later
+    try:
+        sys.stdout = new_out  # Redirect stdout to our StringIO object
+        yield new_out
+    finally:
+        sys.stdout = old_out  # Restore the original stdout
+
+
+def log_tree(node):
+    """Logs the tree structure using logging.info."""
+    with capture_output() as captured:
+        print_tree(node, style="const_bold")  # This will print to the captured StringIO instead of stdout
+    logger.info(captured.getvalue())  # Log the captured output
