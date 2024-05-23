@@ -1,19 +1,22 @@
 # https://www.nature.com/articles/s41598-020-77893-3
-
-# TODO: Express "END_OF_RECORD" or "START_OF_RECORD" predicate
 predicates:
-  intubation_onset: ???
-  icu_admission: ???
-  icu_discharge: ???
-  hospital_discharge: ???
-  death: ???
-  blood_gas: ???
+  icu_admission:
+    code:
+  icu_discharge:
+    code:
+  hospital_discharge:
+    code:
+  death:
+    code: event_type//DEATH
+  intubation_onset:
+    code:
+  blood_gas:
+    code:
   icu_end_of_stay:
-    expr: or(icu_discharge, death, hospital_discharge, END_OF_RECORD)
+    expr: or(icu_discharge, death, hospital_discharge, _RECORD_END)
 
 trigger_event: *
 
-# TODO: may express this in a better way
 windows:
   pre_trigger_icu_admit:
     start: trigger
