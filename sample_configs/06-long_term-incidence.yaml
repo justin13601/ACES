@@ -3,9 +3,9 @@ predicates:
     code: event_type//ADMISSION
   discharge:
     code: event_type//DISCHARGE
-  diagnosis_1:
+  diagnosis_ICD9CM/41071:
     code: dx//ICD9CM/41071
-  diagnosis_2:
+  diagnosis_ICD10CM/I214:
     code: dx//ICD10CM/I214
   myocardial_infarction:
     expr: or(diagnosis_1, diagnosis_2)
