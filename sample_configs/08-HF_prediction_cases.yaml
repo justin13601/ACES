@@ -21,10 +21,8 @@ windows:
     end_inclusive: False
     has:
       HF_diagnostic_code: (3, None)
-  input: 
+  input:
     end: trigger
     start: trigger - 18m
     start_inclusive: True
     end_inclusive: False
-
-

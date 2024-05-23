@@ -22,7 +22,7 @@ windows:
     end_inclusive: False
     has:
       HF_diagnostic_code: (None, 1)
-  input: 
+  input:
     end: trigger
     start: trigger - 18m
     start_inclusive: True
