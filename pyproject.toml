@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ESGPTTaskQuerying"
-version = "0.1.1"
+name = "ACES"
+version = "0.2.0"
 authors = [
   { name="Justin Xu", email="justin13601@hotmail.com" },
   { name="Matthew McDermott", email="mattmcdermott8@gmail.com" },
 ]
-description = "Automatic task extraction for ESGPT datasets"
+description = "Event Stream Automatic Cohort Extraction System"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
@@ -35,5 +35,5 @@ dev = [
 profiling = ["psutil"]
 
 [project.urls]
-Homepage = "https://github.com/justin13601/ESGPTTaskQueryingPublic"
-Issues = "https://github.com/justin13601/ESGPTTaskQueryingPublic/issues"
+Homepage = "https://github.com/justin13601/ACES"
+Issues = "https://github.com/justin13601/ACES/issues"

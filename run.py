@@ -8,7 +8,7 @@ import polars as pl
 from loguru import logger
 from omegaconf import DictConfig
 
-from esgpt_task_querying import config, predicates, query
+from aces import config, predicates, query
 
 
 def load_using_directory(cfg: config.TaskExtractorConfig, path: str | Path) -> pl.DataFrame:
