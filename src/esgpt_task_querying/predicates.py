@@ -166,6 +166,70 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, stan
 
     Raises:
         ValueError: If an invalid predicate type is specified in the configuration.
+
+    Example:
+        >>> import tempfile
+        >>> from .config import PlainPredicateConfig, DerivedPredicateConfig, EventConfig, WindowConfig
+        >>> CSV_data = pl.DataFrame({
+        ...     "subject_id": [1, 1, 2, 2],
+        ...     "timestamp": ["01/01/2021 00:00", "01/01/2021 12:00", "01/02/2021 00:00", "01/02/2021 12:00"],
+        ...     "admission": [1, 0, 1, 0],
+        ...     "discharge": [0, 1, 0, 0],
+        ...     "death":     [0, 0, 0, 1],
+        ... })
+        >>> predicates = {
+        ...     "admission": PlainPredicateConfig("admission"),
+        ...     "discharge": PlainPredicateConfig("discharge"),
+        ...     "death": PlainPredicateConfig("death"),
+        ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
+        ... }
+        >>> trigger_event = EventConfig("admission")
+        >>> windows = {
+        ...     "input": WindowConfig(
+        ...         start=None,
+        ...         end="trigger + 24h",
+        ...         start_inclusive=True,
+        ...         end_inclusive=True,
+        ...         has={"_ANY_EVENT": "(32, None)"},
+        ...     ),
+        ...     "gap": WindowConfig(
+        ...         start="input.end",
+        ...         end="start + 24h",
+        ...         start_inclusive=False,
+        ...         end_inclusive=True,
+        ...         has={"death_or_discharge": "(None, 0)", "admission": "(None, 0)"},
+        ...     ),
+        ...     "target": WindowConfig(
+        ...         start="gap.end",
+        ...         end="start -> death_or_discharge",
+        ...         start_inclusive=False,
+        ...         end_inclusive=True,
+        ...         has={},
+        ...     ),
+        ... }
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger_event=trigger_event, windows=windows)
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
+        ...     data_path = Path(f.name)
+        ...     CSV_data.write_csv(data_path)
+        ...     generate_predicates_df(config, data_path, standard="csv")
+        shape: (4, 7)
+        ┌────────────┬─────────────────────┬───────────┬───────────┬───────┬────────────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ admission ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ ---       ┆ ---       ┆ ---   ┆ ---                ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64       ┆ i64       ┆ i64   ┆ u16                ┆ u16        │
+        ╞════════════╪═════════════════════╪═══════════╪═══════════╪═══════╪════════════════════╪════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1         ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0         ┆ 1         ┆ 0     ┆ 1                  ┆ 1          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1         ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0         ┆ 0         ┆ 1     ┆ 1                  ┆ 1          │
+        └────────────┴─────────────────────┴───────────┴───────────┴───────┴────────────────────┴────────────┘
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
+        ...     data_path = Path(f.name)
+        ...     CSV_data.write_csv(data_path)
+        ...     generate_predicates_df(config, data_path, standard="buzz")
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid data standard: buzz. Options are 'CSV', 'MEDS', 'ESGPT'.
     """
     if isinstance(data_path, str):
         data_path = Path(data_path)
@@ -180,7 +244,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, stan
         case "esgpt":
             data = generate_plain_predicates_from_esgpt(data_path, plain_predicates)
         case _:
-            raise ValueError(f"Invalid data standard: {standard}")
+            raise ValueError(f"Invalid data standard: {standard}. Options are 'CSV', 'MEDS', 'ESGPT'.")
     predicate_cols = list(plain_predicates.keys())
 
     # derived predicates
