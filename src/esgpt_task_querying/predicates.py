@@ -81,6 +81,19 @@ def verify_plain_predicates_from_csv(data_path: Path, predicates: list[str]) -> 
 
 
 def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl.DataFrame:
+    """Generate plain predicate columns from a MEDS dataset.
+
+    To learn more about the MEDS format, please visit https://github.com/Medical-Event-Data-Standard/meds
+
+    Args:
+        data_path: The path to the MEDS dataset file.
+        predicates: The dictionary of plain predicate configurations.
+
+    Returns:
+        The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
+        MEDS dataset.
+    """
+
     logger.info("Loading MEDS data...")
     data = pl.read_parquet(data_path).with_columns(
         pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
@@ -99,6 +112,19 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
 
 
 def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> pl.DataFrame:
+    """Generate plain predicate columns from an ESGPT dataset.
+
+    To learn more about the ESGPT format, please visit https://eventstreamml.readthedocs.io/en/latest/
+
+    Args:
+        data_path: The path to the ESGPT dataset directory.
+        predicates: The dictionary of plain predicate configurations.
+
+    Returns:
+        The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
+        ESGPT dataset.
+    """
+
     try:
         from EventStream.data.dataset_polars import Dataset
     except ImportError as e:
