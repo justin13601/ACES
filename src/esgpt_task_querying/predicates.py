@@ -24,7 +24,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data: pl.DataFrame, standar
 
     Examples: TODO
     """
-    logger.debug("Generating predicate columns...")
+    logger.info("Generating predicate columns...")
     predicate_cols = []
 
     # plain predicates
@@ -34,12 +34,12 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data: pl.DataFrame, standar
                 data = data.with_columns(
                     plain_predicate.ESGPT_eval_expr(plain_predicate.values_column).cast(pl.UInt16).alias(name)
                 )
-                logger.debug(f"Added predicate column '{name}'.")
+                logger.info(f"Added predicate column '{name}'.")
                 predicate_cols.append(name)
         case "MEDS":
             for name, plain_predicate in cfg.plain_predicates.items():
                 data = data.with_columns(plain_predicate.MEDS_eval_expr().alias(name))
-                logger.debug(f"Added predicate column '{name}'.")
+                logger.info(f"Added predicate column '{name}'.")
                 predicate_cols.append(name)
         case "ESGPT":
             for name, plain_predicate in cfg.plain_predicates.items():
@@ -55,7 +55,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data: pl.DataFrame, standar
                         .cast(pl.UInt16)
                         .alias(name)
                     )
-                logger.debug(f"Added predicate column '{name}'.")
+                logger.info(f"Added predicate column '{name}'.")
                 predicate_cols.append(name)
 
             # aggregate measurements (data[1]) by summing columns that are in count_cols, and taking the max
@@ -78,12 +78,12 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data: pl.DataFrame, standar
     # derived predicates
     for name, code in cfg.derived_predicates.items():
         data = data.with_columns(code.eval_expr().cast(pl.UInt16).alias(name))
-        logger.debug(f"Added predicate column '{name}'.")
+        logger.info(f"Added predicate column '{name}'.")
         predicate_cols.append(name)
 
     # add a column of 1s representing any predicate
     data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(pl.UInt16))
-    logger.debug(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
+    logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
     predicate_cols.append(ANY_EVENT_COLUMN)
 
     data = data.sort(by=["subject_id", "timestamp"]).select(["subject_id", "timestamp"] + predicate_cols)

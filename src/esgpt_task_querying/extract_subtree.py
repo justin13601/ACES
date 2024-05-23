@@ -246,7 +246,7 @@ def extract_subtree(
         return subtree_anchor_realizations
 
     for child in subtree.children:
-        logger.debug(f"Summarizing subtree rooted at '{child.name}'...")
+        logger.info(f"Summarizing subtree rooted at '{child.name}'...")
 
         # Step 1: Summarize the window from the subtree.root to child
         # TODO(mmd): Make this more object oriented using the dataclasses.

@@ -90,12 +90,12 @@ def run(cfg: DictConfig) -> None:
         output_path = Path(cfg["output_path"])
 
     # load configuration
-    logger.debug("Loading config...")
+    logger.info("Loading config...")
     task_cfg_path = Path(cfg["config_path"])
     task_cfg = config.TaskExtractorConfig.load(task_cfg_path)
 
     # load data
-    logger.debug("Loading data...")
+    logger.info("Loading data...")
     data_path = Path(cfg["data_path"])
     if not data_path.exists():
         logger.error(f"{data_path} does not exist.")
@@ -103,11 +103,11 @@ def run(cfg: DictConfig) -> None:
 
     if data_path.is_dir():
         # load directory
-        logger.debug("Directory provided, checking directory...")
+        logger.info("Directory provided, checking directory...")
         predicates_df = load_using_directory(task_cfg, data_path)
     else:
         # load file
-        logger.debug("File path provided, checking file...")
+        logger.info("File path provided, checking file...")
         predicates_df = load_using_file(task_cfg, data_path)
 
     result = query.query(task_cfg, predicates_df)

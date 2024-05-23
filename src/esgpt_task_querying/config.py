@@ -777,16 +777,16 @@ class TaskExtractorConfig:
         if loaded_dict:
             raise ValueError(f"Unrecognized keys in configuration file: {', '.join(loaded_dict.keys())}")
 
-        logger.debug("Parsing predicates...")
+        logger.info("Parsing predicates...")
         predicates = {
             n: DerivedPredicateConfig(**p) if "expr" in p else PlainPredicateConfig(**p)
             for n, p in predicates.items()
         }
 
-        logger.debug("Parsing trigger event...")
+        logger.info("Parsing trigger event...")
         trigger_event = EventConfig(trigger_event)
 
-        logger.debug("Parsing windows...")
+        logger.info("Parsing windows...")
         windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
         return cls(predicates=predicates, trigger_event=trigger_event, windows=windows)
