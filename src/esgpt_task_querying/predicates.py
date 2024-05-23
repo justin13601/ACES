@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import polars as pl
-from EventStream.data.dataset_polars import Dataset
 from loguru import logger
 
 from .config import TaskExtractorConfig
@@ -49,11 +48,22 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
 
 def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> pl.DataFrame:
     try:
+        from EventStream.data.dataset_polars import Dataset
+    except ImportError as e:
+        raise ImportError(
+            "The 'EventStream' package is required to load ESGPT datasets. "
+            "If you mean to use a MEDS dataset, please specify the 'MEDS' standard. "
+            "Otherwise, please install the package from https://github.com/mmcdermott/EventStreamGPT and add "
+            "the package to your PYTHONPATH."
+        ) from e
+
+    try:
         ESD = Dataset.load(data_path)
     except Exception as e:
         raise ValueError(
             f"Error loading data using ESGPT: {e}. "
-            "Please ensure the path provided is a valid ESGPT dataset directory."
+            "Please ensure the path provided is a valid ESGPT dataset directory. "
+            "If you mean to use a MEDS dataset, please specify the 'MEDS' standard."
         ) from e
 
     events_df = ESD.events_df
