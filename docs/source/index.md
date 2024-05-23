@@ -21,7 +21,7 @@ Usage Guide <usage>
 Configuration Language <configuration>
 Sample Data Tutorial <tutorial/index>
 MIMIC-IV Examples <examples>
-Algorithm & Terminology <description>
+Algorithm & Terminology <terminology>
 Module API Reference <api/modules>
 License <license>
 ```
