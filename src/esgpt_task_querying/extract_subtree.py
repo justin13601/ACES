@@ -251,7 +251,10 @@ def extract_subtree(
         # Step 1: Summarize the window from the subtree.root to child
         # TODO(mmd): Make this more object oriented using the dataclasses.
         endpoint_expr = child.endpoint_expr
-        endpoint_expr.offset += subtree_root_offset
+        if type(endpoint_expr) is tuple:
+            endpoint_expr = endpoint_expr + (subtree_root_offset,)
+        else:
+            endpoint_expr.offset += subtree_root_offset
 
         match endpoint_expr[1]:
             case timedelta():
