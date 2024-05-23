@@ -3,18 +3,20 @@ predicates:
     code: lab_name//SpO2
   normal_spo2:
     code: lab_name//SpO2
-    values_column: lab_value
     value_min: 90
     value_max: 120
     value_min_inclusive: True
     value_max_inclusive: True
-  abnormal_spo2:
+  abnormally_low_spo2:
     code: lab_name//SpO2
-    values_column: lab_value
-    value_min: 120
     value_max: 90
-    value_min_inclusive: False
     value_max_inclusive: False
+  abnormally_high_spo2:
+    code: lab_name//SpO2
+    value_min: 120
+    value_min_inclusive: False
+  abnormal_spo2:
+    expr: or(abnormally_low_spo2, abnormally_high_spo2)
 
 trigger_event: normal_spo2
 
