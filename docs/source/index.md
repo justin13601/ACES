@@ -5,10 +5,6 @@ time series databases.
 
 Check out {doc}`/usage` for further information and installation instructions.
 
-```{warning}
-   This library is under development.
-```
-
 ## Contents
 
 ```{toctree}
