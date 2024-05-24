@@ -24,9 +24,13 @@ Please also refer to the [documentation](https://eventstreamaces.readthedocs.io/
 
 ## Dependencies
 
-- polars
-- bigtree
-- ruamel.yaml
+- polars == 0.20.18
+- bigtree == 0.17.0
+- ruamel.yaml == 0.18.6,
+- pytimeparse == 1.1.8,
+- loguru == 0.7.2,
+- hydra-core == 1.3.2,
+- networkx == 3.3,
 
 ## Installation
 
