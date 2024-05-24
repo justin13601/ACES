@@ -95,9 +95,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
     """
 
     logger.info("Loading MEDS data...")
-    data = pl.read_parquet(data_path).with_columns(
-        pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M").cast(pl.Datetime)
-    )
+    data = pl.read_parquet(data_path)
 
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
