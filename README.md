@@ -20,11 +20,7 @@ There are diverse applications in healthcare and beyond. For instance, researche
 
 This README provides an overview of this feature, including a description of the YAML configuration file's fields (see `sample_config.yaml`), an outline of the algorithm, and instructions for use.
 
-## Task Schema Definition
-
-Provided below are several examples of clinically-meaningful tasks that ESGPT Task Querying could easily extract subject cohorts for:
-
-![Task Schema Definition](TaskSchemaDefinition.svg)
+Please also refer to the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for more information.
 
 ## Dependencies
 
@@ -34,45 +30,37 @@ Provided below are several examples of clinically-meaningful tasks that ESGPT Ta
 
 ## Installation
 
-1. Install EventStreamGPT (https://github.com/mmcdermott/EventStreamGPT):
+1. Install ACES:
 
-Clone EventStreamGPT
+```bash
+pip install es-aces
+```
+
+2. If using the ESGPT data standard, install ESGPT (https://github.com/mmcdermott/EventStreamGPT):
+
+Clone EventStreamGPT:
 
 ```bash
 git clone https://github.com/mmcdermott/EventStreamGPT.git
 ```
 
-Install package with dependencies from the root directory of the cloned repo
+Install package with dependencies from the root directory of the cloned repo:
 
 ```bash
 pip install -e .
-```
-
-2. Install ESGPT Task Querying:
-
-Clone ESGPT Task Querying
-
-```bash
-git clone https://github.com/justin13601/ESGPTTaskQuerying.git
-```
-
-Install package with dependencies from the root directory of the cloned repo
-
-```bash
-pip install . --upgrade
 ```
 
 ## Instructions for Use
 
 1. **Prepare the YAML Configuration File**: Define your predicates and windows according to your research needs. Please see below for details regarding the configuration language.
 2. **Format Dataset into ESGPT Format**: Please follow instructions in the EventStreamGPT repo to build your dataset for ESGPT.
-3. **Load ESGPT Task Querying**: Set-up and import ESGPT Task Querying into your environment.
+3. **Load ACES**: Set-up and import ACES into your environment.
 
 ```python
-from esgpt_task_querying import main
+from aces import config, predicates, query
 ```
 
-4. **Run the Query**: Use ESGPT Task Querying with your YAML file to query a ESGPT dataset.
+4. **Run the Query**: Use ACES with your YAML file to query a ESGPT dataset.
 
 ```python
 df_result = main.query_task(

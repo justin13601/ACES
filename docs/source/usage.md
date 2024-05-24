@@ -4,7 +4,7 @@
 
 ______________________________________________________________________
 
-To use ESGPTTaskQuerying, first clone the repository and install it using pip:
+To use ACES, first clone the repository and install it using pip:
 
 ```bash
 (.venv) $ pip install .
@@ -14,21 +14,21 @@ To use ESGPTTaskQuerying, first clone the repository and install it using pip:
 
 ______________________________________________________________________
 
-To extract a cohort for a particular task, you can use the `esgpt_task_querying.query.query()` function:
+To extract a cohort for a particular task, you can use the `aces.query.query()` function:
 
 ```{eval-rst}
-.. autofunction:: esgpt_task_querying.query.query
+.. autofunction:: aces.query.query
 ```
 
 The `cfg` parameter must be of type `dict()`, and the `df_predicates` parameter must be of type `polars.DataFrame()`.
-Otherwise, `esgpt_task_querying.query.query()` will raise a `TypeError` exception.
+Otherwise, `aces.query.query()` will raise a `TypeError` exception.
 
 Details about the configuration language used to define the `cfg` parameter can be found in {doc}`/configuration`.
 
 For example, assuming `cfg` and `df_predicates` are defined properly, a query can be run using:
 
 ```python
->>> from esgpt_task_querying import query
+>>> from aces import query
 >>> query.query(cfg, df_predicates)
 ```
 

@@ -1,6 +1,6 @@
-# Welcome to ESGPTTaskQuerying's Documentation!
+# Welcome to ACES!
 
-ESGPTTaskQuerying is a library designed for automatic extraction of datasets and cohorts from event stream
+ACES is a library designed for automatic extraction of datasets and cohorts from event stream
 time series databases.
 
 Check out {doc}`/usage` for further information and installation instructions.

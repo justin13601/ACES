@@ -24,12 +24,12 @@ sys.path.insert(0, str(__src__))
 
 # -- Project information
 
-project = "ESGPTTaskQuerying"
+project = "Event Stream Automatic Cohort Extraction System (ACES)"
 copyright = "2024, Justin Xu & Matthew McDermott"
 author = "Justin Xu & Matthew McDermott"
 
-release = "0.0.2"
-version = "0.0.2"
+release = "0.2.0"
+version = "0.2.0"
 
 
 def ensure_pandoc_installed(_):
@@ -58,7 +58,7 @@ def ensure_pandoc_installed(_):
 from sphinx.ext import apidoc
 
 output_dir = __location__ / "api"
-module_dir = __src__ / "src/esgpt_task_querying"
+module_dir = __src__ / "src/aces"
 if output_dir.is_dir():
     shutil.rmtree(output_dir)
 
@@ -148,7 +148,7 @@ myst_url_schemes = {
     "https": None,
     "ftp": None,
     "mailto": None,
-    "repo-code": "https://github.com/justin13601/ESGPTTaskQuerying/tree/main/{{path}}#{{fragment}}",
+    "repo-code": "https://github.com/justin13601/ACES/tree/main/{{path}}#{{fragment}}",
     # "doi": "https://doi.org/{{path}}",
     # "gh-issue": {
     #     "url": "https://github.com/executablebooks/MyST-Parser/issue/{{path}}#{{fragment}}",
@@ -205,7 +205,7 @@ html_theme = "sphinx_immaterial"
 # Material theme options (see theme.conf for more information)
 html_theme_options = {
     # Set the name of the project to appear in the navigation.
-    "nav_title": "ESGPTTaskQuerying",
+    "nav_title": "ACES",
     # Icon,
     # "logo_icon": "query-512.png",
     # Set you GA account ID to enable tracking
@@ -237,8 +237,8 @@ html_theme_options = {
     # "color_primary": "green",
     # "color_accent": "green",
     # Set the repo location to get a badge with stats
-    "repo_url": "https://github.com/justin13601/ESGPTTaskQuerying",
-    "repo_name": "ESGPTTaskQuerying",
+    "repo_url": "https://github.com/justin13601/ACES",
+    "repo_name": "ACES",
     # Visible levels of the global TOC; -1 means unlimited
     "globaltoc_depth": 3,
     # If False, expand all TOC entries
@@ -252,10 +252,10 @@ html_theme_options = {
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = f"ESGPTTaskQuerying v{version} Documentation"
+html_title = f"ACES v{version} Documentation"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-html_short_title = "ESGPTTaskQuerying Documentation"
+html_short_title = "ACES Documentation"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
@@ -313,7 +313,7 @@ html_show_copyright = True
 # html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = "esgpt_task_querying-doc"
+htmlhelp_basename = "aces-doc"
 
 
 # -- Options for LaTeX output
@@ -330,7 +330,7 @@ latex_elements = {  # type: ignore
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ("index", "user_guide.tex", "ESGPTTaskQuerying Documentation", "Justin Xu & Matthew McDermott", "manual")
+    ("index", "user_guide.tex", "ACES Documentation", "Justin Xu & Matthew McDermott", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
