@@ -40,7 +40,10 @@ Please also refer to the [documentation](https://eventstreamaces.readthedocs.io/
 pip install es-aces
 ```
 
-2. If using the ESGPT data standard, install ESGPT (https://github.com/mmcdermott/EventStreamGPT):
+2. If using the MEDS data standard, install MEDS (https://github.com/Medical-Event-Data-Standard/meds):
+   TODO
+
+3. If using the ESGPT data standard, install ESGPT (https://github.com/mmcdermott/EventStreamGPT):
 
 Clone EventStreamGPT:
 
@@ -56,27 +59,41 @@ pip install -e .
 
 ## Instructions for Use
 
-1. **Prepare the YAML Configuration File**: Define your predicates and windows according to your research needs. Please see below for details regarding the configuration language.
-2. **Format Dataset into ESGPT Format**: Please follow instructions in the EventStreamGPT repo to build your dataset for ESGPT.
-3. **Load ACES**: Set-up and import ACES into your environment.
+1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for details regarding the configuration language.
+2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample.csv`.
+3. **Prepare a Hydra Configuration File**: Define `config_path`, `data_path`, and `output_path` to specify the location of your task configuration file, data file/directory, and results output location, respectively.
+
+Command line:
+
+```bash
+aces-cli --config-dir='/path/to/hydra/config/' --config-name='config.yaml'
+```
+
+Code:
 
 ```python
 from aces import config, predicates, query
-```
 
-4. **Run the Query**: Use ACES with your YAML file to query a ESGPT dataset.
+# create task configuration object
+cfg = config.TaskExtractorConfig.load(config_path="/path/to/task/config/task.yaml")
 
-```python
-df_result = main.query_task(
-    cfg_path="/path/to/config.yaml", data="/path/to/folder/of/ESGPT/dataset/"
+# one of the following
+predicates_df = predicates.generate_predicates_df(cfg, "/path/to/data.parquet", "meds")
+predicates_df = predicates.generate_predicates_df(
+    cfg, "/path/to/esgpt/folder/", "esgpt"
 )
+predicates_df = predicates.generate_predicates_df(cfg, "/path/to/data.csv", "csv")
+
+# execute query and display results
+df_result = query.query(cfg, predicates_df)
+display(df_result)
 ```
 
-5. **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your YAML file. Timestamps for an edge of each window specified in the YAML, as well as predicate counts for each window, are also provided.
+**Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for an edge of each window specified in the YAML, as well as predicate counts for each window, are also provided.
 
-## YAML Configuration File
+## Task Configuration File
 
-The YAML configuration file allows users to define specific predicates and windows to query the ESD. Below is a description of each field:
+The task configuration file allows users to define specific predicates and windows to query your dataset. Below is a description of each field:
 
 ### Predicates
 
