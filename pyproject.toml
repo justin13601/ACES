@@ -1,15 +1,11 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
 [project]
-name = "ACES"
+name = "es-aces"
 version = "0.2.0"
 authors = [
   { name="Justin Xu", email="justin13601@hotmail.com" },
   { name="Matthew McDermott", email="mattmcdermott8@gmail.com" },
 ]
-description = "Event Stream Automatic Cohort Extraction System"
+description = "Event Stream Automatic Cohort Extraction System (ACES)"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
@@ -27,6 +23,13 @@ dependencies = [
     "pytimeparse == 1.1.8",
     "networkx == 3.3",
 ]
+
+[project.scripts]
+aces-cli = "aces.__main__:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project.optional-dependencies]
 dev = [

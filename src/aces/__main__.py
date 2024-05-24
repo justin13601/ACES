@@ -8,7 +8,7 @@ import polars as pl
 from loguru import logger
 from omegaconf import DictConfig
 
-from aces import config, predicates, query
+from . import config, predicates, query
 
 
 def load_using_directory(cfg: config.TaskExtractorConfig, path: str | Path) -> pl.DataFrame:
@@ -28,8 +28,8 @@ def load_using_file(cfg: config.TaskExtractorConfig, path: str | Path) -> pl.Dat
         return
 
 
-@hydra.main(version_base=None, config_path="", config_name="run")
-def run(cfg: DictConfig) -> None:
+@hydra.main(version_base=None, config_path="", config_name="")
+def main(cfg: DictConfig) -> None:
     cfg = hydra.utils.instantiate(cfg, _convert_="all")
 
     # Set output path
@@ -73,4 +73,4 @@ def run(cfg: DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    run()
+    main()

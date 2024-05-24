@@ -34,7 +34,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     ).select("subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp"))
 
     result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)
-    logger.info("Done.")
+    logger.info(f"Done. {result.shape[0]} rows returned.")
 
     # add label column if specified
     label_window = None
