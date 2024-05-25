@@ -29,6 +29,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     log_tree(cfg.window_tree)
 
     logger.info("Beginning query...")
+    logger.info("Identifying possible trigger nodes based on the specified trigger event...")
     prospective_root_anchors = check_constraints(
         {cfg.trigger_event.predicate: (1, None)}, predicates_df
     ).select("subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp"))

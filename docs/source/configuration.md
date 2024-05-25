@@ -8,8 +8,7 @@ format (recommended) or the [ESGPT](https://eventstreamml.readthedocs.io/en/late
 system works by defining a configuration object that details the underlying concepts, inclusion/exclusion, and
 labeling criteria for the cohort/task to be extracted, then using a recursive algorithm to identify all
 realizations of valid patient time-ranges of data that satisfy those constraints from the raw data. For more
-details on the recursive algorithm, see the `terminology.md` file. **TODO** better integrate, name, and link
-to these documentation files.
+details on the recursive algorithm, see the `terminology.md` file.
 
 As indicated above, these cohorts are specified through a combination of concepts (realized as event
 _predicate_ functions, _aka_ "predicates") which are _dataset specific_ and inclusion/exclusion/labeling

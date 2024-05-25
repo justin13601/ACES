@@ -34,16 +34,7 @@ Please also refer to the [documentation](https://eventstreamaces.readthedocs.io/
 
 ## Installation
 
-1. Install ACES:
-
-```bash
-pip install es-aces
-```
-
-2. If using the MEDS data standard, install MEDS (https://github.com/Medical-Event-Data-Standard/meds):
-   TODO
-
-3. If using the ESGPT data standard, install ESGPT (https://github.com/mmcdermott/EventStreamGPT):
+1. If using the ESGPT data standard, install ESGPT (https://github.com/mmcdermott/EventStreamGPT):
 
 Clone EventStreamGPT:
 
@@ -55,6 +46,14 @@ Install package with dependencies from the root directory of the cloned repo:
 
 ```bash
 pip install -e .
+```
+
+Note: please install ESGPT first and then install ACES. This will update the polars version to the one used by ACES. This may not necessarily create an environment suitable for ESGPT modelling; however, the environment will be able to load your data in ESGPT format to enable ACES querying with the ESGPT data standard.
+
+2. Install ACES:
+
+```bash
+pip install es-aces
 ```
 
 ## Instructions for Use
@@ -90,6 +89,34 @@ display(df_result)
 ```
 
 **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for an edge of each window specified in the YAML, as well as predicate counts for each window, are also provided.
+
+```
+aces-cli --config-path=/n/data1/hms/dbmi/zaklab/mmd/ESACES_tests/outputs/inovalon_tests/ESGPT/readmission_test/ --config-name="config"
+2024-05-24 16:08:04.071 | INFO     | aces.__main__:main:42 - Loading config...
+2024-05-24 16:08:04.095 | INFO     | aces.config:load:775 - Parsing predicates...
+2024-05-24 16:08:04.095 | INFO     | aces.config:load:781 - Parsing trigger event...
+2024-05-24 16:08:04.095 | INFO     | aces.config:load:784 - Parsing windows...
+2024-05-24 16:08:04.156 | INFO     | aces.__main__:main:47 - Loading data...
+2024-05-24 16:08:04.161 | INFO     | aces.__main__:main:55 - Directory provided, checking directory...
+Loading events from /n/data1/hms/dbmi/zaklab/inovalon_mbm47/processed/12-19-23_InovalonSample1M/events_df.parquet...
+Loading dynamic_measurements from /n/data1/hms/dbmi/zaklab/inovalon_mbm47/processed/12-19-23_InovalonSample1M/dynamic_measurements_df.parquet...
+2024-05-24 16:08:28.855 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:151 - Generating plain predicate columns...
+2024-05-24 16:08:30.337 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:160 - Added predicate column 'admission'.
+2024-05-24 16:08:31.608 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:160 - Added predicate column 'discharge'.
+2024-05-24 16:09:02.738 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:177 - Cleaning up predicates DataFrame...
+2024-05-24 16:09:02.740 | INFO     | aces.predicates:generate_predicates_df:277 - Loaded plain predicates. Generating derived predicate columns...
+2024-05-24 16:09:02.740 | INFO     | aces.predicates:generate_predicates_df:284 - Generating '_ANY_EVENT' predicate column...
+2024-05-24 16:09:02.747 | INFO     | aces.predicates:generate_predicates_df:286 - Added predicate column '_ANY_EVENT'.
+2024-05-24 16:09:05.074 | INFO     | aces.utils:log_tree:56 - trigger
+┗━━ input.end
+    ┗━━ target.end
+
+2024-05-24 16:09:05.075 | INFO     | aces.query:query:31 - Beginning query...
+2024-05-24 16:09:05.089 | INFO     | aces.constraints:check_constraints:95 - Excluding 45,970,524 rows as they failed to satisfy 1 <= admission <= None.
+2024-05-24 16:09:05.153 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'input.end'...
+2024-05-24 16:09:22.494 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'target.end'...
+2024-05-24 16:09:29.664 | INFO     | aces.query:query:37 - Done. 293608 rows returned.
+```
 
 ## Task Configuration File
 
@@ -138,22 +165,11 @@ Each window uses these fields to define specific time frames and criteria within
 
 A sample YAML configuration file is provided in `sample_config.yaml`.
 
-## Recursive Algorithm Description
-
-A tree structure is constructed based on the windows defined in the configuration file. This tree represents the hierarchical relationship between different time windows, where each node represents a window with its specific constraints. A set of base functions are required for the algorithm:
-
-- `summarize_temporal_window()` creates a summary of predicate counts within a specified temporally-bound window.
-
-- `summarize_event_bound_window()` creates a summary of predicate counts within a specified event-bound window.
-
-- `summarize_window()` combines the functionalities of the above two functions.
-
-- `check_constraints()` checks if the predicate counts in a window satisfy the inclusion and exclusion constraints of the window.
-
-`query_subtree()` is recursively called to query each subtree in the tree structure in a depth-first manner. The function first summarizes the temporal- or event-bound window defined at each node by calling `summarize_window()`. Then, the returned summaries are filtered accordingly by `check_constraints()`. The resulting valid rows from each recursed node is then merged to form the final result.
-
 ## Acknowledgements
 
 **Matthew McDermott**, PhD | *Harvard Medical School*
+**Jack Gallifant**, MD | *Massachusetts Institute of Technology*
+**Tom Pollard**, PhD | *Massachusetts Institute of Technology*
+**Alistair Johnson**, DPhil
 
-For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding EventStreamGPT, please refer to the ESGPT repository. Contributions are welcome via pull requests.
+For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding MEDS or EventStreamGPT, please refer to their respective repositories. Contributions are welcome via pull requests.
