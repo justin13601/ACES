@@ -34,7 +34,7 @@ Please also refer to the [documentation](https://eventstreamaces.readthedocs.io/
 
 ## Installation
 
-1. If using the ESGPT data standard, install ESGPT (https://github.com/mmcdermott/EventStreamGPT):
+1. If using the ESGPT data standard, install [EventStreamGPT](https://github.com/mmcdermott/EventStreamGPT):
 
 Clone EventStreamGPT:
 
