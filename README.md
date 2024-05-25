@@ -48,7 +48,7 @@ Install package with dependencies from the root directory of the cloned repo:
 pip install -e .
 ```
 
-Note: please install ESGPT first and then install ACES. This will update the polars version to the one used by ACES. This may not necessarily create an environment suitable for ESGPT modelling; however, the environment will be able to load your data in ESGPT format to enable ACES querying with the ESGPT data standard.
+Note: please install ESGPT first and then install ACES. This will update the polars version to the one used by ACES. This may not necessarily create an environment suitable for ESGPT modeling; however, the environment will be able to load your data in ESGPT format to enable ACES querying with the ESGPT data standard.
 
 2. Install ACES:
 
@@ -90,7 +90,7 @@ display(df_result)
 
 **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for an edge of each window specified in the YAML, as well as predicate counts for each window, are also provided.
 
-```
+```log
 aces-cli --config-path=/n/data1/hms/dbmi/zaklab/mmd/ESACES_tests/outputs/inovalon_tests/ESGPT/readmission_test/ --config-name="config"
 2024-05-24 16:08:04.071 | INFO     | aces.__main__:main:42 - Loading config...
 2024-05-24 16:08:04.095 | INFO     | aces.config:load:775 - Parsing predicates...

@@ -32,7 +32,7 @@ For example, assuming `cfg` and `df_predicates` are defined properly, a query ca
 >>> query.query(cfg, df_predicates)
 ```
 
-```
+```plaintext
 shape: (1, 7)
 ┌────────────┬───────────────┬───────────────┬───────────────┬──────────────┬──────────────┬───────┐
 │ subject_id ┆ input.start_s ┆ target.end_su ┆ gap.end_summa ┆ subtree_anch ┆ input.end_su ┆ label │

@@ -1,6 +1,6 @@
 [project]
 name = "es-aces"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
   { name="Justin Xu", email="justin13601@hotmail.com" },
   { name="Matthew McDermott", email="mattmcdermott8@gmail.com" },
