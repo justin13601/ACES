@@ -14,8 +14,9 @@ maxdepth: 2
 ---
 Overview <overview>
 Usage Guide <usage>
+Predicates DataFrame <predicates>
 Configuration Language <configuration>
-Sample Data Tutorial <tutorial/index>
+Sample Data Tutorial <notebooks/tutorial>
 MIMIC-IV Examples <examples>
 Algorithm & Terminology <terminology>
 Module API Reference <api/modules>

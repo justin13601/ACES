@@ -4,4 +4,4 @@ data:
   path: sample_data/sample.csv
   standard: csv
 
-output_dir:
+output_dir: results/

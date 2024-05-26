@@ -1,5 +1,6 @@
 """Main script for end-to-end task querying."""
 
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -19,6 +20,7 @@ def main(cfg: DictConfig) -> None:
         output_dir = Path.cwd()
     else:
         output_dir = Path(cfg["output_dir"])
+    os.makedirs(output_dir, exist_ok=True)
 
     # load configuration
     logger.info("Loading config...")

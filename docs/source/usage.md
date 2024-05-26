@@ -4,17 +4,27 @@
 
 ______________________________________________________________________
 
-To use ACES, first clone the repository and install it using pip:
+To use ACES, first determine which data standard you'd like to use. Currently, ACES supports the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. Alternatively, you may choose to transform your data into a predicates dataframe `.csv` format - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
+
+**Note:** If you choose to use the ESGPT standard, please install it first before installing ACES. This ensures the correct version of `polars` is installed for ACES.
+
+To install ACES:
 
 ```bash
-(.venv) $ pip install es-aces
+pip install es-aces
 ```
 
 ## Querying Tasks
 
 ______________________________________________________________________
 
-To extract a cohort for a particular task, you can use the `aces.query.query()` function:
+To extract a cohort for a particular task, you may use `aces-cli` in your terminal:
+
+```bash
+aces-cli --config-dir='/path/to/hydra/config/' --config-name='config.yaml'
+```
+
+Alternatively, you can use the `aces.query.query()` function:
 
 ```{eval-rst}
 .. autofunction:: aces.query.query
