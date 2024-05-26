@@ -35,7 +35,10 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     )
 
     result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)
-    logger.info(f"Done. {result.shape[0]:,} rows returned.")
+    if result.empty:
+        logger.info("No valid rows found.")
+    else:
+        logger.info(f"Done. {result.shape[0]:,} valid rows returned.")
 
     # add label column if specified
     label_window = None

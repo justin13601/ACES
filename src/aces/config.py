@@ -418,6 +418,17 @@ class WindowConfig:
         Traceback (most recent call last):
             ...
         ValueError: Window boundary cannot contain both '->' and '<-' operators.
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="input.end + 2d",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": "(0)", "death": "(None, 0)"}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid constraint format: discharge.
+        Got (0)
     """
 
     start: str | None
@@ -497,7 +508,9 @@ class WindowConfig:
                 elements = self.has[each_constraint].strip("()").split(",")
                 elements = [element.strip() for element in elements]
                 if len(elements) != 2:
-                    raise ValueError(f"Invalid constraint format: {each_constraint}.")
+                    raise ValueError(
+                        f"Invalid constraint format: {each_constraint}. " f"Got {self.has[each_constraint]}"
+                    )
                 self.has[each_constraint] = tuple(
                     int(element) if element not in ("None", "") else None for element in elements
                 )

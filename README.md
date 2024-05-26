@@ -46,7 +46,7 @@ Install with dependencies from the root directory of the cloned repo:
 pip install -e .
 ```
 
-Note: please install ESGPT first before installing ACES. This will update the polars version to the one used by ACES. This may not necessarily create an environment suitable for ESGPT modeling; however, the environment will be able to load your data in ESGPT format to enable ACES querying using the ESGPT data standard.
+Note: To avoid potential dependency conflicts, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
 
 2. Install ACES:
 

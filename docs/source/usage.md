@@ -6,7 +6,7 @@ ______________________________________________________________________
 
 To use ACES, first determine which data standard you'd like to use. Currently, ACES supports the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. Alternatively, you may choose to transform your data into a predicates dataframe `.csv` format - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
 
-**Note:** If you choose to use the ESGPT standard, please install it first before installing ACES. This ensures the correct version of `polars` is installed for ACES.
+**Note:** If you choose to use the ESGPT standard, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
 
 To install ACES:
 
