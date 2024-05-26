@@ -126,7 +126,7 @@ Loading dynamic_measurements from /home/ACES/data/dynamic_measurements_df.parque
 2024-05-25 22:51:53.976 | INFO     | aces.constraints:check_constraints:95 - Excluding 88 rows as they failed to satisfy None <= death <= 0.
 2024-05-25 22:51:53.977 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'target.end'...
 2024-05-25 22:52:05.556 | INFO     | aces.query:query:38 - Done. 56,924 rows returned.
-2024-05-25 22:52:05.697 | INFO     | aces.__main__:main:68 - Results saved to /home/ACES/results_20240525_225205.parquet
+2024-05-25 22:52:05.697 | INFO     | aces.__main__:main:68 - Results saved to /home/ACES/results_2024-05-25_22-52-05.parquet
 ```
 
 ## Task Configuration File
@@ -179,7 +179,7 @@ There are two types of predicates that can be defined in the configuration file,
 
 #### Plain Predicates
 
-"Plain" predicates represent explicit values (either `str` or `int`) in your dataset at a particular timestamp and has 1 required `code` field (for string categorical variables) and 4 optional fields (for integer or float continuous variables). For instance, the following defines a predicate representing normal SPO2 levels (a range of 90-120 corresponding to rows where the `lab` column is `O2 saturation pulseoxymetry (%)`):
+"Plain" predicates represent explicit values (either `str` or `int`) in your dataset at a particular timestamp and has 1 required `code` field (for string categorical variables) and 4 optional fields (for integer or float continuous variables). For instance, the following defines a predicate representing normal SpO2 levels (a range of 90-120 corresponding to rows where the `lab` column is `O2 saturation pulseoxymetry (%)`):
 
 ```yaml
 normal_spo2:
@@ -260,11 +260,16 @@ The `has` field specifies constraints relating to predicates within the window. 
 
 `index_timestamp` is an optional field and can only exist in ONE window in the task configuration file if defined. It must be either `start` or `end`, and is used to create an index column used to easily manipulate the results output. Usually, one would set it to be the time at which the prediction would be made (ie. set to `start` in your target window).
 
+## FAQs
+
 ## Acknowledgements
 
 **Matthew McDermott**, PhD | *Harvard Medical School*
+
 **Alistair Johnson**, DPhil
+
 **Jack Gallifant**, MD | *Massachusetts Institute of Technology*
+
 **Tom Pollard**, PhD | *Massachusetts Institute of Technology*
 
 For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding MEDS or ESGPT, please refer to their respective repositories. Contributions are welcome via pull requests.

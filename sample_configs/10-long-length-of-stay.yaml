@@ -1,36 +1,31 @@
-# Task: 24-hour In-hospital Mortality Prediction
+# Task: Length of Stay >=7 Days Prediction
+# Binary prediction of whether the patient stays in hospital for >=7 days. Exclude visits where discharge occurs within 24 hours after admission
 predicates:
   admission:
     code: event_type//ADMISSION
   discharge:
     code: event_type//DISCHARGE
-  death:
-    code: event_type//DEATH
-  discharge_or_death:
-    expr: or(discharge, death)
 
 trigger: admission
 
 windows:
   input:
     start: NULL
-    end: trigger + 24h
+    end: trigger
     start_inclusive: True
     end_inclusive: True
     has:
       _ANY_EVENT: (5, None)
-  gap:
-    start: input.end
+  adm_day:
+    start: trigger
     end: start + 24h
-    start_inclusive: False
+    start_inclusive: True
     end_inclusive: True
     has:
-      admission: (None, 0)
       discharge: (None, 0)
-      death: (None, 0)
-  target:
-    start: gap.end
-    end: start -> discharge_or_death
+  adm:
+    start: input.end
+    end: start + 7d
     start_inclusive: False
     end_inclusive: True
-    label: death
+    label: discharge

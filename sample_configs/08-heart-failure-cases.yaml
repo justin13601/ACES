@@ -1,3 +1,4 @@
+# Task: Heart Failure Prediction (Cases)
 # https://arxiv.org/pdf/1602.03686
 predicates:
   age_between_50_and_85:

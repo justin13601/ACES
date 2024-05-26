@@ -1,3 +1,4 @@
+# Task: Intubation Onset Prediction
 # https://www.nature.com/articles/s41598-020-77893-3
 predicates:
   icu_admission:
@@ -21,11 +22,15 @@ windows:
   pre_trigger_icu_admit:
     start: trigger
     end: start <- icu_admission
+    start_inclusive: True
+    end_inclusive: True
     has:
       icu_end_of_stay: (None, 0)
   post_trigger_icu_end_of_stay:
     start: trigger
     end: start -> icu_end_of_stay
+    start_inclusive: False
+    end_inclusive: True
     has:
       icu_admission: (None, 0)
   input:

@@ -1,3 +1,4 @@
+# Task: Long-term (3 Years) MI Incidence Prediction
 predicates:
   admission:
     code: event_type//ADMISSION

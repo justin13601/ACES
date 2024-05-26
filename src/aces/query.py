@@ -35,7 +35,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     )
 
     result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)
-    if result.empty:
+    if result.is_empty():
         logger.info("No valid rows found.")
     else:
         logger.info(f"Done. {result.shape[0]:,} valid rows returned.")

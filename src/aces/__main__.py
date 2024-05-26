@@ -45,7 +45,7 @@ def main(cfg: DictConfig) -> None:
     result = query.query(task_cfg, predicates_df)
 
     # save results to parquet
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     result_path = output_dir / f"results_{timestamp}.parquet"
     result.write_parquet(result_path)
     logger.info(f"Results saved to {result_path}.")
