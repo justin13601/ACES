@@ -18,7 +18,7 @@ predicates:
   abnormal_spo2:
     expr: or(abnormally_low_spo2, abnormally_high_spo2)
 
-trigger_event: normal_spo2
+trigger: normal_spo2
 
 windows:
   input:

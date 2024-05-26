@@ -10,7 +10,7 @@ predicates:
   ventilation_end:
     expr: and(procedure_end, ventilation)
 
-trigger_event: ventilation_start
+trigger: ventilation_start
 
 windows:
   input:

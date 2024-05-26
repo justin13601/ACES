@@ -231,7 +231,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, stan
         ...     "death": PlainPredicateConfig("death"),
         ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
         ... }
-        >>> trigger_event = EventConfig("admission")
+        >>> trigger = EventConfig("admission")
         >>> windows = {
         ...     "input": WindowConfig(
         ...         start=None,
@@ -255,7 +255,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, stan
         ...         has={},
         ...     ),
         ... }
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger_event=trigger_event, windows=windows)
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)

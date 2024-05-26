@@ -2,7 +2,7 @@ predicates:
   death:
     code: event_type//DEATH
 
-trigger_event: _ANY_EVENT
+trigger: _ANY_EVENT
 
 windows:
   target:

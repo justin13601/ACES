@@ -4,7 +4,7 @@ predicates:
   discharge:
     code: event_type//DISCHARGE
 
-trigger_event: admission
+trigger: admission
 
 windows:
   input:

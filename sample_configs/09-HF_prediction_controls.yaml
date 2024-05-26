@@ -7,7 +7,7 @@ predicates:
     value_min_inclusive: True
     value_max_inclusive: True
 
-trigger_event: age_between_50_and_85
+trigger: age_between_50_and_85
 
 windows:
   pre_idx_date:

@@ -28,7 +28,7 @@ predicates:
   # myocardial_infarction:
   #   expr: or(diagnosis_ICD9CM/41071, diagnosis_ICD10CM/I214, diagnosis_ICD10CM/I21A1, diagnosis_ICD9CM/41041, diagnosis_ICD9CM/41011, diagnosis_ICD9CM/41091, diagnosis_ICD10CM/I2119, diagnosis_ICD9CM/41072, diagnosis_ICD10CM/I2109, diagnosis_ICD10CM/I213)
 
-trigger_event: discharge
+trigger: discharge
 
 windows:
   input:

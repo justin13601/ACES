@@ -30,12 +30,12 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     logger.info("Beginning query...")
     logger.info("Identifying possible trigger nodes based on the specified trigger event...")
-    prospective_root_anchors = check_constraints(
-        {cfg.trigger_event.predicate: (1, None)}, predicates_df
-    ).select("subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp"))
+    prospective_root_anchors = check_constraints({cfg.trigger.predicate: (1, None)}, predicates_df).select(
+        "subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp")
+    )
 
     result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)
-    logger.info(f"Done. {result.shape[0]} rows returned.")
+    logger.info(f"Done. {result.shape[0]:,} rows returned.")
 
     # add label column if specified
     label_window = None
@@ -46,4 +46,5 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
             break
     if label_window:
         result = result.with_columns(pl.col(f"{label_window}.end_summary").struct.field(label).alias("label"))
-    return result
+
+    return result.rename({"subtree_anchor_timestamp": "trigger"})

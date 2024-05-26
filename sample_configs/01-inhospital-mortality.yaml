@@ -8,7 +8,7 @@ predicates:
   discharge_or_death:
     expr: or(discharge, death)
 
-trigger_event: admission
+trigger: admission
 
 windows:
   input:

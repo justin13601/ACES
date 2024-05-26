@@ -15,7 +15,7 @@ predicates:
   icu_end_of_stay:
     expr: or(icu_discharge, death, hospital_discharge, _RECORD_END)
 
-trigger_event: _ANY_EVENT
+trigger: _ANY_EVENT
 
 windows:
   pre_trigger_icu_admit:

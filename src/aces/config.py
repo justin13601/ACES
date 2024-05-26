@@ -496,8 +496,10 @@ class WindowConfig:
             for each_constraint in self.has:
                 elements = self.has[each_constraint].strip("()").split(",")
                 elements = [element.strip() for element in elements]
+                if len(elements) != 2:
+                    raise ValueError(f"Invalid constraint format: {each_constraint}.")
                 self.has[each_constraint] = tuple(
-                    int(element) if element != "None" else None for element in elements
+                    int(element) if element not in ("None", "") else None for element in elements
                 )
 
         if self.start is None and self.end is None:
@@ -664,7 +666,7 @@ class TaskExtractorConfig:
         predicates: A dictionary of predicate configurations, stored as either plain or derived predicate
             configuration objects (which are simple dataclasses with utility functions over plain
             dictionaries).
-        trigger_event: The event configuration that triggers the task extraction process. This is a simple
+        trigger: The event configuration that triggers the task extraction process. This is a simple
             dataclass with a single field, the name of the predicate that triggers the task extraction and
             serves as the root of the window tree.
         windows: A dictionary of window configurations. Each window configuration is a simple dataclass with
@@ -681,7 +683,7 @@ class TaskExtractorConfig:
         ...     "death": PlainPredicateConfig("death"),
         ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
         ... }
-        >>> trigger_event = EventConfig("admission")
+        >>> trigger = EventConfig("admission")
         >>> windows = {
         ...     "input": WindowConfig(
         ...         start=None,
@@ -705,7 +707,7 @@ class TaskExtractorConfig:
         ...         has={},
         ...     ),
         ... }
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger_event=trigger_event, windows=windows)
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
         >>> print(config.plain_predicates) # doctest: +NORMALIZE_WHITESPACE
         {'admission': PlainPredicateConfig(code='admission',
                               value_min=None,
@@ -739,7 +741,7 @@ class TaskExtractorConfig:
     """
 
     predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
-    trigger_event: EventConfig
+    trigger: EventConfig
     windows: dict[str, WindowConfig]
 
     @classmethod
@@ -766,7 +768,7 @@ class TaskExtractorConfig:
             raise ValueError(f"Only supports reading from '.yaml' files currently. Got {config_path.suffix}")
 
         predicates = loaded_dict.pop("predicates")
-        trigger_event = loaded_dict.pop("trigger_event")
+        trigger = loaded_dict.pop("trigger")
         windows = loaded_dict.pop("windows")
 
         if loaded_dict:
@@ -779,12 +781,12 @@ class TaskExtractorConfig:
         }
 
         logger.info("Parsing trigger event...")
-        trigger_event = EventConfig(trigger_event)
+        trigger = EventConfig(trigger)
 
         logger.info("Parsing windows...")
         windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
-        return cls(predicates=predicates, trigger_event=trigger_event, windows=windows)
+        return cls(predicates=predicates, trigger=trigger, windows=windows)
 
     def save(self, config_path: str | Path, do_overwrite: bool = False):
         """Load a configuration file from the given path and return it as a dict.
@@ -871,9 +873,9 @@ class TaskExtractorConfig:
                     f"Window name '{name}' is invalid; must be composed of alphanumeric or '_' characters."
                 )
 
-        if self.trigger_event.predicate not in self.predicates:
+        if self.trigger.predicate not in self.predicates:
             raise KeyError(
-                f"Trigger event predicate '{self.trigger_event.predicate}' not found in predicates: "
+                f"Trigger event predicate '{self.trigger.predicate}' not found in predicates: "
                 f"{', '.join(self.predicates.keys())}"
             )
 
