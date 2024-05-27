@@ -73,7 +73,8 @@ def verify_plain_predicates_from_csv(data_path: Path, predicates: list[str]) -> 
 
     columns = ["subject_id", "timestamp"] + predicates
     logger.info(f"Attempting to load {columns} from CSV file {str(data_path.resolve())}")
-    return pl.read_csv(data_path, columns=columns).select(
+    data = pl.read_csv(data_path, columns=columns).drop_nulls(subset=["subject_id", "timestamp"])
+    return data.select(
         "subject_id",
         pl.col("timestamp").str.strptime(pl.Datetime, format=CSV_TIMESTAMP_FORMAT),
         *predicates,
@@ -119,7 +120,11 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
     """
 
     logger.info("Loading MEDS data...")
-    data = pl.read_parquet(data_path)
+    data = (
+        pl.read_parquet(data_path)
+        .rename({"patient_id": "subject_id"})
+        .drop_nulls(subset=["subject_id", "timestamp"])
+    )
 
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
