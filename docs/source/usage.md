@@ -47,7 +47,7 @@ shape: (1, 7)
 ┌────────────┬───────────────┬───────────────┬───────────────┬──────────────┬──────────────┬───────┐
 │ subject_id ┆ input.start_s ┆ target.end_su ┆ gap.end_summa ┆ subtree_anch ┆ input.end_su ┆ label │
 │ ---        ┆ ummary        ┆ mmary         ┆ ry            ┆ or_timestamp ┆ mmary        ┆ ---   │
-│ i64        ┆ ---           ┆ ---           ┆ ---           ┆ ---          ┆ ---          ┆ u16   │
+│ i64        ┆ ---           ┆ ---           ┆ ---           ┆ ---          ┆ ---          ┆ i64   │
 │            ┆ struct[8]     ┆ struct[8]     ┆ struct[8]     ┆ datetime[μs] ┆ struct[8]    ┆       │
 ╞════════════╪═══════════════╪═══════════════╪═══════════════╪══════════════╪══════════════╪═══════╡
 │ 1          ┆ {"input.start ┆ {"target.end" ┆ {"gap.end",19 ┆ 1991-01-27   ┆ {"input.end" ┆ 0     │

@@ -173,11 +173,13 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     logger.info("Generating plain predicate columns...")
     for name, plain_predicate in predicates.items():
         if "event_type" in plain_predicate.code:
-            events_df = events_df.with_columns(plain_predicate.ESGPT_eval_expr().cast(pl.UInt16).alias(name))
+            events_df = events_df.with_columns(
+                plain_predicate.ESGPT_eval_expr().cast(PRED_CNT_TYPE).alias(name)
+            )
         else:
             values_column = config.measurement_configs[plain_predicate.code.split("//")[0]].values_column
             dynamic_measurements_df = dynamic_measurements_df.with_columns(
-                plain_predicate.ESGPT_eval_expr(values_column).cast(pl.UInt16).alias(name)
+                plain_predicate.ESGPT_eval_expr(values_column).cast(PRED_CNT_TYPE).alias(name)
             )
         logger.info(f"Added predicate column '{name}'.")
 
@@ -264,7 +266,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, stan
         ┌────────────┬─────────────────────┬───────────┬───────────┬───────┬────────────────────┬────────────┐
         │ subject_id ┆ timestamp           ┆ admission ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
         │ ---        ┆ ---                 ┆ ---       ┆ ---       ┆ ---   ┆ ---                ┆ ---        │
-        │ i64        ┆ datetime[μs]        ┆ i64       ┆ i64       ┆ i64   ┆ u16                ┆ u16        │
+        │ i64        ┆ datetime[μs]        ┆ i64       ┆ i64       ┆ i64   ┆ i64                ┆ i64        │
         ╞════════════╪═════════════════════╪═══════════╪═══════════╪═══════╪════════════════════╪════════════╡
         │ 1          ┆ 2021-01-01 00:00:00 ┆ 1         ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
         │ 1          ┆ 2021-01-01 12:00:00 ┆ 0         ┆ 1         ┆ 0     ┆ 1                  ┆ 1          │
@@ -298,7 +300,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, stan
     # derived predicates
     logger.info("Loaded plain predicates. Generating derived predicate columns...")
     for name, code in cfg.derived_predicates.items():
-        data = data.with_columns(code.eval_expr().cast(pl.UInt16).alias(name))
+        data = data.with_columns(code.eval_expr().cast(PRED_CNT_TYPE).alias(name))
         logger.info(f"Added predicate column '{name}'.")
         predicate_cols.append(name)
 
