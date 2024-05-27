@@ -6,7 +6,7 @@ import polars as pl
 from loguru import logger
 
 from .config import TaskExtractorConfig
-from .types import ANY_EVENT_COLUMN
+from .types import ANY_EVENT_COLUMN, PRED_CNT_TYPE
 
 CSV_TIMESTAMP_FORMAT = "%m/%d/%Y %H:%M"
 
@@ -304,7 +304,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, stan
 
     # add a column of 1s representing any predicate
     logger.info("Generating '_ANY_EVENT' predicate column...")
-    data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(pl.UInt16))
+    data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(PRED_CNT_TYPE))
     logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
     predicate_cols.append(ANY_EVENT_COLUMN)
 
