@@ -33,6 +33,9 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     prospective_root_anchors = check_constraints({cfg.trigger.predicate: (1, None)}, predicates_df).select(
         "subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp")
     )
+    if prospective_root_anchors.is_empty():
+        logger.info(f"No valid rows found for the trigger event '{cfg.trigger.predicate}'. Exiting.")
+        return pl.DataFrame()
 
     result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)
     if result.is_empty():
