@@ -135,7 +135,11 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
     # clean up predicates_df
     logger.info("Cleaning up predicates DataFrame...")
     predicate_cols = list(predicates.keys())
-    return data.select(["subject_id", "timestamp"] + predicate_cols)
+    return (
+        data.select(["subject_id", "timestamp"] + predicate_cols)
+        .group_by(["subject_id", "timestamp"], maintain_order=True)
+        .agg(*(pl.col(c).sum().alias(c) for c in predicate_cols))
+    )
 
 
 def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> pl.DataFrame:
