@@ -111,7 +111,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         ┌────────────┬─────────────────────┬───────────┐
         │ subject_id ┆ timestamp           ┆ admission │
         │ ---        ┆ ---                 ┆ ---       │
-        │ i64        ┆ datetime[μs]        ┆ bool      │
+        │ i64        ┆ datetime[μs]        ┆ i64       │
         ╞════════════╪═════════════════════╪═══════════╡
         │ 1          ┆ 1989-01-01 00:00:00 ┆ 1         │
         │ 1          ┆ 1989-01-01 01:00:00 ┆ 0         │
@@ -129,7 +129,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
     for name, plain_predicate in predicates.items():
-        data = data.with_columns(plain_predicate.MEDS_eval_expr().alias(name))
+        data = data.with_columns(plain_predicate.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name))
         logger.info(f"Added predicate column '{name}'.")
 
     # clean up predicates_df
@@ -198,7 +198,11 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     dynamic_measurements_df = (
         dynamic_measurements_df.group_by(["event_id"])
         .agg(
-            *[pl.col(c).sum().cast(pl.Int64) for c in dynamic_measurements_df.columns if c in predicate_cols],
+            *[
+                pl.col(c).sum().cast(PRED_CNT_TYPE)
+                for c in dynamic_measurements_df.columns
+                if c in predicate_cols
+            ],
         )
         .select(["event_id"] + [c for c in dynamic_measurements_df.columns if c in predicate_cols])
     )
