@@ -26,6 +26,9 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     if not isinstance(predicates_df, pl.DataFrame):
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got {type(predicates_df)}.")
 
+    logger.info("Checking if (subject_id, timestamp) columns are unique...")
+    # TODO
+
     log_tree(cfg.window_tree)
 
     logger.info("Beginning query...")

@@ -98,24 +98,24 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         >>> import tempfile
         >>> from .config import PlainPredicateConfig
         >>> parquet_data = pl.DataFrame({
-        ...     "patient_id": [1, 1, 2, 3],
-        ...     "timestamp": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 02:00", None],
-        ...     "code": ['admission', 'discharge', 'admission', "gender"],
+        ...     "patient_id": [1, 1, 1, 2, 3],
+        ...     "timestamp": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 01:00", "1/1/1989 02:00", None],
+        ...     "code": ['admission', 'discharge', 'discharge', 'admission', "gender"],
         ... }).with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     parquet_data.write_parquet(data_path)
-        ...     generate_plain_predicates_from_meds(data_path, {"admission":
-        ...                                                         PlainPredicateConfig("admission")})
+        ...     generate_plain_predicates_from_meds(data_path, {"discharge":
+        ...                                                         PlainPredicateConfig("discharge")})
         shape: (3, 3)
         ┌────────────┬─────────────────────┬───────────┐
-        │ subject_id ┆ timestamp           ┆ admission │
+        │ subject_id ┆ timestamp           ┆ discharge │
         │ ---        ┆ ---                 ┆ ---       │
         │ i64        ┆ datetime[μs]        ┆ i64       │
         ╞════════════╪═════════════════════╪═══════════╡
-        │ 1          ┆ 1989-01-01 00:00:00 ┆ 1         │
-        │ 1          ┆ 1989-01-01 01:00:00 ┆ 0         │
-        │ 2          ┆ 1989-01-01 02:00:00 ┆ 1         │
+        │ 1          ┆ 1989-01-01 00:00:00 ┆ 0         │
+        │ 1          ┆ 1989-01-01 01:00:00 ┆ 2         │
+        │ 2          ┆ 1989-01-01 02:00:00 ┆ 0         │
         └────────────┴─────────────────────┴───────────┘
     """
 
