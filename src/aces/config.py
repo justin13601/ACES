@@ -437,6 +437,7 @@ class WindowConfig:
     end_inclusive: bool
     has: dict[str, str] = field(default_factory=dict)
     label: str | None = None
+    index_timestamp: str | None = None
 
     @classmethod
     def _check_reference(cls, reference: str):
@@ -756,6 +757,8 @@ class TaskExtractorConfig:
     predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
     trigger: EventConfig
     windows: dict[str, WindowConfig]
+    label_window: str | None = None
+    index_timestamp_window: str | None = None
 
     @classmethod
     def load(cls, config_path: str | Path) -> TaskExtractorConfig:
@@ -885,6 +888,32 @@ class TaskExtractorConfig:
                 raise ValueError(
                     f"Window name '{name}' is invalid; must be composed of alphanumeric or '_' characters."
                 )
+
+        label_windows = []
+        index_timestamp_windows = []
+        for name, window in self.windows.items():
+            if window.label:
+                label_windows.append(name)
+            if window.index_timestamp:
+                if window.index_timestamp not in ["start", "end"]:
+                    raise ValueError(
+                        f"Index timestamp must be either 'start' or 'end', got: {window.index_timestamp} "
+                        f"for window '{name}'"
+                    )
+                index_timestamp_windows.append(name)
+        if len(label_windows) > 1:
+            raise ValueError(
+                f"Only one window can be labeled, found {len(label_windows)} labeled windows: "
+                f"{', '.join(label_windows)}"
+            )
+        self.label_window = label_windows[0] if label_windows else None
+        if len(index_timestamp_windows) > 1:
+            raise ValueError(
+                f"Only the 'start'/'end' of one window can be used as the index timestamp, "
+                f"found {len(index_timestamp_windows)} windows with index_timestamp: "
+                f"{', '.join(index_timestamp_windows)}"
+            )
+        self.index_timestamp_window = index_timestamp_windows[0] if index_timestamp_windows else None
 
         if self.trigger.predicate not in self.predicates:
             raise KeyError(

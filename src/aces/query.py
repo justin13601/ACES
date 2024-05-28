@@ -43,14 +43,28 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     else:
         logger.info(f"Done. {result.shape[0]:,} valid rows returned.")
 
-    # add label column if specified
-    label_window = None
-    for name, window in cfg.windows.items():
-        if window.label:
-            label = window.label
-            label_window = name
-            break
-    if label_window:
-        result = result.with_columns(pl.col(f"{label_window}.end_summary").struct.field(label).alias("label"))
+    result = result.rename({"subtree_anchor_timestamp": "trigger"})
 
-    return result.rename({"subtree_anchor_timestamp": "trigger"})
+    # add label column if specified
+    if cfg.label_window:
+        result = result.with_columns(
+            pl.col(f"{cfg.label_window}.end_summary")
+            .struct.field(cfg.windows[cfg.label_window].label)
+            .alias("label")
+        )
+
+    # add index_timestamp column if specified
+    if cfg.index_timestamp_window:
+        result = result.with_columns(
+            pl.col(f"{cfg.index_timestamp_window}.start_summary")
+            .struct.field("timestamp_at_end")
+            .alias("index_timestamp")
+        )
+
+    return result.select(
+        "subject_id",
+        "index_timestamp",
+        "label",
+        "trigger",
+        *[col for col in result.columns if col not in ["subject_id", "index_timestamp", "label", "trigger"]],
+    )
