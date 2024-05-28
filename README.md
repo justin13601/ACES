@@ -109,10 +109,10 @@ Loading dynamic_measurements from /home/ACES/data/dynamic_measurements_df.parque
 2024-05-25 22:51:34.393 | INFO     | aces.predicates:generate_predicates_df:306 - Generating '_ANY_EVENT' predicate column...
 2024-05-25 22:51:34.416 | INFO     | aces.predicates:generate_predicates_df:308 - Added predicate column '_ANY_EVENT'.
 2024-05-25 22:51:34.667 | INFO     | aces.utils:log_tree:56 - trigger
-┗━━ input.end
-    ┣━━ input.start
-    ┗━━ gap.end
-        ┗━━ target.end
+                                                              ┗━━ input.end
+                                                                  ┣━━ input.start
+                                                                  ┗━━ gap.end
+                                                                      ┗━━ target.end
 
 2024-05-25 22:51:34.667 | INFO     | aces.query:query:31 - Beginning query...
 2024-05-25 22:51:34.667 | INFO     | aces.query:query:32 - Identifying possible trigger nodes based on the specified trigger event...

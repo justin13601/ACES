@@ -261,6 +261,19 @@ class WindowConfig:
             constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of
             predicate `name` in a window was either 1 or 2. All constraints in the dictionary must be
             satisfied on a window for it to be included.
+        label: A string that specifies the name of a predicate to be used as the label for the task. The
+            predicate count of the window this field is specified in will be extracted as a column in the
+            final result. Hence, there can only be one 'label' per TaskExtractorConfig. If more than one
+            'label' is specified, an error is raised. If the specified 'label' is not a defined predicate,
+            an error is also raised. If no 'label' is specified, there will be not be a 'label' column.
+        index_timestamp: A string that is either 'start' or 'end' and is used to index result rows. If it is
+            defined, there will be an 'index_timestamp' column in the result with its values equal to the
+            'start' or 'end' timestamp of the window in which it was specified. Usually, this will be
+            specified to indicate the time of prediction for the task, which is often the 'end' of the input
+            window. There can only be one 'index_timestamp' per TaskExtractorConfig. If more than one
+            'index_timestamp' is specified, an error is raised. If the specified 'index_timestamp' is not
+            'start' or 'end', an error is also raised. If no 'index_timestamp' is defined, there will be no
+            'index_timestamp' column.
 
     Raises:
         ValueError: If the window is misconfigured in any of a variety of ways; see below for examples.
@@ -271,7 +284,8 @@ class WindowConfig:
         ...     end="trigger + 2 days",
         ...     start_inclusive=True,
         ...     end_inclusive=True,
-        ...     has={"_ANY_EVENT": "(5, None)"}
+        ...     has={"_ANY_EVENT": "(5, None)"},
+        ...     index_timestamp="end",
         ... )
         >>> input_window.referenced_event
         ('trigger',)
@@ -706,6 +720,7 @@ class TaskExtractorConfig:
         ...         start_inclusive=True,
         ...         end_inclusive=True,
         ...         has={"_ANY_EVENT": "(32, None)"},
+        ...         index_timestamp="end",
         ...     ),
         ...     "gap": WindowConfig(
         ...         start="input.end",
@@ -720,6 +735,7 @@ class TaskExtractorConfig:
         ...         start_inclusive=False,
         ...         end_inclusive=True,
         ...         has={},
+        ...         label="death",
         ...     ),
         ... }
         >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
@@ -740,6 +756,10 @@ class TaskExtractorConfig:
                               value_min_inclusive=None,
                               value_max_inclusive=None)}
 
+        >>> print(config.label_window) # doctest: +NORMALIZE_WHITESPACE
+        target
+        >>> print(config.index_timestamp_window) # doctest: +NORMALIZE_WHITESPACE
+        input
         >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
         {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)')}
         >>> print(nx.write_network_text(config.predicates_DAG))
@@ -894,6 +914,11 @@ class TaskExtractorConfig:
         index_timestamp_windows = []
         for name, window in self.windows.items():
             if window.label:
+                if window.label not in self.predicates:
+                    raise ValueError(
+                        f"Label must be one of the defined predicates, got: {window.label} "
+                        f"for window '{name}'"
+                    )
                 label_windows.append(name)
             if window.index_timestamp:
                 if window.index_timestamp not in ["start", "end"]:
