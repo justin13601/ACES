@@ -11,7 +11,7 @@ from omegaconf import DictConfig
 from . import config, predicates, query
 
 
-@hydra.main(version_base=None, config_path="", config_name="")
+@hydra.main(version_base=None, config_path="")
 def main(cfg: DictConfig) -> None:
     cfg = hydra.utils.instantiate(cfg, _convert_="all")
 

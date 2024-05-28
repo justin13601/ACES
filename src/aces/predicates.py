@@ -74,10 +74,14 @@ def verify_plain_predicates_from_csv(data_path: Path, predicates: list[str]) -> 
     columns = ["subject_id", "timestamp"] + predicates
     logger.info(f"Attempting to load {columns} from CSV file {str(data_path.resolve())}")
     data = pl.read_csv(data_path, columns=columns).drop_nulls(subset=["subject_id", "timestamp"])
-    return data.select(
-        "subject_id",
-        pl.col("timestamp").str.strptime(pl.Datetime, format=CSV_TIMESTAMP_FORMAT),
-        *predicates,
+    return (
+        data.select(
+            "subject_id",
+            pl.col("timestamp").str.strptime(pl.Datetime, format=CSV_TIMESTAMP_FORMAT),
+            *predicates,
+        )
+        .group_by(["subject_id", "timestamp"], maintain_order=True)
+        .agg(*(pl.col(c).sum().alias(c) for c in predicates))
     )
 
 

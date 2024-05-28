@@ -28,8 +28,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     logger.info("Checking if (subject_id, timestamp) columns are unique...")
     if predicates_df.n_unique(subset=["subject_id", "timestamp"]) != predicates_df.shape[0]:
-        logger.error("The (subject_id, timestamp) columns are not unique. Exiting.")
-        return pl.DataFrame()
+        raise ValueError("The (subject_id, timestamp) columns are not unique.")
 
     log_tree(cfg.window_tree)
 
