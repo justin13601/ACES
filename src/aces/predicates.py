@@ -215,7 +215,7 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     return data.select(["subject_id", "timestamp"] + predicate_cols)
 
 
-def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, standard: str) -> pl.DataFrame:
+def get_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, standard: str) -> pl.DataFrame:
     """Generate predicate columns based on the configuration.
 
     Args:
@@ -274,7 +274,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, stan
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
-        ...     generate_predicates_df(config, data_path, standard="csv")
+        ...     get_predicates_df(config, data_path, standard="csv")
         shape: (4, 7)
         ┌────────────┬─────────────────────┬───────────┬───────────┬───────┬────────────────────┬────────────┐
         │ subject_id ┆ timestamp           ┆ admission ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
@@ -289,7 +289,7 @@ def generate_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, stan
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
-        ...     generate_predicates_df(config, data_path, standard="buzz")
+        ...     get_predicates_df(config, data_path, standard="buzz")
         Traceback (most recent call last):
             ...
         ValueError: Invalid data standard: buzz. Options are 'CSV', 'MEDS', 'ESGPT'.

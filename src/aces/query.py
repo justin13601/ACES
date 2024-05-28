@@ -27,7 +27,9 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got {type(predicates_df)}.")
 
     logger.info("Checking if (subject_id, timestamp) columns are unique...")
-    # TODO
+    if predicates_df.n_unique(subset=["subject_id", "timestamp"]) != predicates_df.shape[0]:
+        logger.error("The (subject_id, timestamp) columns are not unique. Exiting.")
+        return pl.DataFrame()
 
     log_tree(cfg.window_tree)
 

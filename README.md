@@ -76,11 +76,9 @@ from aces import config, predicates, query
 cfg = config.TaskExtractorConfig.load(config_path="/path/to/task/config/task.yaml")
 
 # one of the following
-predicates_df = predicates.generate_predicates_df(cfg, "/path/to/data.parquet", "meds")
-predicates_df = predicates.generate_predicates_df(
-    cfg, "/path/to/esgpt/folder/", "esgpt"
-)
-predicates_df = predicates.generate_predicates_df(cfg, "/path/to/data.csv", "csv")
+predicates_df = predicates.get_predicates_df(cfg, "/path/to/data.parquet", "meds")
+predicates_df = predicates.get_predicates_df(cfg, "/path/to/esgpt/folder/", "esgpt")
+predicates_df = predicates.get_predicates_df(cfg, "/path/to/data.csv", "csv")
 
 # execute query and display results
 df_result = query.query(cfg, predicates_df)
@@ -104,10 +102,10 @@ Loading dynamic_measurements from /home/ACES/data/dynamic_measurements_df.parque
 2024-05-25 22:51:29.573 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:182 - Added predicate column 'discharge'.
 2024-05-25 22:51:33.092 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:182 - Added predicate column 'death'.
 2024-05-25 22:51:34.326 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:199 - Cleaning up predicates DataFrame...
-2024-05-25 22:51:34.327 | INFO     | aces.predicates:generate_predicates_df:299 - Loaded plain predicates. Generating derived predicate columns...
-2024-05-25 22:51:34.393 | INFO     | aces.predicates:generate_predicates_df:302 - Added predicate column 'discharge_or_death'.
-2024-05-25 22:51:34.393 | INFO     | aces.predicates:generate_predicates_df:306 - Generating '_ANY_EVENT' predicate column...
-2024-05-25 22:51:34.416 | INFO     | aces.predicates:generate_predicates_df:308 - Added predicate column '_ANY_EVENT'.
+2024-05-25 22:51:34.327 | INFO     | aces.predicates:get_predicates_df:299 - Loaded plain predicates. Generating derived predicate columns...
+2024-05-25 22:51:34.393 | INFO     | aces.predicates:get_predicates_df:302 - Added predicate column 'discharge_or_death'.
+2024-05-25 22:51:34.393 | INFO     | aces.predicates:get_predicates_df:306 - Generating '_ANY_EVENT' predicate column...
+2024-05-25 22:51:34.416 | INFO     | aces.predicates:get_predicates_df:308 - Added predicate column '_ANY_EVENT'.
 2024-05-25 22:51:34.667 | INFO     | aces.utils:log_tree:56 - trigger
                                                               ┗━━ input.end
                                                                   ┣━━ input.start

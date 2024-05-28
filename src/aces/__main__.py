@@ -39,7 +39,7 @@ def main(cfg: DictConfig) -> None:
         logger.error(f"Unsupported data standard: {data_standard}")
         return
 
-    predicates_df = predicates.generate_predicates_df(task_cfg, data_path, standard=data_standard.lower())
+    predicates_df = predicates.get_predicates_df(task_cfg, data_path, standard=data_standard.lower())
 
     # query results
     result = query.query(task_cfg, predicates_df)
