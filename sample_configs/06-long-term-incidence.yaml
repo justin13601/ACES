@@ -37,6 +37,7 @@ windows:
     end: trigger
     start_inclusive: False
     end_inclusive: True
+    index_timestamp: end
   gap:
     start: trigger
     end: start + 365 days

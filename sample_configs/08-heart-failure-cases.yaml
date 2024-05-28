@@ -27,3 +27,4 @@ windows:
     start: trigger - 18m
     start_inclusive: True
     end_inclusive: False
+    index_timestamp: end

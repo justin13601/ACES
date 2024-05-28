@@ -428,7 +428,7 @@ class WindowConfig:
         Traceback (most recent call last):
             ...
         ValueError: Invalid constraint format: discharge.
-        Got (0)
+        Expected format: '(min, max)', but got: '(0)'
     """
 
     start: str | None
@@ -510,7 +510,8 @@ class WindowConfig:
                 elements = [element.strip() for element in elements]
                 if len(elements) != 2:
                     raise ValueError(
-                        f"Invalid constraint format: {each_constraint}. " f"Got {self.has[each_constraint]}"
+                        f"Invalid constraint format: {each_constraint}. "
+                        f"Expected format: '(min, max)', but got: '{self.has[each_constraint]}'"
                     )
                 self.has[each_constraint] = tuple(
                     int(element) if element not in ("None", "") else None for element in elements

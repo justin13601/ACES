@@ -13,6 +13,7 @@ windows:
     end: start -> discharge
     start_inclusive: False
     end_inclusive: True
+    index_timestamp: end
   target:
     start: input.end
     end: start + 30 days

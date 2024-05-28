@@ -12,3 +12,4 @@ windows:
     start_inclusive: True
     end_inclusive: True
     label: death
+    index_timestamp: start

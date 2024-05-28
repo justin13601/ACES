@@ -38,6 +38,7 @@ windows:
     end: trigger
     start_inclusive: True
     end_inclusive: True
+    index_timestamp: end
   BG_meas:
     start: trigger
     end: start - 24h

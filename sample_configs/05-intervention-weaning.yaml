@@ -19,6 +19,7 @@ windows:
     end: trigger
     start_inclusive: True
     end_inclusive: True
+    index_timestamp: end
   target:
     start: trigger
     end: start -> ventilation_end
