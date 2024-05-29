@@ -97,6 +97,9 @@ def direct_load_plain_predicates(
     columns = ["subject_id", "timestamp"] + predicates
     logger.info(f"Attempting to load {columns} from file {str(data_path.resolve())}")
 
+    if not data_path.is_file():
+        raise FileNotFoundError(f"Direct predicates file {data_path} does not exist!")
+
     match data_path.suffix:
         case ".csv":
             data = pl.scan_csv(data_path)

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import hydra
 from loguru import logger
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from . import config, predicates, query
 
@@ -29,18 +29,7 @@ def main(cfg: DictConfig):
     logger.info(f"Loading config from {cfg.config_path}")
     task_cfg = config.TaskExtractorConfig.load(Path(cfg.config_path))
 
-    # get predicates_df
-    data_path = Path(cfg.data.path)
-    data_standard = cfg.data.standard.lower()
-
-    if not data_path.exists():
-        raise FileNotFoundError(f"Requested data path {data_path} does not exist!")
-    if data_standard != {"csv", "meds", "esgpt"}:
-        raise ValueError(
-            f"Data standard {cfg.data.standard} not supported. Must be one of 'csv', 'meds', 'esgpt'"
-        )
-
-    logger.info("Loading data from {data_path} in format {data_standard}")
+    logger.info(f"Attempting to load predicates given {OmegaConf.to_yaml(cfg.data)}")
     predicates_df = predicates.get_predicates_df(task_cfg, cfg.data)
 
     # query results
