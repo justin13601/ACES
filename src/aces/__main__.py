@@ -41,7 +41,7 @@ def main(cfg: DictConfig):
         )
 
     logger.info("Loading data from {data_path} in format {data_standard}")
-    predicates_df = predicates.get_predicates_df(task_cfg, data_path, standard=data_standard.lower())
+    predicates_df = predicates.get_predicates_df(task_cfg, cfg.data)
 
     # query results
     result = query.query(task_cfg, predicates_df)

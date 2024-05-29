@@ -3,8 +3,11 @@ data:
   # Path to the data file or directory
   path: ???
 
-  # Data standard, one of (csv, meds, esgpt)
+  # Data standard, one of (direct, meds, esgpt)
   standard: ???
+
+  # Timestamp format for direct predicates (if meds or esgpt, this is ignored).
+  ts_format: "%m/%d/%Y %H:%M"
 
 # Cohort directory and name: used for automatically loading configs, saving results, and logging.
 cohort_dir: ???

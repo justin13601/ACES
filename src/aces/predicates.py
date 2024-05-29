@@ -4,14 +4,15 @@ from pathlib import Path
 
 import polars as pl
 from loguru import logger
+from omegaconf import DictConfig
 
 from .config import TaskExtractorConfig
 from .types import ANY_EVENT_COLUMN, PRED_CNT_TYPE
 
-CSV_TIMESTAMP_FORMAT = "%m/%d/%Y %H:%M"
 
-
-def verify_plain_predicates_from_csv(data_path: Path, predicates: list[str]) -> pl.DataFrame:
+def direct_load_plain_predicates(
+    data_path: Path, predicates: list[str], ts_format: str | None
+) -> pl.DataFrame:
     """Loads a CSV file from disk and verifies that the necessary plain predicate columns are present.
 
     This CSV file must have the following columns:
@@ -34,10 +35,10 @@ def verify_plain_predicates_from_csv(data_path: Path, predicates: list[str]) -> 
         ...     "is_admission": [1, 0, 1],
         ...     "is_discharge": [0, 1, 0],
         ... })
-        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
-        ...     CSV_data.write_csv(data_path)
-        ...     verify_plain_predicates_from_csv(data_path, ["is_admission", "is_discharge"])
+        ...     CSV_data.write_parquet(data_path)
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], "%m/%d/%Y %H:%M")
         shape: (3, 4)
         ┌────────────┬─────────────────────┬──────────────┬──────────────┐
         │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
@@ -51,7 +52,21 @@ def verify_plain_predicates_from_csv(data_path: Path, predicates: list[str]) -> 
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
-        ...     verify_plain_predicates_from_csv(data_path, ["is_discharge"])
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], "%m/%d/%Y %H:%M")
+        shape: (3, 4)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
+        └────────────┴─────────────────────┴──────────────┴──────────────┘
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
+        ...     data_path = Path(f.name)
+        ...     CSV_data.write_csv(data_path)
+        ...     direct_load_plain_predicates(data_path, ["is_discharge"], "%m/%d/%Y %H:%M")
         shape: (3, 3)
         ┌────────────┬─────────────────────┬──────────────┐
         │ subject_id ┆ timestamp           ┆ is_discharge │
@@ -65,23 +80,51 @@ def verify_plain_predicates_from_csv(data_path: Path, predicates: list[str]) -> 
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
-        ...     verify_plain_predicates_from_csv(data_path, ["is_foobar"])
+        ...     direct_load_plain_predicates(data_path, ["is_foobar"], "%m/%d/%Y %H:%M")
         Traceback (most recent call last):
             ...
-        polars.exceptions.ColumnNotFoundError: unable to find column "is_foobar"...
+        polars.exceptions.ColumnNotFoundError: is_foobar
+            ...
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".foo") as f:
+        ...     data_path = Path(f.name)
+        ...     CSV_data.write_csv(data_path)
+        ...     direct_load_plain_predicates(data_path, ["is_discharge"], "%m/%d/%Y %H:%M")
+        Traceback (most recent call last):
+            ...
+        ValueError: Unsupported file format: .foo
     """
 
     columns = ["subject_id", "timestamp"] + predicates
-    logger.info(f"Attempting to load {columns} from CSV file {str(data_path.resolve())}")
-    data = pl.read_csv(data_path, columns=columns).drop_nulls(subset=["subject_id", "timestamp"])
+    logger.info(f"Attempting to load {columns} from file {str(data_path.resolve())}")
+
+    match data_path.suffix:
+        case ".csv":
+            data = pl.scan_csv(data_path)
+        case ".parquet":
+            data = pl.scan_parquet(data_path)
+        case _:
+            raise ValueError(f"Unsupported file format: {data_path.suffix}")
+
+    data = data.select(columns).drop_nulls(subset=["subject_id", "timestamp"])
+
+    ts_type = data.schema["timestamp"]
+    if ts_type == pl.Utf8:
+        if ts_format is None:
+            raise ValueError("Must provide a timestamp format for direct predicates with str timestamps.")
+        data = data.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format=ts_format))
+    elif ts_type.is_temporal():
+        if ts_format is not None:
+            logger.info(
+                f"Ignoring specified timestamp format of {ts_format} as timestamps are already {ts_type}"
+            )
+    else:
+        raise TypeError(f"Passed predicates have timestamps of invalid type {ts_type}.")
+
     return (
-        data.select(
-            "subject_id",
-            pl.col("timestamp").str.strptime(pl.Datetime, format=CSV_TIMESTAMP_FORMAT),
-            *predicates,
-        )
+        data.select("subject_id", "timestamp", *predicates)
         .group_by(["subject_id", "timestamp"], maintain_order=True)
-        .agg(*(pl.col(c).sum().alias(c) for c in predicates))
+        .agg(pl.all().sum())
+        .collect()
     )
 
 
@@ -219,7 +262,7 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     return data.select(["subject_id", "timestamp"] + predicate_cols)
 
 
-def get_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, standard: str) -> pl.DataFrame:
+def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.DataFrame:
     """Generate predicate columns based on the configuration.
 
     Args:
@@ -278,7 +321,30 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, standard:
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
-        ...     get_predicates_df(config, data_path, standard="csv")
+        ...     data_config = DictConfig({
+        ...         "path": str(data_path), "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"
+        ...     })
+        ...     get_predicates_df(config, data_config)
+        shape: (4, 7)
+        ┌────────────┬─────────────────────┬───────────┬───────────┬───────┬────────────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ admission ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ ---       ┆ ---       ┆ ---   ┆ ---                ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64       ┆ i64       ┆ i64   ┆ i64                ┆ i64        │
+        ╞════════════╪═════════════════════╪═══════════╪═══════════╪═══════╪════════════════════╪════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1         ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0         ┆ 1         ┆ 0     ┆ 1                  ┆ 1          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1         ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0         ┆ 0         ┆ 1     ┆ 1                  ┆ 1          │
+        └────────────┴─────────────────────┴───────────┴───────────┴───────┴────────────────────┴────────────┘
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     (
+        ...         CSV_data
+        ...         .with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
+        ...         .write_parquet(data_path)
+        ...     )
+        ...     data_config = DictConfig({"path": str(data_path), "standard": "direct", "ts_format": None})
+        ...     get_predicates_df(config, data_config)
         shape: (4, 7)
         ┌────────────┬─────────────────────┬───────────┬───────────┬───────┬────────────────────┬────────────┐
         │ subject_id ┆ timestamp           ┆ admission ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
@@ -293,25 +359,30 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_path: str | Path, standard:
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
-        ...     get_predicates_df(config, data_path, standard="buzz")
+        ...     data_config = DictConfig({
+        ...         "path": str(data_path), "standard": "buzz", "ts_format": "%m/%d/%Y %H:%M"
+        ...     })
+        ...     get_predicates_df(config, data_config)
         Traceback (most recent call last):
             ...
-        ValueError: Invalid data standard: buzz. Options are 'CSV', 'MEDS', 'ESGPT'.
+        ValueError: Invalid data standard: buzz. Options are 'direct', 'MEDS', 'ESGPT'.
     """
-    if isinstance(data_path, str):
-        data_path = Path(data_path)
+
+    standard = data_config.standard
+    data_path = Path(data_config.path)
+    ts_format = data_config.ts_format
 
     # plain predicates
     plain_predicates = cfg.plain_predicates
     match standard.lower():
-        case "csv":
-            data = verify_plain_predicates_from_csv(data_path, list(plain_predicates.keys()))
+        case "direct":
+            data = direct_load_plain_predicates(data_path, list(plain_predicates.keys()), ts_format)
         case "meds":
             data = generate_plain_predicates_from_meds(data_path, plain_predicates)
         case "esgpt":
             data = generate_plain_predicates_from_esgpt(data_path, plain_predicates)
         case _:
-            raise ValueError(f"Invalid data standard: {standard}. Options are 'CSV', 'MEDS', 'ESGPT'.")
+            raise ValueError(f"Invalid data standard: {standard}. Options are 'direct', 'MEDS', 'ESGPT'.")
     predicate_cols = list(plain_predicates.keys())
 
     # derived predicates
