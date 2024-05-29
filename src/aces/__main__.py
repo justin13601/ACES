@@ -2,6 +2,7 @@
 
 import os
 from datetime import datetime
+from importlib.resources import files
 from pathlib import Path
 
 import hydra
@@ -10,8 +11,12 @@ from omegaconf import DictConfig
 
 from . import config, predicates, query
 
+config_yaml = files("aces").joinpath("config.yaml")
+if not config_yaml.is_file():
+    raise FileNotFoundError("Core configuration not successfully installed!")
 
-@hydra.main(version_base=None, config_path=".", config_name="config")
+
+@hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
 def main(cfg: DictConfig) -> None:
     cfg = hydra.utils.instantiate(cfg, _convert_="all")
 
