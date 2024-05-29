@@ -83,8 +83,7 @@ def direct_load_plain_predicates(
         ...     direct_load_plain_predicates(data_path, ["is_foobar"], "%m/%d/%Y %H:%M")
         Traceback (most recent call last):
             ...
-        polars.exceptions.ColumnNotFoundError: is_foobar
-            ...
+        polars.exceptions.ColumnNotFoundError: ['is_foobar']
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".foo") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
@@ -107,6 +106,10 @@ def direct_load_plain_predicates(
             data = pl.scan_parquet(data_path)
         case _:
             raise ValueError(f"Unsupported file format: {data_path.suffix}")
+
+    missing_columns = [col for col in columns if col not in data.columns]
+    if missing_columns:
+        raise pl.ColumnNotFoundError(missing_columns)
 
     data = data.select(columns).drop_nulls(subset=["subject_id", "timestamp"])
 
