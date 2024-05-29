@@ -1,10 +1,13 @@
+# Task name
+name: inhospital-mortality
+
 # Path to the task configuration file
-config_path: sample_configs/01-inhospital-mortality.yaml
+config_path: sample_configs/inhospital-mortality.yaml
 
 # Raw Data
 data:
   # Path to the data file or directory
-  path: sample_data/sample.csv
+  path: sample_data/sample_data.csv
 
   # Data standard, one of (csv, meds, esgpt)
   standard: csv
@@ -16,5 +19,3 @@ output_dir: results/
 hydra:
   job:
     name: ACES_${now:%Y-%m-%d_%H-%M-%S}
-  # run:
-  #   dir: ${ACES_dir}/.logs/${hydra.job.name}

@@ -249,7 +249,6 @@ def extract_subtree(
         logger.info(f"Summarizing subtree rooted at '{child.name}'...")
 
         # Step 1: Summarize the window from the subtree.root to child
-        # TODO(mmd): Make this more object oriented using the dataclasses.
         endpoint_expr = child.endpoint_expr
         if type(endpoint_expr) is tuple:
             endpoint_expr = endpoint_expr + (subtree_root_offset,)

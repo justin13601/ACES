@@ -613,7 +613,6 @@ class WindowConfig:
             # If this window references end from start, then the end event window expression will not have
             # any constraints as it will reference an external event, and therefore the inclusive
             # parameters don't matter.
-            # TODO(mmd): This may not be the best API.
             left_inclusive = False
             right_inclusive = False
 

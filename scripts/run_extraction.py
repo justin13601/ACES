@@ -8,10 +8,10 @@ import hydra
 from loguru import logger
 from omegaconf import DictConfig
 
-from . import config, predicates, query
+from aces import config, predicates, query
 
 
-@hydra.main()
+@hydra.main(version_base=None, config_path="../conf", config_name="sample")
 def main(cfg: DictConfig) -> None:
     cfg = hydra.utils.instantiate(cfg, _convert_="all")
 

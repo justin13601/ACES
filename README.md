@@ -16,7 +16,7 @@ Event Stream Automatic Cohort Extraction System (ACES) is a library that streaml
 
 There are diverse applications in healthcare and beyond. For instance, researchers can effortlessly define subsets of EHR datasets for training of foundation models. Retrospective analyses can also become more accessible to clinicians as it enables the extraction of tailored cohorts for studying specific medical conditions or population demographics.
 
-Currently, two data standards are supported: the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your in one of these two formats by following instructions in their respective repositories. Alternatively, you may also format your data as a `.csv` in the same format as shown in `sample_data/sample.csv`. More information about this is available below.
+Currently, two data standards are supported: the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your in one of these two formats by following instructions in their respective repositories. Alternatively, you may also format your data as a `.csv` in the same format as shown in `sample_data/sample_data.csv`. More information about this is available below.
 
 This README provides an overview of this tool, including a brief description of the fields in the task configuration file (see configs in `sample_configs/`) and instructions for use. Please refer to the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for more detailed information.
 
@@ -57,7 +57,7 @@ pip install es-aces
 ## Instructions for Use
 
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for details regarding the configuration language.
-2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample.csv` by defining predicate columns (more information below).
+2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample_data.csv` by defining predicate columns (more information below).
 3. **Prepare a Hydra Configuration File**: Define `config_path`, `data_path`, and `output_dir` to specify the location of your above task configuration file, data file/directory formatted as above, and output directory of the results, respectively (see `sample.yaml`).
 4. **Execute Query**: A query may be executed using either the command line or by importing the package in Python:
 
@@ -259,6 +259,22 @@ The `has` field specifies constraints relating to predicates within the window. 
 `index_timestamp` is an optional field and can only exist in ONE window in the task configuration file if defined. It must be either `start` or `end`, and is used to create an index column used to easily manipulate the results output. Usually, one would set it to be the time at which the prediction would be made (ie., set to `start` in your target window).
 
 ## FAQs
+
+##### Static Data
+
+## Future Roadmap
+
+##### Sequential Decoding Tasks
+
+Future treatment sequences
+
+##### Case-Control Matching Extraction
+
+Heart failure example with gender- and age-matching
+
+##### Time-binning
+
+Indexed at a specific wall time
 
 ## Acknowledgements
 
