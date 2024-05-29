@@ -136,7 +136,7 @@ A "window" is just a time range capturing some portion of a subject's record. It
 on either endpoint, and may or may not have endpoints corresponding to an extant event in the dataset, as
 opposed to a time point at which no event occurred.
 
-Time is treated as strictly increasing in our algorithm (ie. the start of a "window" will always be before or
+Time is treated as strictly increasing in our algorithm (ie., the start of a "window" will always be before or
 equal to the end of that "window").
 
 #### A "Root" of a Subtree

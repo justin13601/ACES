@@ -27,8 +27,13 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got {type(predicates_df)}.")
 
     logger.info("Checking if (subject_id, timestamp) columns are unique...")
-    if predicates_df.n_unique(subset=["subject_id", "timestamp"]) != predicates_df.shape[0]:
-        raise ValueError("The (subject_id, timestamp) columns are not unique.")
+    try:
+        assert (
+            predicates_df.n_unique(subset=["subject_id", "timestamp"]) == predicates_df.shape[0]
+        ), "The (subject_id, timestamp) columns must be unique."
+    except AssertionError as e:
+        logger.error(str(e))
+        return pl.DataFrame()
 
     log_tree(cfg.window_tree)
 
@@ -37,8 +42,12 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     prospective_root_anchors = check_constraints({cfg.trigger.predicate: (1, None)}, predicates_df).select(
         "subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp")
     )
-    if prospective_root_anchors.is_empty():
-        logger.info(f"No valid rows found for the trigger event '{cfg.trigger.predicate}'. Exiting.")
+    try:
+        assert (
+            not prospective_root_anchors.is_empty()
+        ), f"No valid rows found for the trigger event '{cfg.trigger.predicate}'. Exiting."
+    except AssertionError as e:
+        logger.error(str(e))
         return pl.DataFrame()
 
     result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)

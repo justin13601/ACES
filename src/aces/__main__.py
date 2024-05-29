@@ -16,10 +16,7 @@ def main(cfg: DictConfig) -> None:
     cfg = hydra.utils.instantiate(cfg, _convert_="all")
 
     # Set output path
-    if "output_dir" not in cfg or not cfg["output_dir"]:
-        output_dir = Path.cwd()
-    else:
-        output_dir = Path(cfg["output_dir"])
+    output_dir = Path(cfg.get("output_dir", Path.cwd()))
     os.makedirs(output_dir, exist_ok=True)
 
     # load configuration
@@ -30,15 +27,17 @@ def main(cfg: DictConfig) -> None:
     # get predicates_df
     logger.info("Loading data...")
     data_path = Path(cfg["data"]["path"])
-    if not data_path.exists():
-        logger.error(f"{data_path} does not exist.")
-        return
-
     data_standard = cfg["data"]["standard"]
-    if data_standard.lower() not in ["csv", "meds", "esgpt"]:
-        logger.error(f"Unsupported data standard: {data_standard}")
+    try:
+        assert data_path.exists(), f"{data_path} does not exist."
+        assert data_standard.lower() in [
+            "csv",
+            "meds",
+            "esgpt",
+        ], f"Unsupported data standard: {data_standard}"
+    except AssertionError as e:
+        logger.error(str(e))
         return
-
     predicates_df = predicates.get_predicates_df(task_cfg, data_path, standard=data_standard.lower())
 
     # query results

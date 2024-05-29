@@ -157,7 +157,7 @@ Sample task configuration files for various common tasks are provided in `sample
 
 ### Predicates
 
-Predicates describe the event at a timestamp. Predicates are used to create predicate columns that contain predicate counts for each row of your dataset. If the MEDS or ESGPT data standard is used, ACES automatically computes the predicates dataframe needed for the query from the `predicates` fields in your task configuration file. However, you may also choose to construct your own predicates dataframe should you not wish to use the MEDS or ESGPT data standard.
+Predicates describe the event at a timestamp and are used to create predicate columns that contain predicate counts for each row of your dataset. If the MEDS or ESGPT data standard is used, ACES automatically computes the predicates dataframe needed for the query from the `predicates` fields in your task configuration file. However, you may also choose to construct your own predicates dataframe should you not wish to use the MEDS or ESGPT data standard.
 
 Example predicates dataframe `.csv`:
 
@@ -214,9 +214,9 @@ discharge_or_death:
 
 Field for a "derived" predicate:
 
-- `expr`: Must be a string with the and() or or() key sequences, with "plain" predicates as its constituents.
+- `expr`: Must be a string with the 'and()' or 'or()' key sequences, with "plain" predicates as its constituents.
 
-A special predicate `_ANY_EVENT` is always defined, which simply represents any event, as the name suggests. This predicate can be used like any other predicate manually defined (ie. setting a constraint on its occurrence or using it as a trigger, more information below).
+A special predicate `_ANY_EVENT` is always defined, which simply represents any event, as the name suggests. This predicate can be used like any other predicate manually defined (ie., setting a constraint on its occurrence or using it as a trigger, more information below).
 
 ### Trigger Event
 
@@ -246,17 +246,17 @@ input:
     _ANY_EVENT: (5, None)
 ```
 
-In this example, the window `input` begins at `NULL` (ie. the first event or the start of the time series record), and ends at 24 hours after the `trigger` event, which is specified to be a hospital admission. The window is inclusive on both ends (ie. both the first event and the event at 24 hours after the admission, if any, is included in this window). Finally, a constraint of 5 events of any kind is placed so any valid window would include sufficient data.
+In this example, the window `input` begins at `NULL` (ie., the first event or the start of the time series record), and ends at 24 hours after the `trigger` event, which is specified to be a hospital admission. The window is inclusive on both ends (ie., both the first event and the event at 24 hours after the admission, if any, is included in this window). Finally, a constraint of 5 events of any kind is placed so any valid window would include sufficient data.
 
-Two fields (`start` and `end`) are required to define the size of a window. Both fields must be a string referencing a predicate name, or a string referencing the `start` or `end` field of another window name. In addition, it may express a temporal relationship by including a positive or negative time period expressed as a string (ie. `+ 2 days`, `- 365 days`, `+ 12h`, `- 30 minutes`, `+ 60s`). It may also express an event relationship by including a sequence with a directional arrow and a predicate name (ie. `-> predicate_1` or `<- predicate_1`). Finally, it may also contain `NULL`, indicating the first/last event for the `start`/`end` field, respectively.
+Two fields (`start` and `end`) are required to define the size of a window. Both fields must be a string referencing a predicate name, or a string referencing the `start` or `end` field of another window name. In addition, it may express a temporal relationship by including a positive or negative time period expressed as a string (ie., `+ 2 days`, `- 365 days`, `+ 12h`, `- 30 minutes`, `+ 60s`). It may also express an event relationship by including a sequence with a directional arrow and a predicate name (ie., `-> predicate_1` or `<- predicate_1`). Finally, it may also contain `NULL`, indicating the first/last event for the `start`/`end` field, respectively.
 
 `start_inclusive` and `end_inclusive` are required booleans specifying whether the events, if any, at the `start` and `end` points of the window are included in the window.
 
-The `has` field specifies constraints relating to predicates within the window. For each predicate defined previously, a constraint for occurrences can be set using a string in the format of `(<min>, <max>)`. Unbounded conditions can be specified by using `None` or leaving it empty (ie. `(5, None)`, `(8,)`, `(None, 32)`, `(,10)`).
+The `has` field specifies constraints relating to predicates within the window. For each predicate defined previously, a constraint for occurrences can be set using a string in the format of `(<min>, <max>)`. Unbounded conditions can be specified by using `None` or leaving it empty (ie., `(5, None)`, `(8,)`, `(None, 32)`, `(,10)`).
 
 `label` is an optional field and can only exist in ONE window in the task configuration file if defined. It must be a string matching a defined predicate name, and is used to extract the label for the task.
 
-`index_timestamp` is an optional field and can only exist in ONE window in the task configuration file if defined. It must be either `start` or `end`, and is used to create an index column used to easily manipulate the results output. Usually, one would set it to be the time at which the prediction would be made (ie. set to `start` in your target window).
+`index_timestamp` is an optional field and can only exist in ONE window in the task configuration file if defined. It must be either `start` or `end`, and is used to create an index column used to easily manipulate the results output. Usually, one would set it to be the time at which the prediction would be made (ie., set to `start` in your target window).
 
 ## FAQs
 
