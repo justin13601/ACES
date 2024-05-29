@@ -179,9 +179,7 @@ def test_e2e():
                     "hydra.verbose": True,
                 }
 
-                stderr, stdout = run_command(
-                    root / "scripts/run_extraction.py", extraction_config_kwargs, task_name
-                )
+                stderr, stdout = run_command("aces-cli", extraction_config_kwargs, task_name)
 
                 all_stderrs.append(stderr)
                 all_stdouts.append(stdout)
