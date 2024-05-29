@@ -2,7 +2,7 @@
 name: inhospital-mortality
 
 # Path to the task configuration file
-config_path: sample_configs/inhospital-mortality.yaml
+config_path: sample_configs/abnormal-lab.yaml
 
 # Raw Data
 data:

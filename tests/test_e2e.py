@@ -16,7 +16,6 @@ from polars.testing import assert_frame_equal
 pl.enable_string_cache()
 
 # Data (input)
-
 PREDICATES_CSV = """
 subject_id,timestamp,admission,death,discharge,lab,spo2,normal_spo2,abnormally_low_spo2,abnormally_high_spo2,procedure_start,procedure_end,ventilation,diagnosis_ICD9CM/41071,diagnosis_ICD10CM/I214
 1,12/1/1989 12:03,1,0,0,0,0,0,0,0,0,0,0,0,0
@@ -72,7 +71,7 @@ subject_id,timestamp,admission,death,discharge,lab,spo2,normal_spo2,abnormally_l
 3,3/12/1996 0:00,0,1,0,0,0,0,0,0,0,0,0,0,0
 """
 
-# Data (input)
+# Tasks (input)
 TASKS_CFGS = {
     "inhospital-mortality": """
       # Task: 24-hour In-hospital Mortality Prediction
@@ -114,6 +113,22 @@ TASKS_CFGS = {
           label: death
       """
 }
+
+# Expected output
+expected_columns = {
+    "inhospital-mortality": [
+        "subject_id",
+        "index_timestamp",
+        "label",
+        "trigger",
+        "input.start_summary",
+        "target.end_summary",
+        "gap.end_summary",
+        "input.end_summary",
+    ]
+}
+
+expected_data = {"inhospital-mortality": ""}
 
 
 def get_expected_output(df: str) -> pl.DataFrame:
@@ -179,9 +194,7 @@ def test_e2e():
                     "hydra.verbose": True,
                 }
 
-                stderr, stdout = run_command(
-                    root / "scripts/run_extraction.py", extraction_config_kwargs, task_name
-                )
+                stderr, stdout = run_command("aces-cli", extraction_config_kwargs, task_name)
 
                 all_stderrs.append(stderr)
                 all_stdouts.append(stdout)

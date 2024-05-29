@@ -59,8 +59,8 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     result = result.rename({"subtree_anchor_timestamp": "trigger"})
 
     # add label column if specified
-    label_col = "end" if cfg.windows[cfg.label_window].root_node == "start" else "start"
     if cfg.label_window:
+        label_col = "end" if cfg.windows[cfg.label_window].root_node == "start" else "start"
         result = result.with_columns(
             pl.col(f"{cfg.label_window}.{label_col}_summary")
             .struct.field(cfg.windows[cfg.label_window].label)
@@ -68,8 +68,10 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         )
 
     # add index_timestamp column if specified
-    index_timestamp_col = "end" if cfg.windows[cfg.index_timestamp_window].root_node == "start" else "start"
     if cfg.index_timestamp_window:
+        index_timestamp_col = (
+            "end" if cfg.windows[cfg.index_timestamp_window].root_node == "start" else "start"
+        )
         result = result.with_columns(
             pl.col(f"{cfg.index_timestamp_window}.{index_timestamp_col}_summary")
             .struct.field("timestamp_at_end")
