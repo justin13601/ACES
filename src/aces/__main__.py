@@ -1,6 +1,5 @@
 """Main script for end-to-end task querying."""
 
-import os
 from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
@@ -17,46 +16,39 @@ if not config_yaml.is_file():
 
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
-def main(cfg: DictConfig) -> None:
+def main(cfg: DictConfig):
     cfg = hydra.utils.instantiate(cfg, _convert_="all")
 
+    st = datetime.now()
+
     # Set output path
-    output_dir = Path(cfg.get("output_dir", Path.cwd()))
-    os.makedirs(output_dir, exist_ok=True)
+    cohort_dir = Path(cfg.cohort_dir)
+    cohort_dir.mkdir(exist_ok=True, parents=True)
 
     # load configuration
-    logger.info("Loading config...")
-    task_cfg_path = Path(cfg["config_path"])
-    task_cfg = config.TaskExtractorConfig.load(task_cfg_path)
+    logger.info(f"Loading config from {cfg.config_path}")
+    task_cfg = config.TaskExtractorConfig.load(Path(cfg.config_path))
 
     # get predicates_df
-    logger.info("Loading data...")
-    data_path = Path(cfg["data"]["path"])
-    data_standard = cfg["data"]["standard"]
-    try:
-        assert data_path.exists(), f"{data_path} does not exist."
-        assert data_standard.lower() in [
-            "csv",
-            "meds",
-            "esgpt",
-        ], f"Unsupported data standard: {data_standard}"
-    except AssertionError as e:
-        logger.error(str(e))
-        return
+    data_path = Path(cfg.data.path)
+    data_standard = cfg.data.standard.lower()
+
+    if not data_path.exists():
+        raise FileNotFoundError(f"Requested data path {data_path} does not exist!")
+    if data_standard != {"csv", "meds", "esgpt"}:
+        raise ValueError(
+            f"Data standard {cfg.data.standard} not supported. Must be one of 'csv', 'meds', 'esgpt'"
+        )
+
+    logger.info("Loading data from {data_path} in format {data_standard}")
     predicates_df = predicates.get_predicates_df(task_cfg, data_path, standard=data_standard.lower())
 
     # query results
     result = query.query(task_cfg, predicates_df)
 
     # save results to parquet
-    name = cfg.get("name", "")
-    if name:
-        result_path = output_dir / f"results_{name}.parquet"
-    else:
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        result_path = output_dir / f"results_{timestamp}.parquet"
-    result.write_parquet(result_path)
-    logger.info(f"Results saved to {result_path}.")
+    result.write_parquet(cfg.output_filepath, use_pyarrow=True)
+    logger.info(f"Completed in {datetime.now() - st}. Results saved to {cfg.output_filepath}.")
 
 
 if __name__ == "__main__":
