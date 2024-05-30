@@ -164,3 +164,4 @@ cython_debug/
 passwords.txt
 outputs/
 results/
+sample_configs/.logs/

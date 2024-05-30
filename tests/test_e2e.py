@@ -6,7 +6,6 @@ root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
 
 import subprocess
 import tempfile
-from io import StringIO
 from pathlib import Path
 
 import polars as pl
@@ -14,6 +13,10 @@ from loguru import logger
 from polars.testing import assert_frame_equal
 
 pl.enable_string_cache()
+
+TS_FORMAT = "%m/%d/%Y %H:%M"
+PRED_CNT_TYPE = pl.Int64
+ANY_EVENT_COLUMN = "_ANY_EVENT"
 
 # Data (input)
 PREDICATES_CSV = """
@@ -115,29 +118,66 @@ TASKS_CFGS = {
 }
 
 # Expected output
-expected_columns = {
-    "inhospital-mortality": [
-        "subject_id",
-        "index_timestamp",
-        "label",
-        "trigger",
-        "input.start_summary",
-        "target.end_summary",
-        "gap.end_summary",
-        "input.end_summary",
-    ]
+EXPECTED_OUTPUT = {
+    "inhospital-mortality": {
+        "subject_id": [1],
+        "index_timestamp": ["01/28/1991 23:32"],
+        "label": [0],
+        "trigger": ["01/27/1991 23:32"],
+        "input.start_summary": [
+            {
+                "window_name": "input.start",
+                "timestamp_at_start": "12/01/1989 12:03",
+                "timestamp_at_end": "01/28/1991 23:32",
+                "admission": 2,
+                "discharge": 1,
+                "death": 0,
+                "discharge_or_death": 1,
+                "_ANY_EVENT": 16,
+            }
+        ],
+        "target.end_summary": [
+            {
+                "window_name": "target.end",
+                "timestamp_at_start": "01/29/1991 23:32",
+                "timestamp_at_end": "01/31/1991 02:15",
+                "admission": 0,
+                "discharge": 1,
+                "death": 0,
+                "discharge_or_death": 1,
+                "_ANY_EVENT": 7,
+            }
+        ],
+        "gap.end_summary": [
+            {
+                "window_name": "gap.end",
+                "timestamp_at_start": "01/28/1991 23:32",
+                "timestamp_at_end": "01/29/1991 23:32",
+                "admission": 0,
+                "discharge": 0,
+                "death": 0,
+                "discharge_or_death": 0,
+                "_ANY_EVENT": 1,
+            }
+        ],
+        "input.end_summary": [
+            {
+                "window_name": "input.end",
+                "timestamp_at_start": "01/27/1991 23:32",
+                "timestamp_at_end": "01/28/1991 23:32",
+                "admission": 0,
+                "discharge": 0,
+                "death": 0,
+                "discharge_or_death": 0,
+                "_ANY_EVENT": 4,
+            }
+        ],
+    }
 }
 
-expected_data = {"inhospital-mortality": ""}
 
-
-def get_expected_output(df: str) -> pl.DataFrame:
-    return pl.read_parquet(source=StringIO(f"{df}.parquet"))
-
-
-def run_command(script: Path, hydra_kwargs: dict[str, str], test_name: str):
-    script = str(script.resolve())
-    command_parts = ["python", script] + [f"{k}={v}" for k, v in hydra_kwargs.items()]
+def run_command(script: str, hydra_kwargs: dict[str, str], test_name: str):
+    command_parts = [script] + [f"{k}={v}" for k, v in hydra_kwargs.items()]
     command_out = subprocess.run(" ".join(command_parts), shell=True, capture_output=True)
     stderr = command_out.stderr.decode()
     stdout = command_out.stdout.decode()
@@ -186,14 +226,18 @@ def test_e2e():
                 task_cfg_path = configs_dir / f"{task_name}.yaml"
                 task_cfg_path.write_text(task_cfg)
 
+                output_path = output_dir / f"{task_name}.parquet"
+
                 extraction_config_kwargs = {
-                    "config_path": str(task_cfg_path.resolve()),
                     "data.path": str(predicates_csv.resolve()),
-                    "data.standard": "csv",
-                    "output_dir": str(output_dir.resolve()),
+                    "data.standard": "direct",
+                    "cohort_dir": str(configs_dir.resolve()),
+                    "cohort_name": task_name,
+                    "output_filepath": str(output_path.resolve()),
                     "hydra.verbose": True,
                 }
 
+                stderr, stdout = run_command("aces-cli", extraction_config_kwargs, task_name)
                 stderr, stdout = run_command("aces-cli", extraction_config_kwargs, task_name)
 
                 all_stderrs.append(stderr)
@@ -202,19 +246,35 @@ def test_e2e():
                 full_stderr = "\n".join(all_stderrs)
                 full_stdout = "\n".join(all_stdouts)
 
-                expected_df = get_expected_output(task_name)
-
-                fp = output_dir / f"results_{task_name}.parquet"
+                fp = output_dir / f"{task_name}.parquet"
                 assert fp.is_file(), f"Expected {fp} to exist."
-                got_df = pl.read_parquet(fp, glob=False)
+                got_df = pl.read_parquet(fp)
 
-                assert_df_equal(
-                    expected_df,
-                    got_df,
-                    f"Expected output for task '{task_name}' to be equal to the expected output.",
-                    check_column_order=False,
-                    check_row_order=False,
-                )
+                # Check the columns
+                expected_columns = EXPECTED_OUTPUT[task_name].keys()
+                assert got_df.columns == list(expected_columns), f"Columns mismatch for task '{task_name}'"
+
+                # Check the data
+                for col_name, expected_data in EXPECTED_OUTPUT[task_name].items():
+                    if col_name in ["index_timestamp", "trigger"]:
+                        want = pl.DataFrame({col_name: expected_data}).with_columns(
+                            pl.col(col_name).str.strptime(pl.Datetime, format=TS_FORMAT)
+                        )
+                    elif col_name.endswith("_summary"):
+                        df_struct = pl.DataFrame(expected_data)
+                        df_struct = df_struct.with_columns(
+                            pl.col("timestamp_at_start").str.strptime(pl.Datetime, format=TS_FORMAT),
+                            pl.col("timestamp_at_end").str.strptime(pl.Datetime, format=TS_FORMAT),
+                        )
+                        want = df_struct.select(
+                            pl.struct(*[col for col in df_struct.columns]).alias(col_name)
+                        )
+                    else:
+                        want = pl.DataFrame({col_name: expected_data}).with_columns(
+                            pl.col(col_name).cast(PRED_CNT_TYPE)
+                        )
+                    got = got_df.select(col_name)
+                    assert_df_equal(want, got, f"Data mismatch for task '{task_name}', column '{col_name}'")
 
         except AssertionError as e:
             print(f"Failed on task '{task_name}'")
