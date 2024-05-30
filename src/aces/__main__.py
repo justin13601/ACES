@@ -17,8 +17,6 @@ if not config_yaml.is_file():
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
 def main(cfg: DictConfig):
-    cfg = hydra.utils.instantiate(cfg, _convert_="all")
-
     st = datetime.now()
 
     # Set output path
@@ -29,7 +27,7 @@ def main(cfg: DictConfig):
     logger.info(f"Loading config from {cfg.config_path}")
     task_cfg = config.TaskExtractorConfig.load(Path(cfg.config_path))
 
-    logger.info(f"Attempting to load predicates given {OmegaConf.to_yaml(cfg.data)}")
+    logger.info(f"Attempting to get predicates dataframe given:\n{OmegaConf.to_yaml(cfg.data)}")
     predicates_df = predicates.get_predicates_df(task_cfg, cfg.data)
 
     # query results
