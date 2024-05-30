@@ -52,5 +52,6 @@ def capture_output():
 def log_tree(node):
     """Logs the tree structure using logging.info."""
     with capture_output() as captured:
+        print("\n")
         print_tree(node, style="const_bold")  # This will print to the captured StringIO instead of stdout
     logger.info(captured.getvalue())  # Log the captured output

@@ -399,7 +399,7 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         predicate_cols.append(name)
 
     # add a column of 1s representing any predicate
-    logger.info("Generating '_ANY_EVENT' predicate column...")
+    logger.info(f"Generating {ANY_EVENT_COLUMN} predicate column...")
     data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(PRED_CNT_TYPE))
     logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
     predicate_cols.append(ANY_EVENT_COLUMN)

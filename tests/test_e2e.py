@@ -19,7 +19,6 @@ PRED_CNT_TYPE = pl.Int64
 ANY_EVENT_COLUMN = "_ANY_EVENT"
 
 # Data (input)
-
 PREDICATES_CSV = """
 subject_id,timestamp,admission,death,discharge,lab,spo2,normal_spo2,abnormally_low_spo2,abnormally_high_spo2,procedure_start,procedure_end,ventilation,diagnosis_ICD9CM/41071,diagnosis_ICD10CM/I214
 1,12/1/1989 12:03,1,0,0,0,0,0,0,0,0,0,0,0,0
@@ -75,7 +74,7 @@ subject_id,timestamp,admission,death,discharge,lab,spo2,normal_spo2,abnormally_l
 3,3/12/1996 0:00,0,1,0,0,0,0,0,0,0,0,0,0,0
 """
 
-# Data (input)
+# Tasks (input)
 TASKS_CFGS = {
     "inhospital-mortality": """
       # Task: 24-hour In-hospital Mortality Prediction
@@ -238,6 +237,7 @@ def test_e2e():
                     "hydra.verbose": True,
                 }
 
+                stderr, stdout = run_command("aces-cli", extraction_config_kwargs, task_name)
                 stderr, stdout = run_command("aces-cli", extraction_config_kwargs, task_name)
 
                 all_stderrs.append(stderr)
