@@ -90,6 +90,9 @@ extensions = [
     "nbsphinx",
 ]
 
+nbsphinx_allow_errors = True
+
+
 collections_dir = __location__ / "_collections"
 if not collections_dir.is_dir():
     os.mkdir(collections_dir)
