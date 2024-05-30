@@ -163,4 +163,5 @@ cython_debug/
 .vscode/
 passwords.txt
 outputs/
-result.csv
+results/
+sample_configs/.logs/

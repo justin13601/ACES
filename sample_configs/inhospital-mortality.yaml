@@ -1,3 +1,4 @@
+# Task: 24-hour In-hospital Mortality Prediction
 predicates:
   admission:
     code: event_type//ADMISSION
@@ -8,7 +9,7 @@ predicates:
   discharge_or_death:
     expr: or(discharge, death)
 
-trigger_event: admission
+trigger: admission
 
 windows:
   input:
@@ -18,6 +19,7 @@ windows:
     end_inclusive: True
     has:
       _ANY_EVENT: (5, None)
+    index_timestamp: end
   gap:
     start: input.end
     end: start + 24h

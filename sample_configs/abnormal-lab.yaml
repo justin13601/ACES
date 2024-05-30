@@ -1,3 +1,4 @@
+# Task: Abnormal SpO2 Prediction
 predicates:
   spo2:
     code: lab//O2 saturation pulseoxymetry (%)
@@ -18,7 +19,7 @@ predicates:
   abnormal_spo2:
     expr: or(abnormally_low_spo2, abnormally_high_spo2)
 
-trigger_event: normal_spo2
+trigger: normal_spo2
 
 windows:
   input:
@@ -26,6 +27,7 @@ windows:
     end: trigger
     start_inclusive: True
     end_inclusive: True
+    index_timestamp: end
   gap:
     start: trigger
     end: start + 24h

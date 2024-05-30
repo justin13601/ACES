@@ -10,7 +10,7 @@ from datetime import timedelta
 import polars as pl
 
 # The type used for final aggregate counts of predicates.
-PRED_CNT_TYPE = pl.UInt16
+PRED_CNT_TYPE = pl.Int64
 
 # The key used in the endpoint expression to indicate the window should be aggregated to the record start.
 START_OF_RECORD_KEY = "_RECORD_START"

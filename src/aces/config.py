@@ -261,6 +261,19 @@ class WindowConfig:
             constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of
             predicate `name` in a window was either 1 or 2. All constraints in the dictionary must be
             satisfied on a window for it to be included.
+        label: A string that specifies the name of a predicate to be used as the label for the task. The
+            predicate count of the window this field is specified in will be extracted as a column in the
+            final result. Hence, there can only be one 'label' per TaskExtractorConfig. If more than one
+            'label' is specified, an error is raised. If the specified 'label' is not a defined predicate,
+            an error is also raised. If no 'label' is specified, there will be not be a 'label' column.
+        index_timestamp: A string that is either 'start' or 'end' and is used to index result rows. If it is
+            defined, there will be an 'index_timestamp' column in the result with its values equal to the
+            'start' or 'end' timestamp of the window in which it was specified. Usually, this will be
+            specified to indicate the time of prediction for the task, which is often the 'end' of the input
+            window. There can only be one 'index_timestamp' per TaskExtractorConfig. If more than one
+            'index_timestamp' is specified, an error is raised. If the specified 'index_timestamp' is not
+            'start' or 'end', an error is also raised. If no 'index_timestamp' is defined, there will be no
+            'index_timestamp' column.
 
     Raises:
         ValueError: If the window is misconfigured in any of a variety of ways; see below for examples.
@@ -271,7 +284,8 @@ class WindowConfig:
         ...     end="trigger + 2 days",
         ...     start_inclusive=True,
         ...     end_inclusive=True,
-        ...     has={"_ANY_EVENT": "(5, None)"}
+        ...     has={"_ANY_EVENT": "(5, None)"},
+        ...     index_timestamp="end",
         ... )
         >>> input_window.referenced_event
         ('trigger',)
@@ -418,6 +432,17 @@ class WindowConfig:
         Traceback (most recent call last):
             ...
         ValueError: Window boundary cannot contain both '->' and '<-' operators.
+        >>> invalid_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="input.end + 2d",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": "(0)", "death": "(None, 0)"}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid constraint format: discharge.
+        Expected format: '(min, max)', but got: '(0)'
     """
 
     start: str | None
@@ -426,6 +451,7 @@ class WindowConfig:
     end_inclusive: bool
     has: dict[str, str] = field(default_factory=dict)
     label: str | None = None
+    index_timestamp: str | None = None
 
     @classmethod
     def _check_reference(cls, reference: str):
@@ -496,8 +522,13 @@ class WindowConfig:
             for each_constraint in self.has:
                 elements = self.has[each_constraint].strip("()").split(",")
                 elements = [element.strip() for element in elements]
+                if len(elements) != 2:
+                    raise ValueError(
+                        f"Invalid constraint format: {each_constraint}. "
+                        f"Expected format: '(min, max)', but got: '{self.has[each_constraint]}'"
+                    )
                 self.has[each_constraint] = tuple(
-                    int(element) if element != "None" else None for element in elements
+                    int(element) if element not in ("None", "") else None for element in elements
                 )
 
         if self.start is None and self.end is None:
@@ -582,7 +613,6 @@ class WindowConfig:
             # If this window references end from start, then the end event window expression will not have
             # any constraints as it will reference an external event, and therefore the inclusive
             # parameters don't matter.
-            # TODO(mmd): This may not be the best API.
             left_inclusive = False
             right_inclusive = False
 
@@ -607,7 +637,6 @@ class WindowConfig:
             # If this window references end from start, then the end event window expression will not have
             # any constraints as it will reference an external event, and therefore the inclusive
             # parameters don't matter.
-            # TODO(mmd): This may not be the best API.
             left_inclusive = False
             right_inclusive = False
         else:
@@ -664,7 +693,7 @@ class TaskExtractorConfig:
         predicates: A dictionary of predicate configurations, stored as either plain or derived predicate
             configuration objects (which are simple dataclasses with utility functions over plain
             dictionaries).
-        trigger_event: The event configuration that triggers the task extraction process. This is a simple
+        trigger: The event configuration that triggers the task extraction process. This is a simple
             dataclass with a single field, the name of the predicate that triggers the task extraction and
             serves as the root of the window tree.
         windows: A dictionary of window configurations. Each window configuration is a simple dataclass with
@@ -681,7 +710,7 @@ class TaskExtractorConfig:
         ...     "death": PlainPredicateConfig("death"),
         ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
         ... }
-        >>> trigger_event = EventConfig("admission")
+        >>> trigger = EventConfig("admission")
         >>> windows = {
         ...     "input": WindowConfig(
         ...         start=None,
@@ -689,6 +718,7 @@ class TaskExtractorConfig:
         ...         start_inclusive=True,
         ...         end_inclusive=True,
         ...         has={"_ANY_EVENT": "(32, None)"},
+        ...         index_timestamp="end",
         ...     ),
         ...     "gap": WindowConfig(
         ...         start="input.end",
@@ -703,9 +733,10 @@ class TaskExtractorConfig:
         ...         start_inclusive=False,
         ...         end_inclusive=True,
         ...         has={},
+        ...         label="death",
         ...     ),
         ... }
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger_event=trigger_event, windows=windows)
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
         >>> print(config.plain_predicates) # doctest: +NORMALIZE_WHITESPACE
         {'admission': PlainPredicateConfig(code='admission',
                               value_min=None,
@@ -723,6 +754,10 @@ class TaskExtractorConfig:
                               value_min_inclusive=None,
                               value_max_inclusive=None)}
 
+        >>> print(config.label_window) # doctest: +NORMALIZE_WHITESPACE
+        target
+        >>> print(config.index_timestamp_window) # doctest: +NORMALIZE_WHITESPACE
+        input
         >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
         {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)')}
         >>> print(nx.write_network_text(config.predicates_DAG))
@@ -739,8 +774,10 @@ class TaskExtractorConfig:
     """
 
     predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
-    trigger_event: EventConfig
+    trigger: EventConfig
     windows: dict[str, WindowConfig]
+    label_window: str | None = None
+    index_timestamp_window: str | None = None
 
     @classmethod
     def load(cls, config_path: str | Path) -> TaskExtractorConfig:
@@ -766,7 +803,7 @@ class TaskExtractorConfig:
             raise ValueError(f"Only supports reading from '.yaml' files currently. Got {config_path.suffix}")
 
         predicates = loaded_dict.pop("predicates")
-        trigger_event = loaded_dict.pop("trigger_event")
+        trigger = loaded_dict.pop("trigger")
         windows = loaded_dict.pop("windows")
 
         if loaded_dict:
@@ -779,12 +816,12 @@ class TaskExtractorConfig:
         }
 
         logger.info("Parsing trigger event...")
-        trigger_event = EventConfig(trigger_event)
+        trigger = EventConfig(trigger)
 
         logger.info("Parsing windows...")
         windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
-        return cls(predicates=predicates, trigger_event=trigger_event, windows=windows)
+        return cls(predicates=predicates, trigger=trigger, windows=windows)
 
     def save(self, config_path: str | Path, do_overwrite: bool = False):
         """Load a configuration file from the given path and return it as a dict.
@@ -871,9 +908,40 @@ class TaskExtractorConfig:
                     f"Window name '{name}' is invalid; must be composed of alphanumeric or '_' characters."
                 )
 
-        if self.trigger_event.predicate not in self.predicates:
+        label_windows = []
+        index_timestamp_windows = []
+        for name, window in self.windows.items():
+            if window.label:
+                if window.label not in self.predicates:
+                    raise ValueError(
+                        f"Label must be one of the defined predicates, got: {window.label} "
+                        f"for window '{name}'"
+                    )
+                label_windows.append(name)
+            if window.index_timestamp:
+                if window.index_timestamp not in ["start", "end"]:
+                    raise ValueError(
+                        f"Index timestamp must be either 'start' or 'end', got: {window.index_timestamp} "
+                        f"for window '{name}'"
+                    )
+                index_timestamp_windows.append(name)
+        if len(label_windows) > 1:
+            raise ValueError(
+                f"Only one window can be labeled, found {len(label_windows)} labeled windows: "
+                f"{', '.join(label_windows)}"
+            )
+        self.label_window = label_windows[0] if label_windows else None
+        if len(index_timestamp_windows) > 1:
+            raise ValueError(
+                f"Only the 'start'/'end' of one window can be used as the index timestamp, "
+                f"found {len(index_timestamp_windows)} windows with index_timestamp: "
+                f"{', '.join(index_timestamp_windows)}"
+            )
+        self.index_timestamp_window = index_timestamp_windows[0] if index_timestamp_windows else None
+
+        if self.trigger.predicate not in self.predicates and self.trigger.predicate != ANY_EVENT_COLUMN:
             raise KeyError(
-                f"Trigger event predicate '{self.trigger_event.predicate}' not found in predicates: "
+                f"Trigger event predicate '{self.trigger.predicate}' not found in predicates: "
                 f"{', '.join(self.predicates.keys())}"
             )
 

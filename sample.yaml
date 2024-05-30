@@ -1,3 +1,0 @@
-config_path: sample_configs/01-inhospital-mortality.yaml
-data_path: sample_data/sample.csv
-output_path:

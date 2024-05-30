@@ -1,8 +1,9 @@
+# Task: 24-hour Imminent Mortality Prediction
 predicates:
   death:
     code: event_type//DEATH
 
-trigger_event: _ANY_EVENT
+trigger: _ANY_EVENT
 
 windows:
   target:
@@ -11,3 +12,4 @@ windows:
     start_inclusive: True
     end_inclusive: True
     label: death
+    index_timestamp: start

@@ -1,0 +1,32 @@
+# Task: Length of Stay >=7 Days Prediction
+# Binary prediction of whether the patient stays in hospital for >=7 days. Exclude visits where discharge occurs within 24 hours after admission
+predicates:
+  admission:
+    code: event_type//ADMISSION
+  discharge:
+    code: event_type//DISCHARGE
+
+trigger: admission
+
+windows:
+  input:
+    start: NULL
+    end: trigger
+    start_inclusive: True
+    end_inclusive: True
+    has:
+      _ANY_EVENT: (5, None)
+    index_timestamp: end
+  adm_day:
+    start: trigger
+    end: start + 24h
+    start_inclusive: True
+    end_inclusive: True
+    has:
+      discharge: (None, 0)
+  adm:
+    start: input.end
+    end: start + 7d
+    start_inclusive: False
+    end_inclusive: True
+    label: discharge

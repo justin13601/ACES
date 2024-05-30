@@ -4,17 +4,27 @@
 
 ______________________________________________________________________
 
-To use ACES, first clone the repository and install it using pip:
+To use ACES, first determine which data standard you'd like to use. Currently, ACES supports the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. Alternatively, you may choose to transform your data into a predicates dataframe `.csv` format - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
+
+**Note:** If you choose to use the ESGPT standard, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
+
+To install ACES:
 
 ```bash
-(.venv) $ pip install .
+pip install es-aces
 ```
 
 ## Querying Tasks
 
 ______________________________________________________________________
 
-To extract a cohort for a particular task, you can use the `aces.query.query()` function:
+To extract a cohort for a particular task, you may use `aces-cli` in your terminal:
+
+```bash
+aces-cli --config-dir='/path/to/hydra/config/' --config-name='config.yaml'
+```
+
+Alternatively, you can use the `aces.query.query()` function:
 
 ```{eval-rst}
 .. autofunction:: aces.query.query
@@ -32,27 +42,16 @@ For example, assuming `cfg` and `df_predicates` are defined properly, a query ca
 >>> query.query(cfg, df_predicates)
 ```
 
-```
-shape: (4, 9)
-┌───────────┬───────────┬───────────┬──────────┬──────────┬──────────┬──────────┬──────────┬───────┐
-│ subject_i ┆ trigger/t ┆ gap/times ┆ target/t ┆ input/ti ┆ gap/wind ┆ target/w ┆ input/wi ┆ label │
-│ d         ┆ imestamp  ┆ tamp      ┆ imestamp ┆ mestamp  ┆ ow_summa ┆ indow_su ┆ ndow_sum ┆ ---   │
-│ ---       ┆ ---       ┆ ---       ┆ ---      ┆ ---      ┆ ry       ┆ mmary    ┆ mary     ┆ i64   │
-│ i64       ┆ datetime[ ┆ datetime[ ┆ datetime ┆ datetime ┆ ---      ┆ ---      ┆ ---      ┆       │
-│           ┆ μs]       ┆ μs]       ┆ [μs]     ┆ [μs]     ┆ struct[5 ┆ struct[5 ┆ struct[5 ┆       │
-│           ┆           ┆           ┆          ┆          ┆ ]        ┆ ]        ┆ ]        ┆       │
-╞═══════════╪═══════════╪═══════════╪══════════╪══════════╪══════════╪══════════╪══════════╪═══════╡
-│ 1         ┆ 1989-12-0 ┆ 1989-12-0 ┆ 1989-12- ┆ 1989-12- ┆ {0,0,0,0 ┆ {0,1,0,1 ┆ {1,0,0,0 ┆ 0     │
-│           ┆ 1         ┆ 2         ┆ 02       ┆ 01       ┆ ,7}      ┆ ,2}      ┆ ,1}      ┆       │
-│           ┆ 12:03:00  ┆ 12:03:00  ┆ 15:00:00 ┆ 12:03:00 ┆          ┆          ┆          ┆       │
-│ 1         ┆ 1991-01-2 ┆ 1991-01-2 ┆ 1991-01- ┆ 1989-12- ┆ {0,0,0,0 ┆ {0,1,0,1 ┆ {2,1,0,1 ┆ 0     │
-│           ┆ 7         ┆ 8         ┆ 31       ┆ 01       ┆ ,4}      ┆ ,8}      ┆ ,12}     ┆       │
-│           ┆ 23:32:00  ┆ 23:32:00  ┆ 02:15:00 ┆ 12:03:00 ┆          ┆          ┆          ┆       │
-│ 2         ┆ 1996-06-0 ┆ 1996-06-0 ┆ 1996-06- ┆ 1996-03- ┆ {0,0,0,0 ┆ {0,0,1,1 ┆ {2,1,0,1 ┆ 1     │
-│           ┆ 5         ┆ 6         ┆ 08       ┆ 08       ┆ ,2}      ┆ ,5}      ┆ ,6}      ┆       │
-│           ┆ 00:32:00  ┆ 00:32:00  ┆ 03:00:00 ┆ 02:24:00 ┆          ┆          ┆          ┆       │
-│ 3         ┆ 1996-03-0 ┆ 1996-03-0 ┆ 1996-03- ┆ 1996-03- ┆ {0,0,0,0 ┆ {0,0,1,1 ┆ {1,0,0,0 ┆ 1     │
-│           ┆ 8         ┆ 9         ┆ 12       ┆ 08       ┆ ,1}      ┆ ,6}      ┆ ,2}      ┆       │
-│           ┆ 02:24:00  ┆ 02:24:00  ┆ 00:00:00 ┆ 02:22:00 ┆          ┆          ┆          ┆       │
-└───────────┴───────────┴───────────┴──────────┴──────────┴──────────┴──────────┴──────────┴───────┘
+```plaintext
+shape: (1, 7)
+┌────────────┬───────────────┬───────────────┬───────────────┬──────────────┬──────────────┬───────┐
+│ subject_id ┆ input.start_s ┆ target.end_su ┆ gap.end_summa ┆ subtree_anch ┆ input.end_su ┆ label │
+│ ---        ┆ ummary        ┆ mmary         ┆ ry            ┆ or_timestamp ┆ mmary        ┆ ---   │
+│ i64        ┆ ---           ┆ ---           ┆ ---           ┆ ---          ┆ ---          ┆ i64   │
+│            ┆ struct[8]     ┆ struct[8]     ┆ struct[8]     ┆ datetime[μs] ┆ struct[8]    ┆       │
+╞════════════╪═══════════════╪═══════════════╪═══════════════╪══════════════╪══════════════╪═══════╡
+│ 1          ┆ {"input.start ┆ {"target.end" ┆ {"gap.end",19 ┆ 1991-01-27   ┆ {"input.end" ┆ 0     │
+│            ┆ ",1989-12-01  ┆ ,1991-01-29   ┆ 91-01-28      ┆ 23:32:00     ┆ ,1991-01-27  ┆       │
+│            ┆ 12:03:…       ┆ 23:32:0…      ┆ 23:32:00,1…   ┆              ┆ 23:32:00…    ┆       │
+└────────────┴───────────────┴───────────────┴───────────────┴──────────────┴──────────────┴───────┘
 ```

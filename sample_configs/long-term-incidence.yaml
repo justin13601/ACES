@@ -1,3 +1,4 @@
+# Task: Long-term (3 Years) MI Incidence Prediction
 predicates:
   admission:
     code: event_type//ADMISSION
@@ -28,7 +29,7 @@ predicates:
   # myocardial_infarction:
   #   expr: or(diagnosis_ICD9CM/41071, diagnosis_ICD10CM/I214, diagnosis_ICD10CM/I21A1, diagnosis_ICD9CM/41041, diagnosis_ICD9CM/41011, diagnosis_ICD9CM/41091, diagnosis_ICD10CM/I2119, diagnosis_ICD9CM/41072, diagnosis_ICD10CM/I2109, diagnosis_ICD10CM/I213)
 
-trigger_event: discharge
+trigger: discharge
 
 windows:
   input:
@@ -36,6 +37,7 @@ windows:
     end: trigger
     start_inclusive: False
     end_inclusive: True
+    index_timestamp: end
   gap:
     start: trigger
     end: start + 365 days
