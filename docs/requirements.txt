@@ -7,3 +7,4 @@ nbsphinx
 myst_parser
 pypandoc
 linkify-it-py
+ipykernel
