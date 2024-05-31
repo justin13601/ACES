@@ -56,6 +56,24 @@ pip install es-aces
 
 ## Instructions for Use
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant ACES CLI
+    participant Config
+    participant Predicates
+    participant Query
+
+    User->>ACES CLI: Execute command with new parameters
+    ACES CLI->>Config: Load configuration
+    Config-->>ACES CLI: Configuration data
+    ACES CLI->>Predicates: Get predicates dataframe
+    Predicates->>Query: Execute query with predicates
+    Query-->>Predicates: Query results
+    Predicates-->>ACES CLI: Predicates dataframe
+    ACES CLI-->>User: Display results
+```
+
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for details regarding the configuration language.
 2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample_data.csv` by defining predicate columns (more information below).
 3. **Prepare a Hydra Configuration File**: Define `config_path`, `data_path`, and `output_dir` to specify the location of your above task configuration file, data file/directory formatted as above, and output directory of the results, respectively (see `sample.yaml`).
@@ -270,21 +288,21 @@ The `has` field specifies constraints relating to predicates within the window. 
 
 ## FAQs
 
-##### Static Data
+### Static Data
 
 Static data is defined with NULL timestampes in the MEDS standard
 
 ## Future Roadmap
 
-##### Sequential Decoding Tasks
+### Sequential Decoding Tasks
 
 Future treatment sequences
 
-##### Case-Control Matching Extraction
+### Case-Control Matching Extraction
 
 Heart failure example with gender- and age-matching
 
-##### Time-binning
+### Time-binning
 
 Indexing at a specific wall time
 
