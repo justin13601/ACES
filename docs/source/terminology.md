@@ -114,7 +114,8 @@ over each subtree to find windows that satisfy the constraints of those subtrees
 In the rest of this document, we will detail how our algorithm automatically extracts records that meet
 these criteria, the terminology we use to describe our algorithm (both here and in the raw source code and
 code comments), and the limitations of this algorithm and kinds of tasks it cannot yet express. Details about
-the true configuration language that is used in practice to specify "windows" can be found in [configuration](https://eventstreamaces.readthedocs.io/en/latest/configuration.html). MIMIC-IV examples are available in [examples](https://eventstreamaces.readthedocs.io/en/latest/examples.html).
+the true configuration language that is used in practice to specify "windows" can be found in
+{doc}`/configuration`. MIMIC-IV examples are available in {doc}`/notebooks/examples`.
 
 ## Algorithm Terminology
 
