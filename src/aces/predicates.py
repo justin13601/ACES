@@ -376,12 +376,12 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
 
     standard = data_config.standard
     data_path = Path(data_config.path)
-    ts_format = data_config.ts_format
 
     # plain predicates
     plain_predicates = cfg.plain_predicates
     match standard.lower():
         case "direct":
+            ts_format = data_config.ts_format
             data = direct_load_plain_predicates(data_path, list(plain_predicates.keys()), ts_format)
         case "meds":
             data = generate_plain_predicates_from_meds(data_path, plain_predicates)

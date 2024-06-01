@@ -5,6 +5,7 @@ It accepts the configuration file and predicate columns, builds the tree, and re
 
 
 import polars as pl
+from bigtree import preorder_iter
 from loguru import logger
 
 from .config import TaskExtractorConfig
@@ -17,7 +18,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     """Query a task using the provided configuration file and predicates dataframe.
 
     Args:
-        cfg: dictionary representation of the configuration file.
+        cfg: TaskExtractorConfig object of the configuration file.
         df_predicates: predicates dataframe.
 
     Returns:
@@ -82,6 +83,6 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         "subject_id",
         "index_timestamp",
         "label",
-        "trigger",
-        *[col for col in result.columns if col not in ["subject_id", "index_timestamp", "label", "trigger"]],
+        cfg.window_tree.name,
+        *[col for col in [f"{node.node_name}_summary" for node in preorder_iter(cfg.window_tree)][1:]],
     )
