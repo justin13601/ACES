@@ -290,29 +290,29 @@ The `has` field specifies constraints relating to predicates within the window. 
 
 ### Static Data
 
-Static data is defined with NULL timestampes in the MEDS standard
+Support for static data depends on your data standard and those variables are expressed. For instance, in MEDS, it is feasible to express static data as a predicate, and thus criteria can be set normally. However, this is not yet incorporated for ESGPT. If a predicates dataframe is directly used, you may create a predicate column that specifies your static variable.
 
 ## Future Roadmap
 
 ### Sequential Decoding Tasks
 
-Future treatment sequences
+We hope to support tasks whose labels cannot be reliably summarized as a single numerical value (ie., a task where we want to predict a sequence of outputs, such as future treatment sequences).
 
 ### Case-Control Matching Extraction
 
-Heart failure example with gender- and age-matching
+Currently, case-control matching (ie., gender-matching, age-matching, etc.) is not directly supported. In order to extract matched cohorts, you may extract the cases and controls cohorts separately, then perform post-hoc matching.
 
-### Time-binning
+### Timestamp Binning
 
-Indexing at a specific wall time time of day offsets (femr) - Time-binning
+Unfortunately, it is currently not possible to index at a specific wall time (ie., have time of day offsets). As such, cohorts that require a prediction at 11:59 PM on the day of the patient's admission, for example, cannot be directly extracted.
 
-### Nested configurations
+### Nested Configurations
 
-Supporting nested configuration files (complex predicates of a configuration file), support motivated by in real world use cases (like diabetes progression, no code in dataset)
+We aim to support nested configuration files for cohort querying, whereby the results of a particular extraction can be expressed as a predicate to inform the extraction of another cohort. This would allows users to extract cohorts for very complex and specific tasks.
 
-### Complex predicates
+### Complex Predicates
 
-not predicates, complex aggregations (median/running average)
+We hope to support more complex predicates that are not expressed as codes in datasets (ie., those that require aggregations of medians/running averages over time to measure disease progression), as well as derived predicates with `not()` or nested boolean logic.
 
 ## Acknowledgements
 
