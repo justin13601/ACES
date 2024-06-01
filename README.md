@@ -75,18 +75,23 @@ sequenceDiagram
     ACES-->>User: Display & Save Results
 ```
 
-1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for details regarding the configuration language.
-2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample_data.csv` by defining predicate columns (more information below).
-3. **Prepare a Hydra Configuration File**: Define `config_path`, `data_path`, and `output_dir` to specify the location of your above task configuration file, data file/directory formatted as above, and output directory of the results, respectively (see `sample.yaml`).
-4. **Execute Query**: A query may be executed using either the command line or by importing the package in Python:
+1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/configuration.html) for details regarding the configuration language.
+2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample_data.csv` by defining predicate columns (more information below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
+3. **Execute Query**: A query may be executed using either the command-line interface or by importing the package in Python:
 
-Command Line:
+### Command-Line Interface:
 
 ```bash
 aces-cli data.path='/path/to/data/file/or/directory' data.standard='<esgpt/meds/direct>' cohort_dir='/directory/to/task/config/' cohort_name='<task_config_name>'
 ```
 
-Python Code:
+For help using `aces-cli`:
+
+```bash
+aces-cli --help
+```
+
+### Python Code:
 
 ```python
 from aces import config, predicates, query
@@ -105,12 +110,11 @@ data_config = DictConfig(
 )
 predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)
 
-# execute query and display results
+# execute query and get results
 df_result = query.query(cfg=cfg, predicates_df=predicates_df)
-display(df_result)
 ```
 
-**Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality using the ESGPT standard:
+**Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality cohort using the ESGPT standard:
 
 ```log
 aces-cli data.path='MIMIC_ESD_new_schema_08-31-23-1/' data.standard='esgpt' cohort_dir='sample_configs/' cohort_name='inhospital-mortality'

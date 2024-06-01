@@ -19,10 +19,12 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     Args:
         cfg: TaskExtractorConfig object of the configuration file.
-        df_predicates: predicates dataframe.
+        predicates_df: Polars predicates dataframe.
 
     Returns:
-        polars.DataFrame: The result of the task query.
+        polars.DataFrame: The result of the task query, containing subjects who satisfy the conditions
+        defined in cfg. Timestamps for the start/end boundaries of each window specified in the task
+        configuration, as well as predicate counts for each window, are provided.
     """
     if not isinstance(predicates_df, pl.DataFrame):
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got {type(predicates_df)}.")

@@ -288,7 +288,7 @@ Next, with these new "window" counts, we can validate that any inclusion or excl
 if not, remove those subtrees as possible realizations of the "window" before proceeding to the next
 computational step.
 
-##### Recurse through the child subtree
+##### Recurse through Child Subtree
 
 With this filtered set of possible prospective child anchor nodes, we can now recurse through the child
 subtree.

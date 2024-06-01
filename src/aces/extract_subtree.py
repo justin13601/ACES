@@ -15,7 +15,7 @@ def extract_subtree(
     subtree_anchor_realizations: pl.DataFrame,
     predicates_df: pl.DataFrame,
     subtree_root_offset: timedelta = timedelta(0),
-):
+) -> pl.DataFrame:
     """The main algorithmic recursive call to identify valid realizations of a subtree.
 
     This function takes in a global ``predicates_df``, a subtree of constraints, and the temporal offset that
@@ -47,6 +47,9 @@ def extract_subtree(
         subtree_root_offset: The temporal offset of the subtree root relative to the subtree anchor.
 
     Returns:
+        pl.DataFrame: The result of the subtree extraction, containing subjects who satisfy the conditions
+        defined in the subtree. Timestamps for the start/end boundaries of each window specified in the
+        subtree configuration, as well as predicate counts for each window, are provided.
 
     Examples:
         >>> from bigtree import Node

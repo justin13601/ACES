@@ -17,7 +17,7 @@ def parse_timedelta(time_str: str) -> timedelta:
         time_str: The time string to parse.
 
     Returns:
-        timedelta: The parsed timedelta object.
+        datetime.timedelta: The parsed timedelta object.
 
     Examples:
         >>> parse_timedelta("1 days")

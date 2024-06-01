@@ -1,7 +1,6 @@
 # Welcome to ACES!
 
-ACES is a library designed for automatic extraction of datasets and cohorts from event stream
-time series databases.
+ACES is a library designed for the automatic extraction of cohorts from event stream time series datasets.
 
 Check out {doc}`/usage` for further information and installation instructions.
 

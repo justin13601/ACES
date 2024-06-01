@@ -105,7 +105,7 @@ and (2) a set of constraints specified through two fields, dictionary of constra
 specify the constraints that must be satisfied over the defined predicates for a possible realization of this
 window to be valid.
 
-##### The Time Range Fields
+##### Time Range Fields
 
 ###### `start` and `end`
 
@@ -157,7 +157,7 @@ timestamp of itself when considered as the `$PREDICATE` event that marks the win
 `start_inclusive=False` and thus we will think of the window as truly starting an iota after the timestamp of
 the `start` event itself.
 
-##### The Constraints Field
+##### Constraints Field
 
 The constraints field is a dictionary that maps predicate names to tuples of the form `(min_valid, max_valid)`
 that define the valid range the count of observations of the named predicate that must be found in a window

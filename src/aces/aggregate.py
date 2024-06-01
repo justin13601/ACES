@@ -13,7 +13,7 @@ def aggregate_temporal_window(
 ) -> pl.DataFrame:
     """Aggregates the predicates dataframe into the specified temporal buckets.
 
-    TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to add extra tests.
+    # TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to add extra tests.
 
     Args:
         predicates_df: The dataframe containing the predicates. The input must be sorted in ascending order by
@@ -39,7 +39,7 @@ def aggregate_temporal_window(
         dataframe, but the values in the predicate columns of the output dataframe will be the sum of the
         values in the predicate columns of the input dataframe from the timestamp of the event in the row of
         the output dataframe spanning the specified temporal window.
-    Returns:
+
         The dataframe that has been aggregated in a temporal manner according to the specified
         ``endpoint_expr``. This aggregation means the following:
           - The output dataframe will contain the same number of rows and be in the same order (in terms of
@@ -226,7 +226,7 @@ def aggregate_event_bound_window(
 ) -> pl.DataFrame:
     """Aggregates ``predicates_df`` between each row plus an offset and the next per-subject matching event.
 
-    TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to test this function.
+    # TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to test this function.
 
     See the testing for ``boolean_expr_bound_sum`` for more comprehensive examples and test cases for the
     underlying API here, and the testing for ``ToEventWindowBounds`` for how the bounding syntax is converted
@@ -376,7 +376,7 @@ def boolean_expr_bound_sum(
 ) -> pl.DataFrame:
     """Sums all columns of ``df`` between each row plus an offset and the next per-subject satisfying event.
 
-    TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to test this function.
+    # TODO: Use https://hypothesis.readthedocs.io/en/latest/quickstart.html to test this function.
 
     Performs a boolean-expression-bounded summation over the columns of ``df``. The logic of this is as
     follows.
@@ -410,18 +410,21 @@ def boolean_expr_bound_sum(
 
     In particular, suppose that we have following rows and boolean boundary expression evaluations (for a
     single subject):
-    ```
+
+    ```markdown
     Rows:                  [0,      1,      2,      3,      4,    5,      6]
     Boundary Expression:   [False,  True,   False,  True,   True, False,  False]
     ```
+
     Then, we would aggregate the following rows under the following specified conditions:
-    ```
+
+    ```markdown
     mode         | closed | aggregate_groups
+    -------------|--------|------------------------------------------------------
     bound_to_row |  both  | [],     [1],    [1, 2], [3],    [4],  [4, 5], [4, 5, 6]
     bound_to_row |  left  | [],     [],     [1],    [1, 2], [3],  [4],    [4, 5]
     bound_to_row |  right | [],     [],     [2],    [2, 3], [4],  [5],    [5, 6]
     bound_to_row |  none  | [],     [],     [],     [2],    [],   [],     [5]
-    -------------|--------|------------------------------------------------------
     row_to_bound |  both  | [0, 1], [1],    [2, 3], [3],    [4],  [],     []
     row_to_bound |  left  | [0],    [],     [2],    [],     [],   [],     []
     row_to_bound |  right | [1],    [2, 3], [3],    [4],    [],   [],     []

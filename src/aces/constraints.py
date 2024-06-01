@@ -18,7 +18,7 @@ def check_constraints(
         summary_df: A dataframe containing a row for every possible prospective window to be analyzed. The
             only columns expected are predicate columns within the ``window_constraints`` dictionary.
 
-    Return: A filtered dataframe containing only the rows that satisfy the constraints.
+    Returns: A filtered dataframe containing only the rows that satisfy the constraints.
 
     Raises:
         ValueError: If the constraint for a column is empty.

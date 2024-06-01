@@ -32,17 +32,23 @@ To extract a cohort for a particular task, you may use `aces-cli` in your termin
 aces-cli data.path='/path/to/data/file/or/directory' data.standard='<esgpt/meds/direct>' cohort_dir='/directory/to/task/config/' cohort_name='<task_config_name>'
 ```
 
+For help using `aces-cli`:
+
+```bash
+aces-cli --help
+```
+
 Alternatively, you can use the `aces.query.query()` function:
 
 ```{eval-rst}
 .. autofunction:: aces.query.query
 ```
 
-The `cfg` parameter must be of type `TaskExtractorConfig`, and the `df_predicates` parameter must be of type `polars.DataFrame`.
+The `cfg` parameter must be of type `TaskExtractorConfig`, and the `predicates_df` parameter must be of type `polars.DataFrame`.
 
 Details about the configuration language used to define the `cfg` parameter can be found in {doc}`/configuration`.
 
-For example, to query a in-hospital mortality task on the sample data (both configuration file and data are provided in the repository) using the 'direct' predicates method:
+For example, to query an in-hospital mortality task on the sample data (both the configuration file and data are provided in the repository) using the 'direct' predicates method:
 
 ```python
 >>> from aces import query, predicates, config

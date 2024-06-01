@@ -278,7 +278,7 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         standard: The data standard, either 'CSV, 'MEDS' or 'ESGPT'.
 
     Returns:
-        predicates_df: The Polars DataFrame with the added predicate columns.
+        pl.DataFrame: The Polars DataFrame with the added predicate columns.
 
     Raises:
         ValueError: If an invalid predicate type is specified in the configuration.
