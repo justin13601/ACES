@@ -244,21 +244,21 @@ class ToEventWindowBounds:
             >>> print_kwargs(ToEventWindowBounds(
             ...     left_inclusive=True, end_event="is_A", right_inclusive=False, offset=None
             ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
-            boundary_expr: [(col("is_A")) > (0)]
+            boundary_expr: [(col("is_A")) > (dyn int: 0)]
             mode: row_to_bound
             closed: left
             offset: 0:00:00
             >>> print_kwargs(ToEventWindowBounds(
             ...     left_inclusive=False, end_event="-is_B", right_inclusive=True, offset=None
             ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
-            boundary_expr: [(col("is_B")) > (0)]
+            boundary_expr: [(col("is_B")) > (dyn int: 0)]
             mode: bound_to_row
             closed: right
             offset: 0:00:00
             >>> print_kwargs(ToEventWindowBounds(
             ...     left_inclusive=False, end_event="is_B", right_inclusive=False, offset=timedelta(hours=-3)
             ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
-            boundary_expr: [(col("is_B")) > (0)]
+            boundary_expr: [(col("is_B")) > (dyn int: 0)]
             mode: row_to_bound
             closed: none
             offset: -1 day, 21:00:00

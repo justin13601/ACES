@@ -124,6 +124,18 @@ EXPECTED_OUTPUT = {
         "index_timestamp": ["01/28/1991 23:32"],
         "label": [0],
         "trigger": ["01/27/1991 23:32"],
+        "input.end_summary": [
+            {
+                "window_name": "input.end",
+                "timestamp_at_start": "01/27/1991 23:32",
+                "timestamp_at_end": "01/28/1991 23:32",
+                "admission": 0,
+                "discharge": 0,
+                "death": 0,
+                "discharge_or_death": 0,
+                "_ANY_EVENT": 4,
+            }
+        ],
         "input.start_summary": [
             {
                 "window_name": "input.start",
@@ -134,18 +146,6 @@ EXPECTED_OUTPUT = {
                 "death": 0,
                 "discharge_or_death": 1,
                 "_ANY_EVENT": 16,
-            }
-        ],
-        "target.end_summary": [
-            {
-                "window_name": "target.end",
-                "timestamp_at_start": "01/29/1991 23:32",
-                "timestamp_at_end": "01/31/1991 02:15",
-                "admission": 0,
-                "discharge": 1,
-                "death": 0,
-                "discharge_or_death": 1,
-                "_ANY_EVENT": 7,
             }
         ],
         "gap.end_summary": [
@@ -160,16 +160,16 @@ EXPECTED_OUTPUT = {
                 "_ANY_EVENT": 1,
             }
         ],
-        "input.end_summary": [
+        "target.end_summary": [
             {
-                "window_name": "input.end",
-                "timestamp_at_start": "01/27/1991 23:32",
-                "timestamp_at_end": "01/28/1991 23:32",
+                "window_name": "target.end",
+                "timestamp_at_start": "01/29/1991 23:32",
+                "timestamp_at_end": "01/31/1991 02:15",
                 "admission": 0,
-                "discharge": 0,
+                "discharge": 1,
                 "death": 0,
-                "discharge_or_death": 0,
-                "_ANY_EVENT": 4,
+                "discharge_or_death": 1,
+                "_ANY_EVENT": 7,
             }
         ],
     }

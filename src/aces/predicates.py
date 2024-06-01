@@ -289,17 +289,17 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         >>> CSV_data = pl.DataFrame({
         ...     "subject_id": [1, 1, 2, 2],
         ...     "timestamp": ["01/01/2021 00:00", "01/01/2021 12:00", "01/02/2021 00:00", "01/02/2021 12:00"],
-        ...     "admission": [1, 0, 1, 0],
+        ...     "adm":       [1, 0, 1, 0],
         ...     "discharge": [0, 1, 0, 0],
         ...     "death":     [0, 0, 0, 1],
         ... })
         >>> predicates = {
-        ...     "admission": PlainPredicateConfig("admission"),
+        ...     "adm": PlainPredicateConfig("adm"),
         ...     "discharge": PlainPredicateConfig("discharge"),
         ...     "death": PlainPredicateConfig("death"),
         ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
         ... }
-        >>> trigger = EventConfig("admission")
+        >>> trigger = EventConfig("adm")
         >>> windows = {
         ...     "input": WindowConfig(
         ...         start=None,
@@ -313,7 +313,7 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ...         end="start + 24h",
         ...         start_inclusive=False,
         ...         end_inclusive=True,
-        ...         has={"death_or_discharge": "(None, 0)", "admission": "(None, 0)"},
+        ...         has={"death_or_discharge": "(None, 0)", "adm": "(None, 0)"},
         ...     ),
         ...     "target": WindowConfig(
         ...         start="gap.end",
@@ -332,16 +332,16 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ...     })
         ...     get_predicates_df(config, data_config)
         shape: (4, 7)
-        ┌────────────┬─────────────────────┬───────────┬───────────┬───────┬────────────────────┬────────────┐
-        │ subject_id ┆ timestamp           ┆ admission ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
-        │ ---        ┆ ---                 ┆ ---       ┆ ---       ┆ ---   ┆ ---                ┆ ---        │
-        │ i64        ┆ datetime[μs]        ┆ i64       ┆ i64       ┆ i64   ┆ i64                ┆ i64        │
-        ╞════════════╪═════════════════════╪═══════════╪═══════════╪═══════╪════════════════════╪════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1         ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0         ┆ 1         ┆ 0     ┆ 1                  ┆ 1          │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1         ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
-        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0         ┆ 0         ┆ 1     ┆ 1                  ┆ 1          │
-        └────────────┴─────────────────────┴───────────┴───────────┴───────┴────────────────────┴────────────┘
+        ┌────────────┬─────────────────────┬─────┬───────────┬───────┬────────────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ --- ┆ ---       ┆ ---   ┆ ---                ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64       ┆ i64   ┆ i64                ┆ i64        │
+        ╞════════════╪═════════════════════╪═════╪═══════════╪═══════╪════════════════════╪════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1         ┆ 0     ┆ 1                  ┆ 1          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0         ┆ 1     ┆ 1                  ┆ 1          │
+        └────────────┴─────────────────────┴─────┴───────────┴───────┴────────────────────┴────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     (
@@ -352,16 +352,16 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ...     data_config = DictConfig({"path": str(data_path), "standard": "direct", "ts_format": None})
         ...     get_predicates_df(config, data_config)
         shape: (4, 7)
-        ┌────────────┬─────────────────────┬───────────┬───────────┬───────┬────────────────────┬────────────┐
-        │ subject_id ┆ timestamp           ┆ admission ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
-        │ ---        ┆ ---                 ┆ ---       ┆ ---       ┆ ---   ┆ ---                ┆ ---        │
-        │ i64        ┆ datetime[μs]        ┆ i64       ┆ i64       ┆ i64   ┆ i64                ┆ i64        │
-        ╞════════════╪═════════════════════╪═══════════╪═══════════╪═══════╪════════════════════╪════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1         ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0         ┆ 1         ┆ 0     ┆ 1                  ┆ 1          │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1         ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
-        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0         ┆ 0         ┆ 1     ┆ 1                  ┆ 1          │
-        └────────────┴─────────────────────┴───────────┴───────────┴───────┴────────────────────┴────────────┘
+        ┌────────────┬─────────────────────┬─────┬───────────┬───────┬────────────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ --- ┆ ---       ┆ ---   ┆ ---                ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64       ┆ i64   ┆ i64                ┆ i64        │
+        ╞════════════╪═════════════════════╪═════╪═══════════╪═══════╪════════════════════╪════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1         ┆ 0     ┆ 1                  ┆ 1          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0         ┆ 1     ┆ 1                  ┆ 1          │
+        └────────────┴─────────────────────┴─────┴───────────┴───────┴────────────────────┴────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
