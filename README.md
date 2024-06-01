@@ -1,4 +1,4 @@
-# Event Stream Automatic Cohort Extraction System (ACES)
+# ACES: Automatic Cohort Extraction System for Event Stream Datasets
 
 [![python](https://img.shields.io/badge/-Python_3.10-blue?logo=python&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
@@ -12,7 +12,7 @@
 
 ## Background
 
-Event Stream Automatic Cohort Extraction System (ACES) is a library that streamlines the extraction of task-specific cohorts from time series datasets formatted as event streams, such as Electronic Health Records (EHR). ACES is designed to query these EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML task configuration file. This offers a powerful and user-friendly solution to researchers and developers. The use of a human-readable YAML configuration file also eliminates the need for users to be proficient in complex dataframe querying, making the extraction process accessible to a broader audience.
+Automatic Cohort Extraction System (ACES) is a library that streamlines the extraction of task-specific cohorts from time series datasets formatted as event streams, such as Electronic Health Records (EHR). ACES is designed to query these EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML task configuration file. This offers a powerful and user-friendly solution to researchers and developers. The use of a human-readable YAML configuration file also eliminates the need for users to be proficient in complex dataframe querying, making the extraction process accessible to a broader audience.
 
 There are diverse applications in healthcare and beyond. For instance, researchers can effortlessly define subsets of EHR datasets for training of foundation models. Retrospective analyses can also become more accessible to clinicians as it enables the extraction of tailored cohorts for studying specific medical conditions or population demographics.
 
@@ -59,19 +59,19 @@ pip install es-aces
 ```mermaid
 sequenceDiagram
     participant User
-    participant ACES CLI
+    participant ACES
     participant Config
     participant Predicates
     participant Query
 
-    User->>ACES CLI: Execute command with new parameters
-    ACES CLI->>Config: Load configuration
-    Config-->>ACES CLI: Configuration data
-    ACES CLI->>Predicates: Get predicates dataframe
-    Predicates->>Query: Execute query with predicates
-    Query-->>Predicates: Query results
-    Predicates-->>ACES CLI: Predicates dataframe
-    ACES CLI-->>User: Display results
+    User->>ACES: Execute command with configuration parameters
+    ACES->>Config: Load configuration
+    Config-->>ACES: Task Configuration
+    ACES->>Predicates: Get predicates dataframe
+    Predicates-->>ACES: Predicate DataFrame
+    ACES->>Query: Execute query with predicates and task configuration
+    Query-->>ACES: Filtered Results
+    ACES-->>User: Display & Save Results
 ```
 
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for details regarding the configuration language.
