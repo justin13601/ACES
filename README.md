@@ -22,13 +22,14 @@ This README provides an overview of this tool, including a brief description of 
 
 ## Dependencies
 
-- polars == 0.20.18
-- bigtree == 0.17.0
-- ruamel.yaml == 0.18.6,
-- pytimeparse == 1.1.8,
-- loguru == 0.7.2,
-- hydra-core == 1.3.2,
-- networkx == 3.3,
+- polars == 0.20.\*
+- bigtree == 0.18.\*
+- ruamel.yaml == 0.18.\*
+- loguru == 0.7.\*
+- hydra-core == 1.3.\*
+- pytimeparse == 1.1.\*
+- networkx == 3.3.\*
+- pyarrow == 16.1.\*
 
 ## Installation
 
@@ -46,7 +47,7 @@ Install with dependencies from the root directory of the cloned repo:
 pip install -e .
 ```
 
-Note: To avoid potential dependency conflicts, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
+**Note**: To avoid potential dependency conflicts, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
 
 2. Install ACES:
 
