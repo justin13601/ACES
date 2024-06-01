@@ -80,8 +80,6 @@ input:
   end: trigger + 24h
 ```
 
-<!-- I think should include a timeline similar to the ones on the README to visualize this -->
-
 Given that our machine learning model seeks to predict in-hospital mortality, our dataset should include both
 positive and negative samples (patients that died in the hospital and patients that didn't die). Hence, the
 `target` "window" concludes at either a `"is_death"` event (patients that died) or a`"is_discharge"` event
@@ -172,8 +170,6 @@ exist in the dataset proper.
 This notion of an _anchor_ will be useful in the algorithm as it will correspond to rows from which we will
 perform temporal and event-based aggregations to determine whether windows satisfy subtree constraints.
 
-<!-- I think would be helpful to give the vertical tree node_A node_B example here to help visualize, else difficult to understand for the first time -->
-
 ## Algorithm Design
 
 ### Initialization
@@ -201,11 +197,9 @@ recursive steps.
 
 The `subtree_anchor_to_subtree_root_df` dataframe will contain rows corresponding to the timestamps of a
 superset of all possible valid anchor events for realizations of the subtree over which we are recursing (a
-superset as if there exist no valid realizations of subtrees, then a prospective anchor would be invalid - if
+superset, as if there exist no valid realizations of subtrees, then a prospective anchor would be invalid - if
 we can find a valid subtree realization for a prospective anchor in this input dataframe, said anchor would be
 a true valid anchor).
-
-<!-- This one above really confused me, will need to revisit -->
 
 This dataframe will also contain the counts of predicates between the prospective anchor events indexed by the
 rows of this dataframe and the corresponding possible root timestamps of the subtree over which we are
