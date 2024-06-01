@@ -14,10 +14,10 @@ maxdepth: 2
 ---
 Overview <overview>
 Usage Guide <usage>
-Predicates DataFrame <predicates>
-Configuration Language <configuration>
 Sample Data Tutorial <notebooks/tutorial>
-MIMIC-IV Examples <examples>
+Configuration Language <configuration>
+Predicates DataFrame <notebooks/predicates>
+MIMIC-IV Examples <notebooks/examples>
 Algorithm & Terminology <terminology>
 Module API Reference <api/modules>
 License <license>

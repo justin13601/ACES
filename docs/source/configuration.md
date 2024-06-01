@@ -30,16 +30,16 @@ contain events that satisfy certain aggregation functions over predicates for th
 In the machine form, the configuration file consists of two parts:
 
 - `predicates`, stored as a dictionary from string predicate names (which must be unique) to either
-  `DirectPredicateConfig` objects, which store raw predicates with no dependencies on other predicates, or
+  `PlainPredicateConfig` objects, which store raw predicates with no dependencies on other predicates, or
   `DerivedPredicateConfig` objects, which store predicates that build on other predicates.
 - `windows`, stored as a dictionary from string window names (which must be unique) to `WindowConfig`
   objects.
 
 Next, we will detail each of these configuration objects.
 
-### Predicates: `DirectPredicateConfig` and `DerivedPredicateConfig`
+### Predicates: `PlainPredicateConfig` and `DerivedPredicateConfig`
 
-#### `DirectPredicateConfig`: Configuration of Predicates that can be Computed Directly from Raw Data
+#### `PlainPredicateConfig`: Configuration of Predicates that can be Computed Directly from Raw Data
 
 These configs consist of the following four fields:
 

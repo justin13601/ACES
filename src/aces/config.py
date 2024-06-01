@@ -37,16 +37,19 @@ class PlainPredicateConfig:
     def MEDS_eval_expr(self) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
 
+        Note: The output syntax for the following examples is dependent on the polars version used. The
+        expected outputs have been validated on polars version 0.20.30.
+
         Examples:
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [([([(col("code")) == (String(BP//systolic))]) &
-               ([(col("value")) >= (120)])]) &
-               ([(col("value")) < (140)])]
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("value")) >=
+               (dyn int: 120)], [(col("value")) < (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [([(col("code")) == (String(BP//systolic))]) & ([(col("value")) > (120)])]
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("value")) >
+               (dyn int: 120)]])
             >>> cfg = PlainPredicateConfig("BP//diastolic")
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
@@ -74,16 +77,19 @@ class PlainPredicateConfig:
     def ESGPT_eval_expr(self, values_column: str | None = None) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
 
+        Note: The output syntax for the following examples is dependent on the polars version used. The
+        expected outputs have been validated on polars version 0.20.30.
+
         Examples:
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).ESGPT_eval_expr("BP_value")
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [([([(col("BP")) == (String(systolic))]) &
-               ([(col("BP_value")) >= (120)])]) &
-               ([(col("BP_value")) < (140)])]
+            [(col("BP")) == (String(systolic))].all_horizontal([[(col("BP_value")) >=
+               (dyn int: 120)], [(col("BP_value")) < (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
             >>> expr = cfg.ESGPT_eval_expr("blood_pressure_value")
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [([(col("BP")) == (String(systolic))]) & ([(col("blood_pressure_value")) > (120)])]
+            [(col("BP")) == (String(systolic))].all_horizontal([[(col("blood_pressure_value")) >
+               (dyn int: 120)]])
             >>> expr = PlainPredicateConfig("BP//diastolic").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("BP")) == (String(diastolic))]
@@ -184,15 +190,17 @@ class DerivedPredicateConfig:
     def eval_expr(self) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate against necessary dependent predicates.
 
+        Note: The output syntax for the following examples is dependent on the polars version used. The
+        expected outputs have been validated on polars version 0.20.30.
+
         Examples:
             >>> expr = DerivedPredicateConfig("and(P1, P2, P3)").eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [([([(col("P1")) > (0)]) &
-               ([(col("P2")) > (0)])]) &
-               ([(col("P3")) > (0)])]
+            [(col("P1")) > (dyn int: 0)].all_horizontal([[(col("P2")) >
+               (dyn int: 0)], [(col("P3")) > (dyn int: 0)]])
             >>> expr = DerivedPredicateConfig("or(PA, PB)").eval_expr()
             >>> print(expr)
-            [([(col("PA")) > (0)]) | ([(col("PB")) > (0)])]
+            [(col("PA")) > (dyn int: 0)].any_horizontal([[(col("PB")) > (dyn int: 0)]])
         """
         if self.is_and:
             return pl.all_horizontal([pl.col(pred) > 0 for pred in self.input_predicates])

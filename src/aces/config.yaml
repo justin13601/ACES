@@ -27,3 +27,6 @@ hydra:
     dir: ${cohort_dir}/.logs/${hydra.job.name}
   sweep:
     dir: ${cohort_dir}/.logs/${hydra.job.name}
+
+defaults:
+  - override hydra/help: aces_help

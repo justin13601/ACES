@@ -80,8 +80,6 @@ input:
   end: trigger + 24h
 ```
 
-<!-- I think should include a timeline similar to the ones on the README to visualize this -->
-
 Given that our machine learning model seeks to predict in-hospital mortality, our dataset should include both
 positive and negative samples (patients that died in the hospital and patients that didn't die). Hence, the
 `target` "window" concludes at either a `"is_death"` event (patients that died) or a`"is_discharge"` event
@@ -114,7 +112,8 @@ over each subtree to find windows that satisfy the constraints of those subtrees
 In the rest of this document, we will detail how our algorithm automatically extracts records that meet
 these criteria, the terminology we use to describe our algorithm (both here and in the raw source code and
 code comments), and the limitations of this algorithm and kinds of tasks it cannot yet express. Details about
-the true configuration language that is used in practice to specify "windows" can be found in [configuration](https://eventstreamaces.readthedocs.io/en/latest/configuration.html). MIMIC-IV examples are available in [examples](https://eventstreamaces.readthedocs.io/en/latest/examples.html).
+the true configuration language that is used in practice to specify "windows" can be found in
+{doc}`/configuration`. MIMIC-IV examples are available in {doc}`/notebooks/examples`.
 
 ## Algorithm Terminology
 
@@ -171,19 +170,38 @@ exist in the dataset proper.
 This notion of an _anchor_ will be useful in the algorithm as it will correspond to rows from which we will
 perform temporal and event-based aggregations to determine whether windows satisfy subtree constraints.
 
-<!-- I think would be helpful to give the vertical tree node_A node_B example here to help visualize, else difficult to understand for the first time -->
-
 ## Algorithm Design
 
 ### Initialization
 
 #### Inputs
 
-<!-- TODO: -->
+During initialization, we will be given the following inputs:
+
+##### `cfg`
+
+`cfg` is a `TaskExtractorConfig` object containing our task definition, include all information about
+predicates, the trigger event, and windows.
+
+##### `predicates_df`
+
+The `predicates_df` dataframe will contain all events and their predicates.
 
 #### Computation
 
-<!-- TODO: -->
+During initialization, we will first ensure that the predicates dataframe contains unique (`subject_id`,
+`timestamp`) pairs. This is to ensure that no memory leaks occur over mismatched/extra rows when joining
+dataframes.
+
+##### Identify Prospective Root Anchors
+
+Prior to summarizing the rest of the task tree, we first identify prospective root anchors by checking the
+constraints of the trigger event. The trigger event represents the node of the tree we aim to realize, and
+thus this first step can significantly filter our cohort.
+
+##### Recurse over Each Subtree
+
+With this dataframe, we can proceed to traverse the tree and recurse over each subtree rooted at each node.
 
 ### Recursive Step
 
@@ -200,11 +218,9 @@ recursive steps.
 
 The `subtree_anchor_to_subtree_root_df` dataframe will contain rows corresponding to the timestamps of a
 superset of all possible valid anchor events for realizations of the subtree over which we are recursing (a
-superset as if there exist no valid realizations of subtrees, then a prospective anchor would be invalid - if
+superset, as if there exist no valid realizations of subtrees, then a prospective anchor would be invalid - if
 we can find a valid subtree realization for a prospective anchor in this input dataframe, said anchor would be
 a true valid anchor).
-
-<!-- This one above really confused me, will need to revisit -->
 
 This dataframe will also contain the counts of predicates between the prospective anchor events indexed by the
 rows of this dataframe and the corresponding possible root timestamps of the subtree over which we are
@@ -281,12 +297,34 @@ subtree.
 
 #### Inputs
 
-<!-- TODO: -->
+After recursion, we will have the following dataframe:
+
+##### `result`
+
+This dataframe contains rows that represent valid realizations of the task tree. Each node of the tree will
+have a column with a `pl.Struct` object containing the name of the window the node represents, the start and
+end times of the window, and counts of all defined predicates.
 
 #### Computation
 
-<!-- TODO: -->
+With this result, we can then proceed with some clean-up to optimize the output and streamline downstream
+tasks by doing the following:
 
 ##### Labeling
 
-<!-- TODO: -->
+If a `label` field is specified in exactly one defined window in the task configuration, a column will be
+created to serve as the label for the task. The field corresponds to a defined predicate, and as such, that
+predicate count for that window will be extracted.
+
+##### Indexing Timestamp
+
+If an 'index_timestamp' field is specified in exactly one defined window in the task configuration, a column
+will be created to serve as an index for the output cohort. This timestamp can be manually specified to any
+start or end timestamp of any desired window; however, it should represent the timestamp at which point a
+prediction can be made (ie., at the end of the `input` windows).
+
+##### Re-order & Return
+
+Finally, given this dataframe, the algorithm will sort the columns by placing `subject_id`, `index_timestamp`,
+`label`, and `trigger` first, in that order, followed by all other window summary columns in the order of a
+pre-order traversal of the task tree.

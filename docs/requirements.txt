@@ -7,3 +7,9 @@ nbsphinx
 myst_parser
 pypandoc
 linkify-it-py
+ipykernel
+omegaconf
+ipywidgets
+ipykernel
+ipython
+esgpt @ git+https://github.com/mmcdermott/EventStreamGPT

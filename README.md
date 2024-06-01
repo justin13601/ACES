@@ -1,18 +1,18 @@
-# Event Stream Automatic Cohort Extraction System (ACES)
+# ACES: Automatic Cohort Extraction System for Event Stream Datasets
 
-[![python](https://img.shields.io/badge/-Python_3.10-blue?logo=python&logoColor=white)](https://github.com/pre-commit/pre-commit)
-[![hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
-[![codecov](https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV)](https://codecov.io/gh/justin13601/ACES)
-[![tests](https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg)](https://github.com/justin13601/ACES/actions/workflows/test.yml)
-[![code-quality](https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml/badge.svg)](https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml)
+\[![Python](https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white)\]
+[![Hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
+[![Codecov](https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV)](https://codecov.io/gh/justin13601/ACES)
+[![Tests](https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg)](https://github.com/justin13601/ACES/actions/workflows/test.yml)
+[![Code Quality](https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml/badge.svg)](https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml)
 [![Documentation Status](https://readthedocs.org/projects/eventstreamaces/badge/?version=latest)](https://eventstreamaces.readthedocs.io/en/latest/?badge=latest)
-[![contributors](https://img.shields.io/github/contributors/justin13601/ACES.svg)](https://github.com/justin13601/ACES/graphs/contributors)
-[![PRs](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/justin13601/ACES/pulls)
-[![license](https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray)](https://github.com/justin13601/ACES#license)
+[![Contributors](https://img.shields.io/github/contributors/justin13601/ACES.svg)](https://github.com/justin13601/ACES/graphs/contributors)
+[![Pull Requests](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/justin13601/ACES/pulls)
+[![License](https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray)](https://github.com/justin13601/ACES#license)
 
 ## Background
 
-Event Stream Automatic Cohort Extraction System (ACES) is a library that streamlines the extraction of task-specific cohorts from time series datasets formatted as event streams, such as Electronic Health Records (EHR). ACES is designed to query these EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML task configuration file. This offers a powerful and user-friendly solution to researchers and developers. The use of a human-readable YAML configuration file also eliminates the need for users to be proficient in complex dataframe querying, making the extraction process accessible to a broader audience.
+Automatic Cohort Extraction System (ACES) is a library that streamlines the extraction of task-specific cohorts from time series datasets formatted as event streams, such as Electronic Health Records (EHR). ACES is designed to query these EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML task configuration file. This offers a powerful and user-friendly solution to researchers and developers. The use of a human-readable YAML configuration file also eliminates the need for users to be proficient in complex dataframe querying, making the extraction process accessible to a broader audience.
 
 There are diverse applications in healthcare and beyond. For instance, researchers can effortlessly define subsets of EHR datasets for training of foundation models. Retrospective analyses can also become more accessible to clinicians as it enables the extraction of tailored cohorts for studying specific medical conditions or population demographics.
 
@@ -56,6 +56,24 @@ pip install es-aces
 
 ## Instructions for Use
 
+```mermaid
+sequenceDiagram
+    participant User
+    participant ACES
+    participant Config
+    participant Predicates
+    participant Query
+
+    User->>ACES: Execute command with configuration parameters
+    ACES->>Config: Load configuration
+    Config-->>ACES: Task Configuration
+    ACES->>Predicates: Get predicates dataframe
+    Predicates-->>ACES: Predicate DataFrame
+    ACES->>Query: Execute query with predicates and task configuration
+    Query-->>ACES: Filtered Results
+    ACES-->>User: Display & Save Results
+```
+
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for details regarding the configuration language.
 2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample_data.csv` by defining predicate columns (more information below).
 3. **Prepare a Hydra Configuration File**: Define `config_path`, `data_path`, and `output_dir` to specify the location of your above task configuration file, data file/directory formatted as above, and output directory of the results, respectively (see `sample.yaml`).
@@ -64,67 +82,77 @@ pip install es-aces
 Command Line:
 
 ```bash
-aces-cli --config-dir='/path/to/hydra/config/' --config-name='config.yaml'
+aces-cli data.path='/path/to/data/file/or/directory' data.standard='<esgpt/meds/direct>' cohort_dir='/directory/to/task/config/' cohort_name='<task_config_name>'
 ```
 
 Python Code:
 
 ```python
 from aces import config, predicates, query
+from omegaconf import DictConfig
 
 # create task configuration object
 cfg = config.TaskExtractorConfig.load(config_path="/path/to/task/config/task.yaml")
 
-# one of the following
-predicates_df = predicates.get_predicates_df(cfg, "/path/to/data.parquet", "meds")
-predicates_df = predicates.get_predicates_df(cfg, "/path/to/esgpt/folder/", "esgpt")
-predicates_df = predicates.get_predicates_df(cfg, "/path/to/data.csv", "csv")
+# get predicates dataframe
+data_config = DictConfig(
+    {
+        "path": "/path/to/data/file/or/directory",
+        "standard": "<esgpt/meds/direct>",
+        "ts_format": "%m/%d/%Y %H:%M",
+    }
+)
+predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)
 
 # execute query and display results
-df_result = query.query(cfg, predicates_df)
+df_result = query.query(cfg=cfg, predicates_df=predicates_df)
 display(df_result)
 ```
 
 **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality using the ESGPT standard:
 
 ```log
-aces-cli --config-path=/home/ACES/ --config-name="sample.yaml"
-2024-05-25 22:51:15.805 | INFO     | aces.__main__:main:42 - Loading config...
-2024-05-25 22:51:15.811 | INFO     | aces.config:load:775 - Parsing predicates...
-2024-05-25 22:51:15.811 | INFO     | aces.config:load:781 - Parsing trigger event...
-2024-05-25 22:51:15.811 | INFO     | aces.config:load:784 - Parsing windows...
-2024-05-25 22:51:15.821 | INFO     | aces.__main__:main:47 - Loading data...
-2024-05-25 22:51:15.821 | INFO     | aces.__main__:main:55 - Directory provided, checking directory...
-Loading events from /home/ACES/data/events_df.parquet...
-Loading dynamic_measurements from /home/ACES/data/dynamic_measurements_df.parquet...
-2024-05-25 22:51:22.439 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:173 - Generating plain predicate columns...
-2024-05-25 22:51:26.076 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:182 - Added predicate column 'admission'.
-2024-05-25 22:51:29.573 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:182 - Added predicate column 'discharge'.
-2024-05-25 22:51:33.092 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:182 - Added predicate column 'death'.
-2024-05-25 22:51:34.326 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:199 - Cleaning up predicates DataFrame...
-2024-05-25 22:51:34.327 | INFO     | aces.predicates:get_predicates_df:299 - Loaded plain predicates. Generating derived predicate columns...
-2024-05-25 22:51:34.393 | INFO     | aces.predicates:get_predicates_df:302 - Added predicate column 'discharge_or_death'.
-2024-05-25 22:51:34.393 | INFO     | aces.predicates:get_predicates_df:306 - Generating '_ANY_EVENT' predicate column...
-2024-05-25 22:51:34.416 | INFO     | aces.predicates:get_predicates_df:308 - Added predicate column '_ANY_EVENT'.
-2024-05-25 22:51:34.667 | INFO     | aces.utils:log_tree:56 - trigger
-                                                              ┗━━ input.end
-                                                                  ┣━━ input.start
-                                                                  ┗━━ gap.end
-                                                                      ┗━━ target.end
+aces-cli data.path='MIMIC_ESD_new_schema_08-31-23-1/' data.standard='esgpt' cohort_dir='sample_configs/' cohort_name='inhospital-mortality'
+2024-05-31 18:22:09.313 | INFO     | aces.__main__:main:27 - Loading config from sample_configs//inhospital-mortality.yaml
+2024-05-31 18:22:09.319 | INFO     | aces.config:load:812 - Parsing predicates...
+2024-05-31 18:22:09.319 | INFO     | aces.config:load:818 - Parsing trigger event...
+2024-05-31 18:22:09.319 | INFO     | aces.config:load:821 - Parsing windows...
+2024-05-31 18:22:09.330 | INFO     | aces.__main__:main:30 - Attempting to get predicates dataframe given:
+path: MIMIC_ESD_new_schema_08-31-23-1/
+standard: esgpt
+ts_format: '%m/%d/%Y %H:%M'
 
-2024-05-25 22:51:34.667 | INFO     | aces.query:query:31 - Beginning query...
-2024-05-25 22:51:34.667 | INFO     | aces.query:query:32 - Identifying possible trigger nodes based on the specified trigger event...
-2024-05-25 22:51:34.672 | INFO     | aces.constraints:check_constraints:95 - Excluding 14,623,763 rows as they failed to satisfy 1 <= admission <= None.
-2024-05-25 22:51:34.681 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'input.end'...
-2024-05-25 22:51:39.128 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'input.start'...
-2024-05-25 22:51:49.833 | INFO     | aces.constraints:check_constraints:95 - Excluding 12,212 rows as they failed to satisfy 5 <= _ANY_EVENT <= None.
-2024-05-25 22:51:49.846 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'gap.end'...
-2024-05-25 22:51:53.975 | INFO     | aces.constraints:check_constraints:95 - Excluding 353 rows as they failed to satisfy None <= admission <= 0.
-2024-05-25 22:51:53.976 | INFO     | aces.constraints:check_constraints:95 - Excluding 9,596 rows as they failed to satisfy None <= discharge <= 0.
-2024-05-25 22:51:53.976 | INFO     | aces.constraints:check_constraints:95 - Excluding 88 rows as they failed to satisfy None <= death <= 0.
-2024-05-25 22:51:53.977 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'target.end'...
-2024-05-25 22:52:05.556 | INFO     | aces.query:query:38 - Done. 56,924 rows returned.
-2024-05-25 22:52:05.697 | INFO     | aces.__main__:main:68 - Results saved to /home/ACES/results_2024-05-25_22-52-05.parquet
+Loading events from MIMIC_ESD_new_schema_08-31-23-1/events_df.parquet...
+Loading dynamic_measurements from MIMIC_ESD_new_schema_08-31-23-1/dynamic_measurements_df.parquet...
+2024-05-31 18:22:13.107 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:235 - Generating plain predicate columns...
+2024-05-31 18:22:13.268 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:246 - Added predicate column 'admission'.
+2024-05-31 18:22:13.432 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:246 - Added predicate column 'discharge'.
+2024-05-31 18:22:13.600 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:246 - Added predicate column 'death'.
+2024-05-31 18:22:18.654 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:267 - Cleaning up predicates DataFrame...
+2024-05-31 18:22:18.655 | INFO     | aces.predicates:get_predicates_df:395 - Loaded plain predicates. Generating derived predicate columns...
+2024-05-31 18:22:18.665 | INFO     | aces.predicates:get_predicates_df:398 - Added predicate column 'discharge_or_death'.
+2024-05-31 18:22:18.666 | INFO     | aces.predicates:get_predicates_df:402 - Generating _ANY_EVENT predicate column...
+2024-05-31 18:22:18.682 | INFO     | aces.predicates:get_predicates_df:404 - Added predicate column '_ANY_EVENT'.
+2024-05-31 18:22:19.300 | INFO     | aces.query:query:29 - Checking if (subject_id, timestamp) columns are unique...
+2024-05-31 18:22:19.675 | INFO     | aces.utils:log_tree:57 -
+trigger
+┗━━ input.end
+    ┣━━ input.start
+    ┗━━ gap.end
+        ┗━━ target.end
+2024-05-31 18:22:19.675 | INFO     | aces.query:query:40 - Beginning query...
+2024-05-31 18:22:19.675 | INFO     | aces.query:query:41 - Identifying possible trigger nodes based on the specified trigger event...
+2024-05-31 18:22:19.808 | INFO     | aces.constraints:check_constraints:93 - Excluding 14,623,763 rows as they failed to satisfy 1 <= admission <= None.
+2024-05-31 18:22:19.905 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'input.end'...
+2024-05-31 18:22:24.748 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'input.start'...
+2024-05-31 18:22:35.102 | INFO     | aces.constraints:check_constraints:93 - Excluding 12,212 rows as they failed to satisfy 5 <= _ANY_EVENT <= None.
+2024-05-31 18:22:35.116 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'gap.end'...
+2024-05-31 18:22:38.992 | INFO     | aces.constraints:check_constraints:93 - Excluding 353 rows as they failed to satisfy None <= admission <= 0.
+2024-05-31 18:22:38.993 | INFO     | aces.constraints:check_constraints:93 - Excluding 9,596 rows as they failed to satisfy None <= discharge <= 0.
+2024-05-31 18:22:38.993 | INFO     | aces.constraints:check_constraints:93 - Excluding 88 rows as they failed to satisfy None <= death <= 0.
+2024-05-31 18:22:38.995 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'target.end'...
+2024-05-31 18:22:49.754 | INFO     | aces.query:query:57 - Done. 56,893 valid rows returned.
+2024-05-31 18:22:49.864 | INFO     | aces.__main__:main:38 - Completed in 0:00:40.550664. Results saved to sample_configs//inhospital-mortality.parquet.
 ```
 
 ## Task Configuration File
@@ -260,30 +288,44 @@ The `has` field specifies constraints relating to predicates within the window. 
 
 ## FAQs
 
-##### Static Data
+### Static Data
+
+Support for static data depends on your data standard and those variables are expressed. For instance, in MEDS, it is feasible to express static data as a predicate, and thus criteria can be set normally. However, this is not yet incorporated for ESGPT. If a predicates dataframe is directly used, you may create a predicate column that specifies your static variable.
 
 ## Future Roadmap
 
-##### Sequential Decoding Tasks
+### Sequential Decoding Tasks
 
-Future treatment sequences
+We hope to support tasks whose labels cannot be reliably summarized as a single numerical value (ie., a task where we want to predict a sequence of outputs, such as future treatment sequences).
 
-##### Case-Control Matching Extraction
+### Case-Control Matching Extraction
 
-Heart failure example with gender- and age-matching
+Currently, case-control matching (ie., gender-matching, age-matching, etc.) is not directly supported. In order to extract matched cohorts, you may extract the cases and controls cohorts separately, then perform post-hoc matching.
 
-##### Time-binning
+### Timestamp Binning
 
-Indexed at a specific wall time
+Unfortunately, it is currently not possible to index at a specific wall time (ie., have time of day offsets). As such, cohorts that require a prediction at 11:59 PM on the day of the patient's admission, for example, cannot be directly extracted.
+
+### Nested Configurations
+
+We aim to support nested configuration files for cohort querying, whereby the results of a particular extraction can be expressed as a predicate to inform the extraction of another cohort. This would allows users to extract cohorts for very complex and specific tasks.
+
+### Complex Predicates
+
+We hope to support more complex predicates that are not expressed as codes in datasets (ie., those that require aggregations of medians/running averages over time to measure disease progression), as well as derived predicates with `not()` or nested boolean logic. In both cases, predicates can currently be specified manually by creating the predicates dataframe directly.
 
 ## Acknowledgements
 
 **Matthew McDermott**, PhD | *Harvard Medical School*
 
-**Alistair Johnson**, DPhil
+**Alistair Johnson**, DPhil | *Independent*
 
 **Jack Gallifant**, MD | *Massachusetts Institute of Technology*
 
 **Tom Pollard**, PhD | *Massachusetts Institute of Technology*
+
+**Curtis Langlotz**, MD, PhD | *Stanford University*
+
+**David Eyre**, BM BCh, DPhil | *University of Oxford*
 
 For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding MEDS or ESGPT, please refer to their respective repositories. Contributions are welcome via pull requests.

@@ -1,14 +1,9 @@
 """Main script for end-to-end task querying."""
 
-from datetime import datetime
 from importlib.resources import files
-from pathlib import Path
 
 import hydra
-from loguru import logger
 from omegaconf import DictConfig, OmegaConf
-
-from . import config, predicates, query
 
 config_yaml = files("aces").joinpath("config.yaml")
 if not config_yaml.is_file():
@@ -17,6 +12,13 @@ if not config_yaml.is_file():
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
 def main(cfg: DictConfig):
+    from datetime import datetime
+    from pathlib import Path
+
+    from loguru import logger
+
+    from . import config, predicates, query
+
     st = datetime.now()
 
     # Set output path

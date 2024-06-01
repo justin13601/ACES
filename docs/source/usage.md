@@ -14,6 +14,14 @@ To install ACES:
 pip install es-aces
 ```
 
+Additionally, you may enable shell completion for configuration files. For Bash, please run:
+
+```bash
+eval "$(aces-cli -sc install=bash)"
+```
+
+Please visit [Hydra's Documentation](https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/) for more details.
+
 ## Querying Tasks
 
 ______________________________________________________________________
@@ -21,7 +29,7 @@ ______________________________________________________________________
 To extract a cohort for a particular task, you may use `aces-cli` in your terminal:
 
 ```bash
-aces-cli --config-dir='/path/to/hydra/config/' --config-name='config.yaml'
+aces-cli data.path='/path/to/data/file/or/directory' data.standard='<esgpt/meds/direct>' cohort_dir='/directory/to/task/config/' cohort_name='<task_config_name>'
 ```
 
 Alternatively, you can use the `aces.query.query()` function:
@@ -30,28 +38,36 @@ Alternatively, you can use the `aces.query.query()` function:
 .. autofunction:: aces.query.query
 ```
 
-The `cfg` parameter must be of type `dict()`, and the `df_predicates` parameter must be of type `polars.DataFrame()`.
-Otherwise, `aces.query.query()` will raise a `TypeError` exception.
+The `cfg` parameter must be of type `TaskExtractorConfig`, and the `df_predicates` parameter must be of type `polars.DataFrame`.
 
 Details about the configuration language used to define the `cfg` parameter can be found in {doc}`/configuration`.
 
-For example, assuming `cfg` and `df_predicates` are defined properly, a query can be run using:
+For example, to query a in-hospital mortality task on the sample data (both configuration file and data are provided in the repository) using the 'direct' predicates method:
 
 ```python
->>> from aces import query
->>> query.query(cfg, df_predicates)
+>>> from aces import query, predicates, config
+>>> from omegaconf import DictConfig
+
+>>> cfg = config.TaskExtractorConfig.load(config_path="/home/justinxu/esgpt/ESGPTTaskQuerying/sample_configs/inhospital-mortality.yaml")
+
+>>> data_config = DictConfig({"path": "sample_data.csv", "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"})
+>>> predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)
+
+>>> query.query(cfg=cfg, predicates_df=predicates_df)
 ```
 
 ```plaintext
-shape: (1, 7)
-┌────────────┬───────────────┬───────────────┬───────────────┬──────────────┬──────────────┬───────┐
-│ subject_id ┆ input.start_s ┆ target.end_su ┆ gap.end_summa ┆ subtree_anch ┆ input.end_su ┆ label │
-│ ---        ┆ ummary        ┆ mmary         ┆ ry            ┆ or_timestamp ┆ mmary        ┆ ---   │
-│ i64        ┆ ---           ┆ ---           ┆ ---           ┆ ---          ┆ ---          ┆ i64   │
-│            ┆ struct[8]     ┆ struct[8]     ┆ struct[8]     ┆ datetime[μs] ┆ struct[8]    ┆       │
-╞════════════╪═══════════════╪═══════════════╪═══════════════╪══════════════╪══════════════╪═══════╡
-│ 1          ┆ {"input.start ┆ {"target.end" ┆ {"gap.end",19 ┆ 1991-01-27   ┆ {"input.end" ┆ 0     │
-│            ┆ ",1989-12-01  ┆ ,1991-01-29   ┆ 91-01-28      ┆ 23:32:00     ┆ ,1991-01-27  ┆       │
-│            ┆ 12:03:…       ┆ 23:32:0…      ┆ 23:32:00,1…   ┆              ┆ 23:32:00…    ┆       │
-└────────────┴───────────────┴───────────────┴───────────────┴──────────────┴──────────────┴───────┘
+shape: (1, 8)
+┌────────────┬────────────┬───────┬────────────┬────────────┬────────────┬────────────┬────────────┐
+│ subject_id ┆ index_time ┆ label ┆ trigger    ┆ input.star ┆ target.end ┆ gap.end_su ┆ input.end_ │
+│ ---        ┆ stamp      ┆ ---   ┆ ---        ┆ t_summary  ┆ _summary   ┆ mmary      ┆ summary    │
+│ i64        ┆ ---        ┆ i64   ┆ datetime[μ ┆ ---        ┆ ---        ┆ ---        ┆ ---        │
+│            ┆ datetime[μ ┆       ┆ s]         ┆ struct[8]  ┆ struct[8]  ┆ struct[8]  ┆ struct[8]  │
+│            ┆ s]         ┆       ┆            ┆            ┆            ┆            ┆            │
+╞════════════╪════════════╪═══════╪════════════╪════════════╪════════════╪════════════╪════════════╡
+│ 1          ┆ 1991-01-28 ┆ 0     ┆ 1991-01-27 ┆ {"input.st ┆ {"target.e ┆ {"gap.end" ┆ {"input.en │
+│            ┆ 23:32:00   ┆       ┆ 23:32:00   ┆ art",1989- ┆ nd",1991-0 ┆ ,1991-01-2 ┆ d",1991-01 │
+│            ┆            ┆       ┆            ┆ 12-01      ┆ 1-29       ┆ 8          ┆ -27        │
+│            ┆            ┆       ┆            ┆ 12:0…      ┆ 23:32…     ┆ 23:32:00…  ┆ 23:32:…    │
+└────────────┴────────────┴───────┴────────────┴────────────┴────────────┴────────────┴────────────┘
 ```
