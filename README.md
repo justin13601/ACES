@@ -304,16 +304,28 @@ Heart failure example with gender- and age-matching
 
 ### Time-binning
 
-Indexing at a specific wall time
+Indexing at a specific wall time time of day offsets (femr) - Time-binning
+
+### Nested configurations
+
+Supporting nested configuration files (complex predicates of a configuration file), support motivated by in real world use cases (like diabetes progression, no code in dataset)
+
+### Complex predicates
+
+not predicates, complex aggregations (median/running average)
 
 ## Acknowledgements
 
 **Matthew McDermott**, PhD | *Harvard Medical School*
 
-**Alistair Johnson**, DPhil
+**Alistair Johnson**, DPhil | *Independent*
 
 **Jack Gallifant**, MD | *Massachusetts Institute of Technology*
 
 **Tom Pollard**, PhD | *Massachusetts Institute of Technology*
+
+**Curtis Langlotz**, MD, PhD | *Stanford University*
+
+**David Eyre**, BM BCh, DPhil | *University of Oxford*
 
 For any questions, enhancements, or issues, please file a GitHub issue. For inquiries regarding MEDS or ESGPT, please refer to their respective repositories. Contributions are welcome via pull requests.

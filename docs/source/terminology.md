@@ -176,11 +176,32 @@ perform temporal and event-based aggregations to determine whether windows satis
 
 #### Inputs
 
-<!-- TODO: -->
+During initialization, we will be given the following inputs:
+
+##### `cfg`
+
+`cfg` is a `TaskExtractorConfig` object containing our task definition, include all information about
+predicates, the trigger event, and windows.
+
+##### `predicates_df`
+
+The `predicates_df` dataframe will contain all events and their predicates.
 
 #### Computation
 
-<!-- TODO: -->
+During initialization, we will first ensure that the predicates dataframe contains unique (`subject_id`,
+`timestamp`) pairs. This is to ensure that no memory leaks occur over mismatched/extra rows when joining
+dataframes.
+
+##### Identify Prospective Root Anchors
+
+Prior to summarizing the rest of the task tree, we first identify prospective root anchors by checking the
+constraints of the trigger event. The trigger event represents the node of the tree we aim to realize, and
+thus this first step can significantly filter our cohort.
+
+##### Recurse over Each Subtree
+
+With this dataframe, we can proceed to traverse the tree and recurse over each subtree rooted at each node.
 
 ### Recursive Step
 
@@ -276,12 +297,34 @@ subtree.
 
 #### Inputs
 
-<!-- TODO: -->
+After recursion, we will have the following dataframe:
+
+##### `result`
+
+This dataframe contains rows that represent valid realizations of the task tree. Each node of the tree will
+have a column with a `pl.Struct` object containing the name of the window the node represents, the start and
+end times of the window, and counts of all defined predicates.
 
 #### Computation
 
-<!-- TODO: -->
+With this result, we can then proceed with some clean-up to optimize the output and streamline downstream
+tasks by doing the following:
 
 ##### Labeling
 
-<!-- TODO: -->
+If a `label` field is specified in exactly one defined window in the task configuration, a column will be
+created to serve as the label for the task. The field corresponds to a defined predicate, and as such, that
+predicate count for that window will be extracted.
+
+##### Indexing Timestamp
+
+If a 'index_timestamp' field is specified in exactly one defined window in the task configuration, a column
+will be created to serve as an index for the output cohort. This timestamp can be manually specified to any
+start or end timestamp of any desired window; however, it should represent the timestamp at which point a
+prediction can be made (ie., at the end of the `input` windows).
+
+##### Re-order & Return
+
+Finally, given this dataframe, the algorithm will sort the columns by placing `subject_id`, `index_timestamp`,
+`label`, and `trigger` first, in that order, followed by all other window summary columns in the order of a
+pre-order traversal of the task tree.
