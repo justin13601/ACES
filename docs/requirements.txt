@@ -9,5 +9,5 @@ pypandoc
 linkify-it-py
 ipykernel
 omegaconf
-pyarrow==12.0.1
+ipywidgets
 esgpt @ git+https://github.com/mmcdermott/EventStreamGPT
