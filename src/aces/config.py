@@ -37,6 +37,9 @@ class PlainPredicateConfig:
     def MEDS_eval_expr(self) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
 
+        Note: The output syntax for the following examples is dependent on the polars version used. The
+        expected outputs have been validated on polars version 0.20.30.
+
         Examples:
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
@@ -73,6 +76,9 @@ class PlainPredicateConfig:
 
     def ESGPT_eval_expr(self, values_column: str | None = None) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
+
+        Note: The output syntax for the following examples is dependent on the polars version used. The
+        expected outputs have been validated on polars version 0.20.30.
 
         Examples:
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).ESGPT_eval_expr("BP_value")
@@ -183,6 +189,9 @@ class DerivedPredicateConfig:
 
     def eval_expr(self) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate against necessary dependent predicates.
+
+        Note: The output syntax for the following examples is dependent on the polars version used. The
+        expected outputs have been validated on polars version 0.20.30.
 
         Examples:
             >>> expr = DerivedPredicateConfig("and(P1, P2, P3)").eval_expr()
