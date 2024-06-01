@@ -318,7 +318,7 @@ predicate count for that window will be extracted.
 
 ##### Indexing Timestamp
 
-If a 'index_timestamp' field is specified in exactly one defined window in the task configuration, a column
+If an 'index_timestamp' field is specified in exactly one defined window in the task configuration, a column
 will be created to serve as an index for the output cohort. This timestamp can be manually specified to any
 start or end timestamp of any desired window; however, it should represent the timestamp at which point a
 prediction can be made (ie., at the end of the `input` windows).
