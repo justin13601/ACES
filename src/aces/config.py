@@ -814,6 +814,9 @@ class TaskExtractorConfig:
         trigger = loaded_dict.pop("trigger")
         windows = loaded_dict.pop("windows")
 
+        # Remove the description if it exists - currently unused except for readability in the YAML
+        _ = loaded_dict.pop("description", None)
+
         if loaded_dict:
             raise ValueError(f"Unrecognized keys in configuration file: {', '.join(loaded_dict.keys())}")
 
