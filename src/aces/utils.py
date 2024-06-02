@@ -1,4 +1,5 @@
 import io
+import logging
 import sys
 from contextlib import contextmanager
 from datetime import timedelta
@@ -55,3 +56,26 @@ def log_tree(node):
         print("\n")
         print_tree(node, style="const_bold")  # This will print to the captured StringIO instead of stdout
     logger.info(captured.getvalue())  # Log the captured output
+
+
+# add handler that propagates loguru records to standard logging
+class PropagateHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        logging.getLogger(record.name).handle(record)
+
+
+logger.add(PropagateHandler(), format="{message}")
+
+# get root logger and remove existing handlers
+root_logger = logging.getLogger()
+for handler in root_logger.handlers:
+    root_logger.removeHandler(handler)
+
+
+# add handler that does nothing (to prevent printing to console)
+class NoOpHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        pass
+
+
+root_logger.addHandler(NoOpHandler())

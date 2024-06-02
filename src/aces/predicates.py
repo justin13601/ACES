@@ -129,7 +129,7 @@ def direct_load_plain_predicates(
     return (
         data.select("subject_id", "timestamp", *predicates)
         .group_by(["subject_id", "timestamp"], maintain_order=True)
-        .agg(pl.all().sum())
+        .agg(pl.all().sum().cast(PRED_CNT_TYPE))
         .collect()
     )
 
@@ -191,7 +191,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
     return (
         data.select(["subject_id", "timestamp"] + predicate_cols)
         .group_by(["subject_id", "timestamp"], maintain_order=True)
-        .agg(*(pl.col(c).sum().alias(c) for c in predicate_cols))
+        .agg(*(pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols))
     )
 
 
