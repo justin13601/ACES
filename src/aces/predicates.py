@@ -10,6 +10,8 @@ from .config import TaskExtractorConfig
 from .types import (
     ANY_EVENT_COLUMN,
     END_OF_RECORD_KEY,
+    EVENT_INDEX_COLUMN,
+    EVENT_INDEX_TYPE,
     PRED_CNT_TYPE,
     START_OF_RECORD_KEY,
 )
@@ -416,11 +418,11 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         if ANY_EVENT_COLUMN in window.referenced_predicates and ANY_EVENT_COLUMN not in special_predicates:
             special_predicates.append(ANY_EVENT_COLUMN)
         if (
-            START_OF_RECORD_KEY in window.referenced_predicates
+            START_OF_RECORD_KEY in window.constraint_predicates
             and START_OF_RECORD_KEY not in special_predicates
         ):
             special_predicates.append(START_OF_RECORD_KEY)
-        if END_OF_RECORD_KEY in window.referenced_predicates and END_OF_RECORD_KEY not in special_predicates:
+        if END_OF_RECORD_KEY in window.constraint_predicates and END_OF_RECORD_KEY not in special_predicates:
             special_predicates.append(END_OF_RECORD_KEY)
 
     if (
@@ -452,5 +454,11 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         )
         logger.info(f"Added predicate column '{END_OF_RECORD_KEY}'.")
     predicate_cols += special_predicates
+
+    # create a column for event_id
+    data = data.with_columns(pl.lit(1).alias(EVENT_INDEX_COLUMN))
+    data = data.with_columns(
+        (pl.col(EVENT_INDEX_COLUMN).cumsum().over("subject_id") - 1).cast(EVENT_INDEX_TYPE)
+    )
 
     return data

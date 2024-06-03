@@ -1,7 +1,5 @@
 # Configuration Language Specification
 
-______________________________________________________________________
-
 ## Introduction and Terminology
 
 This document specifies the configuration language for the automatic extraction of task dataframes and cohorts

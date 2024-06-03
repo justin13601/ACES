@@ -300,7 +300,7 @@ class WindowConfig:
         >>> # This window does not reference any "true" external predicates, only implicit predicates like
         >>> # start, end, and * events, so this list should be empty.
         >>> sorted(input_window.referenced_predicates)
-        ['_ANY_EVENT', '_RECORD_START']
+        ['_ANY_EVENT']
         >>> input_window.start_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
         ToEventWindowBounds(left_inclusive=True,
                             end_event='-_RECORD_START',
@@ -600,12 +600,19 @@ class WindowConfig:
             return tuple(self._parsed_start["referenced"].split("."))
 
     @property
+    def constraint_predicates(self) -> set[str]:
+        predicates = set(self.has.keys())
+        return predicates
+
+    @property
     def referenced_predicates(self) -> set[str]:
         predicates = set(self.has.keys())
         if self._parsed_start["event_bound"]:
             predicates.add(self._parsed_start["event_bound"].replace("-", ""))
         if self._parsed_end["event_bound"]:
             predicates.add(self._parsed_end["event_bound"].replace("-", ""))
+
+        predicates -= {START_OF_RECORD_KEY, END_OF_RECORD_KEY}
         return predicates
 
     @property
@@ -986,11 +993,7 @@ class TaskExtractorConfig:
             window_nodes[f"{name}.end"] = end_node
 
         for name, window in self.windows.items():
-            for predicate in window.referenced_predicates - {
-                START_OF_RECORD_KEY,
-                END_OF_RECORD_KEY,
-                ANY_EVENT_COLUMN,
-            }:
+            for predicate in window.referenced_predicates - {ANY_EVENT_COLUMN}:
                 if predicate not in self.predicates:
                     raise KeyError(
                         f"Window '{name}' references undefined predicate '{predicate}'.\n"
