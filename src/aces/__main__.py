@@ -3,6 +3,8 @@
 from importlib.resources import files
 
 import hydra
+import hydra.core
+import hydra.core.hydra_config
 from omegaconf import DictConfig, OmegaConf
 
 config_yaml = files("aces").joinpath("config.yaml")
@@ -17,7 +19,9 @@ def main(cfg: DictConfig):
 
     from loguru import logger
 
-    from . import config, predicates, query
+    from . import config, predicates, query, utils
+
+    utils.hydra_loguru_init(f"{hydra.core.hydra_config.HydraConfig.get().job.name}.log")
 
     st = datetime.now()
 

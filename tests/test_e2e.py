@@ -134,6 +134,7 @@ EXPECTED_OUTPUT = {
                 "death": 0,
                 "discharge_or_death": 0,
                 "_ANY_EVENT": 4,
+                "_RECORD_START": 0,
             }
         ],
         "input.start_summary": [
@@ -146,6 +147,7 @@ EXPECTED_OUTPUT = {
                 "death": 0,
                 "discharge_or_death": 1,
                 "_ANY_EVENT": 16,
+                "_RECORD_START": 1,
             }
         ],
         "gap.end_summary": [
@@ -158,6 +160,7 @@ EXPECTED_OUTPUT = {
                 "death": 0,
                 "discharge_or_death": 0,
                 "_ANY_EVENT": 1,
+                "_RECORD_START": 0,
             }
         ],
         "target.end_summary": [
@@ -170,6 +173,7 @@ EXPECTED_OUTPUT = {
                 "death": 0,
                 "discharge_or_death": 1,
                 "_ANY_EVENT": 7,
+                "_RECORD_START": 0,
             }
         ],
     }

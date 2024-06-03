@@ -9,7 +9,7 @@ predicates:
   discharge_or_death:
     expr: or(discharge, death)
 
-trigger: admission
+trigger: _RECORD_START
 
 windows:
   input:
