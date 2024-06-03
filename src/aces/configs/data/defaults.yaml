@@ -1,0 +1,5 @@
+# Data standard, one of (direct, meds, esgpt)
+standard: ???
+
+# Timestamp format for direct predicates (if meds or esgpt, this is ignored).
+ts_format: "%m/%d/%Y %H:%M"

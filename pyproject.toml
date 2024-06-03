@@ -26,6 +26,7 @@ dependencies = [
 
 [project.scripts]
 aces-cli = "aces.__main__:main"
+expand_shards = "aces.expand_shards:main"
 
 [build-system]
 requires = ["setuptools>=61.0", "setuptools-scm>=8.0", "wheel"]

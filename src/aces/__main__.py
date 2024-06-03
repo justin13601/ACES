@@ -7,7 +7,7 @@ import hydra.core
 import hydra.core.hydra_config
 from omegaconf import DictConfig, OmegaConf
 
-config_yaml = files("aces").joinpath("config.yaml")
+config_yaml = files("aces").joinpath("configs/aces.yaml")
 if not config_yaml.is_file():
     raise FileNotFoundError("Core configuration not successfully installed!")
 

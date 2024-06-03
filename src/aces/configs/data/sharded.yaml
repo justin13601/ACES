@@ -1,0 +1,11 @@
+defaults:
+  - defaults
+  - _self_
+
+# Path to the data file or directory
+root: ???
+shard: ???
+path: ${data.root}/${data.shard}.parquet
+
+# Where the results are stored
+_prefix: "/${data.shard}"
