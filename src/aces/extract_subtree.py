@@ -282,7 +282,7 @@ def extract_subtree(
                     .drop("timestamp")
                 )
             case _:
-                raise ValueError(f"Invalid endpoint expression: {endpoint_expr}")
+                raise ValueError(f"Invalid endpoint expression: '{endpoint_expr}'")
 
         # Step 2: Filter to valid subtree anchors
         window_summary_df = window_summary_df.join(
@@ -294,7 +294,8 @@ def extract_subtree(
 
         # Step 4: Produce child anchor realizations
         child_anchor_realizations = window_summary_df.select(
-            "subject_id", pl.col("child_anchor_timestamp").alias("subtree_anchor_timestamp")
+            "subject_id",
+            pl.col("child_anchor_timestamp").alias("subtree_anchor_timestamp"),
         )
 
         # Step 5: Recurse

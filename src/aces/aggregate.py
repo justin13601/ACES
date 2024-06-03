@@ -78,7 +78,8 @@ def aggregate_temporal_window(
         ...     "is_B": [0, 1, 0, 1, 1, 0],
         ...     "is_C": [1, 1, 0, 0, 1, 0],
         ... })
-        >>> aggregate_temporal_window(df, TemporalWindowBounds(True, timedelta(days=7), True, None))
+        >>> aggregate_temporal_window(df, TemporalWindowBounds(
+        ... True, timedelta(days=7), True, None))
         shape: (6, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
@@ -92,7 +93,8 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 1989-12-08 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 1989-12-10 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(df, (True, timedelta(days=1), True, timedelta(days=0)))
+        >>> aggregate_temporal_window(df, (
+        ... True, timedelta(days=1), True, timedelta(days=0)))
         shape: (6, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
@@ -106,7 +108,8 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 1989-12-02 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 1989-12-04 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(df, (True, timedelta(days=1), False, timedelta(days=0)))
+        >>> aggregate_temporal_window(df, (
+        ... True, timedelta(days=1), False, timedelta(days=0)))
         shape: (6, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
@@ -120,7 +123,8 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 1989-12-02 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 1989-12-04 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(df, (False, timedelta(days=1), False, timedelta(days=0)))
+        >>> aggregate_temporal_window(df, (
+        ... False, timedelta(days=1), False, timedelta(days=0)))
         shape: (6, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
@@ -134,7 +138,8 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 1989-12-02 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 1989-12-04 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(df, (False, timedelta(days=-1), False, timedelta(days=0)))
+        >>> aggregate_temporal_window(df, (
+        ... False, timedelta(days=-1), False, timedelta(days=0)))
         shape: (6, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
@@ -148,7 +153,8 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 1989-11-30 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 1989-12-02 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(df, (False, timedelta(hours=12), False, timedelta(hours=12)))
+        >>> aggregate_temporal_window(df, (
+        ... False, timedelta(hours=12), False, timedelta(hours=12)))
         shape: (6, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
@@ -166,7 +172,8 @@ def aggregate_temporal_window(
         >>> # and not the timestamp of the row. E.g., if left_inclusive is False, the window will not include
         >>> # the earliest event in the aggregation window, regardless of whether that is earlier than the
         >>> # timestamp of the row.
-        >>> aggregate_temporal_window(df, (False, timedelta(days=-1), True, timedelta(days=1)))
+        >>> aggregate_temporal_window(df, (
+        ... False, timedelta(days=-1), True, timedelta(days=1)))
         shape: (6, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
@@ -180,7 +187,8 @@ def aggregate_temporal_window(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-02 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-04 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
-        >>> aggregate_temporal_window(df, (True, timedelta(days=-1), False, timedelta(days=1)))
+        >>> aggregate_temporal_window(df, (
+        ... True, timedelta(days=-1), False, timedelta(days=1)))
         shape: (6, 7)
         ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
         │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
@@ -206,7 +214,9 @@ def aggregate_temporal_window(
             group_by="subject_id",
             **endpoint_expr.polars_gp_rolling_kwargs,
         )
-        .agg(*[pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols])
+        .agg(
+            *[pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols],
+        )
         .sort(by=["subject_id", "timestamp"])
         .select(
             "subject_id",
@@ -837,9 +847,9 @@ def boolean_expr_bound_sum(
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
     """
     if mode not in ("bound_to_row", "row_to_bound"):
-        raise ValueError(f"mode {mode} invalid!")
+        raise ValueError(f"Mode '{mode}' invalid!")
     if closed not in ("both", "none", "left", "right"):
-        raise ValueError(f"closed {closed} invalid!")
+        raise ValueError(f"Closed '{closed}' invalid!")
 
     if offset != timedelta(0):
         if offset > timedelta(0):
@@ -1001,7 +1011,7 @@ def boolean_expr_bound_sum(
             return pl.col(c) + pl.col(f"{c}_in_offset_period")
 
     else:
-        raise ValueError(f"mode {mode} and offset {offset} invalid!")
+        raise ValueError(f"Mode '{mode}' and offset '{offset}' invalid!")
 
     return with_at_boundary_events.join(
         aggd_over_offset,

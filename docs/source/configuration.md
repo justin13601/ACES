@@ -25,13 +25,16 @@ Constraints are specified in terms of time-points that can be bounded by events 
 temporal relationships on said events. The windows between these time-points can then either be constrained to
 contain events that satisfy certain aggregation functions over predicates for these time frames.
 
-## Machine Form (what is used by the algorithm)
+______________________________________________________________________
 
-In the machine form, the configuration file consists of two parts:
+## Machine Form (used by ACES)
+
+In the machine form, the configuration file consists of three parts:
 
 - `predicates`, stored as a dictionary from string predicate names (which must be unique) to either
   `PlainPredicateConfig` objects, which store raw predicates with no dependencies on other predicates, or
   `DerivedPredicateConfig` objects, which store predicates that build on other predicates.
+- `trigger`, stored as a string to `EventConfig`
 - `windows`, stored as a dictionary from string window names (which must be unique) to `WindowConfig`
   objects.
 
@@ -54,9 +57,9 @@ These configs consist of the following four fields:
 - `value_max`: If specified, an observation will only satisfy this predicate if the occurrence of the
   underlying `code` with a reported numerical value that is either less than or less than or equal to
   `value_max` (with these options being decided on the basis of `value_max_inclusive`, where
-  `value_max_incusive=True` indicating that an observation satisfies this predicate if its value is less
+  `value_max_inclusive=True` indicating that an observation satisfies this predicate if its value is less
   than or equal to `value_max`, and `value_max_inclusive=False` indicating a less than but not equal to
-  will be used.
+  will be used).
 - `value_min_inclusive`: See `value_min`
 - `value_max_inclusive`: See `value_max`
 
@@ -95,9 +98,19 @@ accepted operations that can be applied to other predicates, containing precisel
 Note that, currently, `and`s and `or`s cannot be nested. Upon user request, we may support further advanced
 analytic operations over predicates.
 
-### Windows and Events:
+______________________________________________________________________
 
-#### Windows: `WindowConfig`
+### Events: `EventConfig`
+
+The event config consists of only a single field, `predicate`, which specifies the predicate that must be
+observed with value greater than one to satisfy the event. There can only be one defined "event" with an
+"EventConfig" in a valid configuration, and it will define the "trigger" event of the cohort.
+
+The value of its field can be any defined predicate
+
+______________________________________________________________________
+
+### Windows: `WindowConfig`
 
 Windows contain a tracking `name` field, and otherwise are specified with two parts: (1) A set of four
 parameters (`start`, `end`, `start_inclusive`, and `end_inclusive`) that specify the time range of the window,
@@ -105,9 +118,9 @@ and (2) a set of constraints specified through two fields, dictionary of constra
 specify the constraints that must be satisfied over the defined predicates for a possible realization of this
 window to be valid.
 
-##### Time Range Fields
+#### Time Range Fields
 
-###### `start` and `end`
+##### `start` and `end`
 
 Valid windows always progress in time from the `start` field to the `end` field. These two fields define, in
 symbolic form, the relationship between the start and end time of the window. These two fields must obey the
@@ -143,7 +156,7 @@ _`null`/`None`/omitted_: If `start` is `null`/`None`/omitted, then the window wi
 the patient's record. If `end` is `null`/`None`/omitted, then the window will end at the end of the patient's
 record. In either of these cases, the other field must reference an external event, per rule 1.
 
-###### `start_inclusive` and `end_inclusive`
+##### `start_inclusive` and `end_inclusive`
 
 These two fields specify whether the start and end of the window are inclusive or exclusive, respectively.
 This applies both to whether they are included in the calculation of the predicate values over the windows,
@@ -157,7 +170,7 @@ timestamp of itself when considered as the `$PREDICATE` event that marks the win
 `start_inclusive=False` and thus we will think of the window as truly starting an iota after the timestamp of
 the `start` event itself.
 
-##### Constraints Field
+#### Constraints Field
 
 The constraints field is a dictionary that maps predicate names to tuples of the form `(min_valid, max_valid)`
 that define the valid range the count of observations of the named predicate that must be found in a window
@@ -170,8 +183,4 @@ the constraint for predicate `name` with constraint `name: (1, 2)` if the count 
 `name` in a window was either 1 or 2. All constraints in the dictionary must be satisfied on a window for it
 to be included.
 
-#### Events: `EventConfig`
-
-The event config consists of only a single field, `predicate`, which specifies the predicate that must be
-observed with value greater than one to satisfy the event. There can only be one defined "event" with an
-"EventConfig" in a valid configuration, and it will define the "trigger" event of the cohort.
+______________________________________________________________________

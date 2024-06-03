@@ -1,0 +1,4 @@
+- data.path=../ACES/MIMIC_ESD_new_schema_08-31-23-1/
+- data.standard=esgpt
+- cohort_dir=./
+- cohort_name=inhospital-mortality

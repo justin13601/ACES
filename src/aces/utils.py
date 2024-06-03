@@ -1,9 +1,10 @@
 import io
-import logging
+import os
 import sys
 from contextlib import contextmanager
 from datetime import timedelta
 
+import hydra
 from bigtree import print_tree
 from loguru import logger
 from pytimeparse import parse
@@ -58,24 +59,7 @@ def log_tree(node):
     logger.info(captured.getvalue())  # Log the captured output
 
 
-# add handler that propagates loguru records to standard logging
-class PropagateHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
-        logging.getLogger(record.name).handle(record)
-
-
-logger.add(PropagateHandler(), format="{message}")
-
-# get root logger and remove existing handlers
-root_logger = logging.getLogger()
-for handler in root_logger.handlers:
-    root_logger.removeHandler(handler)
-
-
-# add handler that does nothing (to prevent printing to console)
-class NoOpHandler(logging.Handler):
-    def emit(self, record: logging.LogRecord) -> None:
-        pass
-
-
-root_logger.addHandler(NoOpHandler())
+def hydra_loguru_init(filename) -> None:
+    """Must be called from a hydra main!"""
+    hydra_path = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
+    logger.add(os.path.join(hydra_path, filename))

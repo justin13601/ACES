@@ -186,7 +186,7 @@ class ToEventWindowBounds:
         ... )
         Traceback (most recent call last):
             ...
-        ValueError: end_event must be a non-empty string
+        ValueError: The 'end_event' must be a non-empty string.
         >>> bounds = ToEventWindowBounds(
         ...     left_inclusive=True,
         ...     end_event="_RECORD_START",
@@ -207,7 +207,7 @@ class ToEventWindowBounds:
 
     def __post_init__(self):
         if self.end_event == "":
-            raise ValueError("end_event must be a non-empty string")
+            raise ValueError("The 'end_event' must be a non-empty string.")
 
         if self.end_event == START_OF_RECORD_KEY:
             raise ValueError(

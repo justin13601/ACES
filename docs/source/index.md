@@ -4,6 +4,8 @@ ACES is a library designed for the automatic extraction of cohorts from event st
 
 Check out {doc}`/usage` for further information and installation instructions.
 
+______________________________________________________________________
+
 ## Contents
 
 ```{toctree}

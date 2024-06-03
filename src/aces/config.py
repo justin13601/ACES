@@ -156,13 +156,13 @@ class DerivedPredicateConfig:
         >>> pred = DerivedPredicateConfig("and()") # doctest: +NORMALIZE_WHITESPACE
         Traceback (most recent call last):
             ...
-        ValueError: Derived predicate expression must have at least two input predicates (comma separated),
-        got and()
+        ValueError: Derived predicate expression must have at least two input predicates (comma separated).
+        Got: 'and()'
         >>> pred = DerivedPredicateConfig("or(PA, PB)")
         >>> pred = DerivedPredicateConfig("PA + PB")
         Traceback (most recent call last):
             ...
-        ValueError: Derived predicate expression must start with 'and(' or 'or(', got PA + PB
+        ValueError: Derived predicate expression must start with 'and(' or 'or('. Got: 'PA + PB'
     """
 
     expr: str
@@ -174,7 +174,9 @@ class DerivedPredicateConfig:
         self.is_and = self.expr.startswith("and(") and self.expr.endswith(")")
         self.is_or = self.expr.startswith("or(") and self.expr.endswith(")")
         if not (self.is_and or self.is_or):
-            raise ValueError(f"Derived predicate expression must start with 'and(' or 'or(', got {self.expr}")
+            raise ValueError(
+                f"Derived predicate expression must start with 'and(' or 'or('. Got: '{self.expr}'"
+            )
 
         if self.is_and:
             self.input_predicates = [x.strip() for x in self.expr[4:-1].split(",")]
@@ -183,8 +185,8 @@ class DerivedPredicateConfig:
 
         if len(self.input_predicates) < 2:
             raise ValueError(
-                "Derived predicate expression must have at least two input predicates (comma separated), "
-                f"got {self.expr}"
+                "Derived predicate expression must have at least two input predicates (comma separated). "
+                f"Got: '{self.expr}'"
             )
 
     def eval_expr(self) -> pl.Expr:
@@ -300,7 +302,7 @@ class WindowConfig:
         >>> # This window does not reference any "true" external predicates, only implicit predicates like
         >>> # start, end, and * events, so this list should be empty.
         >>> sorted(input_window.referenced_predicates)
-        []
+        ['_ANY_EVENT']
         >>> input_window.start_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
         ToEventWindowBounds(left_inclusive=True,
                             end_event='-_RECORD_START',
@@ -450,7 +452,7 @@ class WindowConfig:
         Traceback (most recent call last):
             ...
         ValueError: Invalid constraint format: discharge.
-        Expected format: '(min, max)', but got: '(0)'
+        Expected format: '(min, max)'. Got: '(0)'
     """
 
     start: str | None
@@ -533,7 +535,7 @@ class WindowConfig:
                 if len(elements) != 2:
                     raise ValueError(
                         f"Invalid constraint format: {each_constraint}. "
-                        f"Expected format: '(min, max)', but got: '{self.has[each_constraint]}'"
+                        f"Expected format: '(min, max)'. Got: '{self.has[each_constraint]}'"
                     )
                 self.has[each_constraint] = tuple(
                     int(element) if element not in ("None", "") else None for element in elements
@@ -600,6 +602,11 @@ class WindowConfig:
             return tuple(self._parsed_start["referenced"].split("."))
 
     @property
+    def constraint_predicates(self) -> set[str]:
+        predicates = set(self.has.keys())
+        return predicates
+
+    @property
     def referenced_predicates(self) -> set[str]:
         predicates = set(self.has.keys())
         if self._parsed_start["event_bound"]:
@@ -607,7 +614,7 @@ class WindowConfig:
         if self._parsed_end["event_bound"]:
             predicates.add(self._parsed_end["event_bound"].replace("-", ""))
 
-        predicates -= {START_OF_RECORD_KEY, END_OF_RECORD_KEY, ANY_EVENT_COLUMN}
+        predicates -= {START_OF_RECORD_KEY, END_OF_RECORD_KEY}
         return predicates
 
     @property
@@ -808,7 +815,9 @@ class TaskExtractorConfig:
             yaml = ruamel.yaml.YAML(typ="safe", pure=True)
             loaded_dict = yaml.load(config_path.read_text())
         else:
-            raise ValueError(f"Only supports reading from '.yaml' files currently. Got {config_path.suffix}")
+            raise ValueError(
+                f"Only supports reading from '.yaml' files currently. Got: '{config_path.suffix}'"
+            )
 
         predicates = loaded_dict.pop("predicates")
         trigger = loaded_dict.pop("trigger")
@@ -818,7 +827,7 @@ class TaskExtractorConfig:
         _ = loaded_dict.pop("description", None)
 
         if loaded_dict:
-            raise ValueError(f"Unrecognized keys in configuration file: {', '.join(loaded_dict.keys())}")
+            raise ValueError(f"Unrecognized keys in configuration file: '{', '.join(loaded_dict.keys())}'")
 
         logger.info("Parsing predicates...")
         predicates = {
@@ -857,7 +866,7 @@ class TaskExtractorConfig:
             yaml = ruamel.yaml.YAML(typ="safe", pure=True)
             config_path.write_text(yaml.dump(dataclasses.asdict(self)))
         else:
-            raise ValueError(f"Only supports writing to '.yaml' files currently. Got {config_path.suffix}")
+            raise ValueError(f"Only supports writing to '.yaml' files currently. Got: '{config_path.suffix}'")
 
     def _initialize_predicates(self):
         """Initialize the predicates tree from the configuration object and check validity.
@@ -925,14 +934,14 @@ class TaskExtractorConfig:
             if window.label:
                 if window.label not in self.predicates:
                     raise ValueError(
-                        f"Label must be one of the defined predicates, got: {window.label} "
+                        f"Label must be one of the defined predicates. Got: {window.label} "
                         f"for window '{name}'"
                     )
                 label_windows.append(name)
             if window.index_timestamp:
                 if window.index_timestamp not in ["start", "end"]:
                     raise ValueError(
-                        f"Index timestamp must be either 'start' or 'end', got: {window.index_timestamp} "
+                        f"Index timestamp must be either 'start' or 'end'. Got: {window.index_timestamp} "
                         f"for window '{name}'"
                     )
                 index_timestamp_windows.append(name)
@@ -950,7 +959,11 @@ class TaskExtractorConfig:
             )
         self.index_timestamp_window = index_timestamp_windows[0] if index_timestamp_windows else None
 
-        if self.trigger.predicate not in self.predicates and self.trigger.predicate != ANY_EVENT_COLUMN:
+        if self.trigger.predicate not in self.predicates and self.trigger.predicate not in [
+            ANY_EVENT_COLUMN,
+            START_OF_RECORD_KEY,
+            END_OF_RECORD_KEY,
+        ]:
             raise KeyError(
                 f"Trigger event predicate '{self.trigger.predicate}' not found in predicates: "
                 f"{', '.join(self.predicates.keys())}"
@@ -984,7 +997,7 @@ class TaskExtractorConfig:
             window_nodes[f"{name}.end"] = end_node
 
         for name, window in self.windows.items():
-            for predicate in window.referenced_predicates:
+            for predicate in window.referenced_predicates - {ANY_EVENT_COLUMN}:
                 if predicate not in self.predicates:
                     raise KeyError(
                         f"Window '{name}' references undefined predicate '{predicate}'.\n"

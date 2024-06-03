@@ -191,9 +191,9 @@ def assert_df_equal(want: pl.DataFrame, got: pl.DataFrame, msg: str = None, **kw
         assert_frame_equal(want, got, **kwargs)
     except AssertionError as e:
         pl.Config.set_tbl_rows(-1)
-        print(f"DFs are not equal: {msg}\nwant:")
+        print(f"DFs are not equal: {msg}\nWant:")
         print(want)
-        print("got:")
+        print("Got:")
         print(got)
         raise AssertionError(f"{msg}\n{e}") from e
 

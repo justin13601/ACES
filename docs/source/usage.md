@@ -1,10 +1,10 @@
 # Usage Guide
 
-## Installation
+## Quick Start
 
-______________________________________________________________________
+### Installation
 
-To use ACES, first determine which data standard you'd like to use. Currently, ACES supports the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. Alternatively, you may choose to transform your data into a predicates dataframe `.csv` format - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
+To use ACES, first determine which data standard you'd like to use. Currently, ACES can be automatically applied to the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it as an event stream - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
 
 **Note:** If you choose to use the ESGPT standard, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
 
@@ -14,19 +14,11 @@ To install ACES:
 pip install es-aces
 ```
 
-Additionally, you may enable shell completion for configuration files. For Bash, please run:
+### Define Task Configuration
 
-```bash
-eval "$(aces-cli -sc install=bash)"
-```
+### Run the CLI
 
-Please visit [Hydra's Documentation](https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/) for more details.
-
-## Querying Tasks
-
-______________________________________________________________________
-
-To extract a cohort for a particular task, you may use `aces-cli` in your terminal:
+You can run `aces-cli` in your terminal:
 
 ```bash
 aces-cli data.path='/path/to/data/file/or/directory' data.standard='<esgpt/meds/direct>' cohort_dir='/directory/to/task/config/' cohort_name='<task_config_name>'
@@ -37,6 +29,18 @@ For help using `aces-cli`:
 ```bash
 aces-cli --help
 ```
+
+______________________________________________________________________
+
+## Detailed Instructions
+
+Additionally, you may enable shell completion for configuration files. For Bash, please run:
+
+```bash
+eval "$(aces-cli -sc install=bash)"
+```
+
+**Note**: you may have to run this command for every terminal - please visit [Hydra's Documentation](https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/) for more details.
 
 Alternatively, you can use the `aces.query.query()` function:
 
@@ -77,3 +81,5 @@ shape: (1, 8)
 │            ┆            ┆       ┆            ┆ 12:0…      ┆ 23:32…     ┆ 23:32:00…  ┆ 23:32:…    │
 └────────────┴────────────┴───────┴────────────┴────────────┴────────────┴────────────┴────────────┘
 ```
+
+______________________________________________________________________

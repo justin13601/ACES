@@ -7,7 +7,12 @@ from loguru import logger
 from omegaconf import DictConfig
 
 from .config import TaskExtractorConfig
-from .types import ANY_EVENT_COLUMN, PRED_CNT_TYPE
+from .types import (
+    ANY_EVENT_COLUMN,
+    END_OF_RECORD_KEY,
+    PRED_CNT_TYPE,
+    START_OF_RECORD_KEY,
+)
 
 
 def direct_load_plain_predicates(
@@ -126,6 +131,7 @@ def direct_load_plain_predicates(
     else:
         raise TypeError(f"Passed predicates have timestamps of invalid type {ts_type}.")
 
+    logger.info("Cleaning up predicates dataframe...")
     return (
         data.select("subject_id", "timestamp", *predicates)
         .group_by(["subject_id", "timestamp"], maintain_order=True)
@@ -186,7 +192,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         logger.info(f"Added predicate column '{name}'.")
 
     # clean up predicates_df
-    logger.info("Cleaning up predicates DataFrame...")
+    logger.info("Cleaning up predicates dataframe...")
     predicate_cols = list(predicates.keys())
     return (
         data.select(["subject_id", "timestamp"] + predicate_cols)
@@ -264,7 +270,7 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     data = events_df.join(dynamic_measurements_df, on="event_id", how="left")
 
     # clean up predicates_df
-    logger.info("Cleaning up predicates DataFrame...")
+    logger.info("Cleaning up predicates dataframe...")
     return data.select(["subject_id", "timestamp"] + predicate_cols)
 
 
@@ -286,18 +292,18 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
     Example:
         >>> import tempfile
         >>> from .config import PlainPredicateConfig, DerivedPredicateConfig, EventConfig, WindowConfig
-        >>> CSV_data = pl.DataFrame({
+        >>> data = pl.DataFrame({
         ...     "subject_id": [1, 1, 2, 2],
         ...     "timestamp": ["01/01/2021 00:00", "01/01/2021 12:00", "01/02/2021 00:00", "01/02/2021 12:00"],
         ...     "adm":       [1, 0, 1, 0],
-        ...     "discharge": [0, 1, 0, 0],
+        ...     "dis":       [0, 1, 0, 0],
         ...     "death":     [0, 0, 0, 1],
         ... })
         >>> predicates = {
         ...     "adm": PlainPredicateConfig("adm"),
-        ...     "discharge": PlainPredicateConfig("discharge"),
+        ...     "dis": PlainPredicateConfig("dis"),
         ...     "death": PlainPredicateConfig("death"),
-        ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
+        ...     "death_or_dis": DerivedPredicateConfig("or(death, dis)"),
         ... }
         >>> trigger = EventConfig("adm")
         >>> windows = {
@@ -313,11 +319,11 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ...         end="start + 24h",
         ...         start_inclusive=False,
         ...         end_inclusive=True,
-        ...         has={"death_or_discharge": "(None, 0)", "adm": "(None, 0)"},
+        ...         has={"death_or_dis": "(None, 0)", "adm": "(None, 0)"},
         ...     ),
         ...     "target": WindowConfig(
         ...         start="gap.end",
-        ...         end="start -> death_or_discharge",
+        ...         end="start -> death_or_dis",
         ...         start_inclusive=False,
         ...         end_inclusive=True,
         ...         has={},
@@ -326,45 +332,45 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
-        ...     CSV_data.write_csv(data_path)
+        ...     data.write_csv(data_path)
         ...     data_config = DictConfig({
         ...         "path": str(data_path), "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"
         ...     })
         ...     get_predicates_df(config, data_config)
         shape: (4, 7)
-        ┌────────────┬─────────────────────┬─────┬───────────┬───────┬────────────────────┬────────────┐
-        │ subject_id ┆ timestamp           ┆ adm ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
-        │ ---        ┆ ---                 ┆ --- ┆ ---       ┆ ---   ┆ ---                ┆ ---        │
-        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64       ┆ i64   ┆ i64                ┆ i64        │
-        ╞════════════╪═════════════════════╪═════╪═══════════╪═══════╪════════════════════╪════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1         ┆ 0     ┆ 1                  ┆ 1          │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
-        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0         ┆ 1     ┆ 1                  ┆ 1          │
-        └────────────┴─────────────────────┴─────┴───────────┴───────┴────────────────────┴────────────┘
+        ┌────────────┬─────────────────────┬─────┬─────┬───────┬──────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ dis ┆ death ┆ death_or_dis ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ --- ┆ --- ┆ ---   ┆ ---          ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64 ┆ i64   ┆ i64          ┆ i64        │
+        ╞════════════╪═════════════════════╪═════╪═════╪═══════╪══════════════╪════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1   ┆ 0     ┆ 1            ┆ 1          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0   ┆ 1     ┆ 1            ┆ 1          │
+        └────────────┴─────────────────────┴─────┴─────┴───────┴──────────────┴────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     (
-        ...         CSV_data
+        ...         data
         ...         .with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
         ...         .write_parquet(data_path)
         ...     )
         ...     data_config = DictConfig({"path": str(data_path), "standard": "direct", "ts_format": None})
         ...     get_predicates_df(config, data_config)
         shape: (4, 7)
-        ┌────────────┬─────────────────────┬─────┬───────────┬───────┬────────────────────┬────────────┐
-        │ subject_id ┆ timestamp           ┆ adm ┆ discharge ┆ death ┆ death_or_discharge ┆ _ANY_EVENT │
-        │ ---        ┆ ---                 ┆ --- ┆ ---       ┆ ---   ┆ ---                ┆ ---        │
-        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64       ┆ i64   ┆ i64                ┆ i64        │
-        ╞════════════╪═════════════════════╪═════╪═══════════╪═══════╪════════════════════╪════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1         ┆ 0     ┆ 1                  ┆ 1          │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0         ┆ 0     ┆ 0                  ┆ 1          │
-        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0         ┆ 1     ┆ 1                  ┆ 1          │
-        └────────────┴─────────────────────┴─────┴───────────┴───────┴────────────────────┴────────────┘
+        ┌────────────┬─────────────────────┬─────┬─────┬───────┬──────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ dis ┆ death ┆ death_or_dis ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ --- ┆ --- ┆ ---   ┆ ---          ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64 ┆ i64   ┆ i64          ┆ i64        │
+        ╞════════════╪═════════════════════╪═════╪═════╪═══════╪══════════════╪════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1   ┆ 0     ┆ 1            ┆ 1          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0   ┆ 1     ┆ 1            ┆ 1          │
+        └────────────┴─────────────────────┴─────┴─────┴───────┴──────────────┴────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
-        ...     CSV_data.write_csv(data_path)
+        ...     data.write_csv(data_path)
         ...     data_config = DictConfig({
         ...         "path": str(data_path), "standard": "buzz", "ts_format": "%m/%d/%Y %H:%M"
         ...     })
@@ -398,10 +404,53 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         logger.info(f"Added predicate column '{name}'.")
         predicate_cols.append(name)
 
-    # add a column of 1s representing any predicate
-    logger.info(f"Generating {ANY_EVENT_COLUMN} predicate column...")
-    data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(PRED_CNT_TYPE))
-    logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
-    predicate_cols.append(ANY_EVENT_COLUMN)
+    data = data.sort(by=["subject_id", "timestamp"])
 
-    return data.sort(by=["subject_id", "timestamp"])
+    # add special predicates:
+    # a column of 1s representing any predicate
+    # a column of 0s with 1 in the first event of each subject_id representing the start of record
+    # a column of 0s with 1 in the last event of each subject_id representing the end of record
+    logger.info("Generating special predicate columns...")
+    special_predicates = []
+    for window in cfg.windows.values():
+        if ANY_EVENT_COLUMN in window.referenced_predicates and ANY_EVENT_COLUMN not in special_predicates:
+            special_predicates.append(ANY_EVENT_COLUMN)
+        if (
+            START_OF_RECORD_KEY in window.constraint_predicates
+            and START_OF_RECORD_KEY not in special_predicates
+        ):
+            special_predicates.append(START_OF_RECORD_KEY)
+        if END_OF_RECORD_KEY in window.constraint_predicates and END_OF_RECORD_KEY not in special_predicates:
+            special_predicates.append(END_OF_RECORD_KEY)
+
+    if (
+        cfg.trigger.predicate in [ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY]
+        and cfg.trigger.predicate not in special_predicates
+    ):
+        special_predicates.append(cfg.trigger.predicate)
+
+    if ANY_EVENT_COLUMN in special_predicates:
+        data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(PRED_CNT_TYPE))
+        logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
+        predicate_cols.append(ANY_EVENT_COLUMN)
+    if START_OF_RECORD_KEY in special_predicates:
+        data = data.with_columns(
+            [
+                (pl.col("timestamp") == pl.col("timestamp").min().over("subject_id"))
+                .cast(PRED_CNT_TYPE)
+                .alias(START_OF_RECORD_KEY)
+            ]
+        )
+        logger.info(f"Added predicate column '{START_OF_RECORD_KEY}'.")
+    if END_OF_RECORD_KEY in special_predicates:
+        data = data.with_columns(
+            [
+                (pl.col("timestamp") == pl.col("timestamp").max().over("subject_id"))
+                .cast(PRED_CNT_TYPE)
+                .alias(END_OF_RECORD_KEY)
+            ]
+        )
+        logger.info(f"Added predicate column '{END_OF_RECORD_KEY}'.")
+    predicate_cols += special_predicates
+
+    return data

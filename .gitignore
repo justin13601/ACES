@@ -165,3 +165,4 @@ passwords.txt
 outputs/
 results/
 sample_configs/.logs/
+.logs/
