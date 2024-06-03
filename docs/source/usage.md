@@ -26,6 +26,12 @@ You can run `aces-cli` in your terminal:
 aces-cli data.path='/path/to/data/file/or/directory' data.standard='<esgpt/meds/direct>' cohort_dir='/directory/to/task/config/' cohort_name='<task_config_name>'
 ```
 
+For help using `aces-cli`:
+
+```bash
+aces-cli --help
+```
+
 ______________________________________________________________________
 
 ## Detailed Instructions
@@ -36,13 +42,7 @@ Additionally, you may enable shell completion for configuration files. For Bash,
 eval "$(aces-cli -sc install=bash)"
 ```
 
-Please visit [Hydra's Documentation](https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/) for more details.
-
-For help using `aces-cli`:
-
-```bash
-aces-cli --help
-```
+**Note**: you may have to run this command for every terminal - please visit [Hydra's Documentation](https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/) for more details.
 
 Alternatively, you can use the `aces.query.query()` function:
 

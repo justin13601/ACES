@@ -284,9 +284,9 @@ Support for static data depends on your data standard and those variables are ex
 
 ## Future Roadmap
 
-### Sequential Decoding Tasks
+### Sequential Decoding & Time-to-Event Tasks
 
-We hope to support tasks whose labels cannot be reliably summarized as a single numerical value (ie., a task where we want to predict a sequence of outputs, such as future treatment sequences).
+We hope to directly support tasks whose labels cannot be reliably summarized as a single numerical value (ie., a sequential decoding task where we want to predict a sequence of outputs, such as future treatment sequences). For tasks that rely on time-to-event as a paradigm, labels can currently be manually extracted via the window `start`/`end` times (ie., subtracting `start` from `end` of your window containing your event of interest, and then bucketing appropriately post-hoc).
 
 ### Case-Control Matching Extraction
 
