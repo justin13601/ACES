@@ -412,11 +412,14 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
     # a column of 0s with 1 in the last event of each subject_id representing the end of record
     logger.info("Generating special predicate columns...")
     for window in cfg.windows.values():
-        if ANY_EVENT_COLUMN in window.referenced_predicates:
+        if ANY_EVENT_COLUMN in window.referenced_predicates or ANY_EVENT_COLUMN == cfg.trigger.predicate:
             data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(PRED_CNT_TYPE))
             logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
             predicate_cols.append(ANY_EVENT_COLUMN)
-        if START_OF_RECORD_KEY in window.referenced_predicates:
+        if (
+            START_OF_RECORD_KEY in window.referenced_predicates
+            or START_OF_RECORD_KEY == cfg.trigger.predicate
+        ):
             data = data.with_columns(
                 [
                     (pl.col("timestamp") == pl.col("timestamp").min().over("subject_id"))
@@ -426,7 +429,7 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
             )
             logger.info(f"Added predicate column '{START_OF_RECORD_KEY}'.")
             predicate_cols.append(START_OF_RECORD_KEY)
-        if END_OF_RECORD_KEY in window.referenced_predicates:
+        if END_OF_RECORD_KEY in window.referenced_predicates or END_OF_RECORD_KEY == cfg.trigger.predicate:
             data = data.with_columns(
                 [
                     (pl.col("timestamp") == pl.col("timestamp").max().over("subject_id"))

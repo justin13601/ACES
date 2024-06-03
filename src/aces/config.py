@@ -948,7 +948,11 @@ class TaskExtractorConfig:
             )
         self.index_timestamp_window = index_timestamp_windows[0] if index_timestamp_windows else None
 
-        if self.trigger.predicate not in self.predicates and self.trigger.predicate != ANY_EVENT_COLUMN:
+        if self.trigger.predicate not in self.predicates and self.trigger.predicate not in [
+            ANY_EVENT_COLUMN,
+            START_OF_RECORD_KEY,
+            END_OF_RECORD_KEY,
+        ]:
             raise KeyError(
                 f"Trigger event predicate '{self.trigger.predicate}' not found in predicates: "
                 f"{', '.join(self.predicates.keys())}"
