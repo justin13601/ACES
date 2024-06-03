@@ -119,8 +119,8 @@ Loading dynamic_measurements from MIMIC_ESD_new_schema_08-31-23-1/dynamic_measur
 2024-06-03 07:34:30.988 | INFO     | aces.predicates:get_predicates_df:401 - Loaded plain predicates. Generating derived predicate columns...
 2024-06-03 07:34:31.014 | INFO     | aces.predicates:get_predicates_df:404 - Added predicate column 'discharge_or_death'.
 2024-06-03 07:34:31.642 | INFO     | aces.predicates:get_predicates_df:413 - Generating special predicate columns...
-2024-06-03 07:34:31.711 | INFO     | aces.predicates:get_predicates_df:417 - Added predicate column '_ANY_EVENT'.
-2024-06-03 07:34:32.067 | INFO     | aces.predicates:get_predicates_df:427 - Added predicate column '_RECORD_START'.
+2024-06-03 07:34:31.711 | INFO     | aces.predicates:get_predicates_df:434 - Added predicate column '_ANY_EVENT'.
+2024-06-03 07:34:32.067 | INFO     | aces.predicates:get_predicates_df:444 - Added predicate column '_RECORD_START'.
 2024-06-03 07:34:32.068 | INFO     | aces.query:query:32 - Checking if '(subject_id, timestamp)' columns are unique...
 2024-06-03 07:34:32.458 | INFO     | aces.utils:log_tree:59 -
 trigger
