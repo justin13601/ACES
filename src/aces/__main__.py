@@ -26,7 +26,7 @@ def main(cfg: DictConfig):
     cohort_dir.mkdir(exist_ok=True, parents=True)
 
     # load configuration
-    logger.info(f"Loading config from {cfg.config_path}")
+    logger.info(f"Loading config from '{cfg.config_path}'")
     task_cfg = config.TaskExtractorConfig.load(Path(cfg.config_path))
 
     logger.info(f"Attempting to get predicates dataframe given:\n{OmegaConf.to_yaml(cfg.data)}")
@@ -37,7 +37,7 @@ def main(cfg: DictConfig):
 
     # save results to parquet
     result.write_parquet(cfg.output_filepath, use_pyarrow=True)
-    logger.info(f"Completed in {datetime.now() - st}. Results saved to {cfg.output_filepath}.")
+    logger.info(f"Completed in {datetime.now() - st}. Results saved to '{cfg.output_filepath}'.")
 
 
 if __name__ == "__main__":

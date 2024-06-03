@@ -1,0 +1,8 @@
+data:
+  path: ../ACES/MIMIC_ESD_new_schema_08-31-23-1/
+  standard: esgpt
+  ts_format: "%m/%d/%Y %H:%M"
+cohort_dir: ./
+cohort_name: inhospital-mortality
+config_path: ${cohort_dir}/${cohort_name}.yaml
+output_filepath: ${cohort_dir}/${cohort_name}.parquet

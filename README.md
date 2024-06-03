@@ -57,24 +57,6 @@ pip install es-aces
 
 ## Instructions for Use
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant ACES
-    participant Config
-    participant Predicates
-    participant Query
-
-    User->>ACES: Execute command with configuration parameters
-    ACES->>Config: Load configuration
-    Config-->>ACES: Task Configuration
-    ACES->>Predicates: Get predicates dataframe
-    Predicates-->>ACES: Predicate DataFrame
-    ACES->>Query: Execute query with predicates and task configuration
-    Query-->>ACES: Filtered Results
-    ACES-->>User: Display & Save Results
-```
-
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/configuration.html) for details regarding the configuration language.
 2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample_data.csv` by defining predicate columns (more information below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
 3. **Execute Query**: A query may be executed using either the command-line interface or by importing the package in Python:
@@ -118,7 +100,7 @@ df_result = query.query(cfg=cfg, predicates_df=predicates_df)
 
 ```log
 aces-cli data.path='MIMIC_ESD_new_schema_08-31-23-1/' data.standard='esgpt' cohort_dir='sample_configs/' cohort_name='inhospital-mortality'
-2024-05-31 18:22:09.313 | INFO     | aces.__main__:main:27 - Loading config from sample_configs//inhospital-mortality.yaml
+2024-05-31 18:22:09.313 | INFO     | aces.__main__:main:27 - Loading config from 'sample_configs//inhospital-mortality.yaml'
 2024-05-31 18:22:09.319 | INFO     | aces.config:load:812 - Parsing predicates...
 2024-05-31 18:22:09.319 | INFO     | aces.config:load:818 - Parsing trigger event...
 2024-05-31 18:22:09.319 | INFO     | aces.config:load:821 - Parsing windows...
@@ -133,12 +115,12 @@ Loading dynamic_measurements from MIMIC_ESD_new_schema_08-31-23-1/dynamic_measur
 2024-05-31 18:22:13.268 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:246 - Added predicate column 'admission'.
 2024-05-31 18:22:13.432 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:246 - Added predicate column 'discharge'.
 2024-05-31 18:22:13.600 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:246 - Added predicate column 'death'.
-2024-05-31 18:22:18.654 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:267 - Cleaning up predicates DataFrame...
+2024-05-31 18:22:18.654 | INFO     | aces.predicates:generate_plain_predicates_from_esgpt:267 - Cleaning up predicates dataframe...
 2024-05-31 18:22:18.655 | INFO     | aces.predicates:get_predicates_df:395 - Loaded plain predicates. Generating derived predicate columns...
 2024-05-31 18:22:18.665 | INFO     | aces.predicates:get_predicates_df:398 - Added predicate column 'discharge_or_death'.
-2024-05-31 18:22:18.666 | INFO     | aces.predicates:get_predicates_df:402 - Generating _ANY_EVENT predicate column...
+2024-05-31 18:22:18.666 | INFO     | aces.predicates:get_predicates_df:402 - Generating '_ANY_EVENT' predicate column...
 2024-05-31 18:22:18.682 | INFO     | aces.predicates:get_predicates_df:404 - Added predicate column '_ANY_EVENT'.
-2024-05-31 18:22:19.300 | INFO     | aces.query:query:29 - Checking if (subject_id, timestamp) columns are unique...
+2024-05-31 18:22:19.300 | INFO     | aces.query:query:29 - Checking if '(subject_id, timestamp)' columns are unique...
 2024-05-31 18:22:19.675 | INFO     | aces.utils:log_tree:57 -
 trigger
 ┗━━ input.end
@@ -147,17 +129,17 @@ trigger
         ┗━━ target.end
 2024-05-31 18:22:19.675 | INFO     | aces.query:query:40 - Beginning query...
 2024-05-31 18:22:19.675 | INFO     | aces.query:query:41 - Identifying possible trigger nodes based on the specified trigger event...
-2024-05-31 18:22:19.808 | INFO     | aces.constraints:check_constraints:93 - Excluding 14,623,763 rows as they failed to satisfy 1 <= admission <= None.
+2024-05-31 18:22:19.808 | INFO     | aces.constraints:check_constraints:93 - Excluding 14,623,763 rows as they failed to satisfy '1 <= admission <= None'.
 2024-05-31 18:22:19.905 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'input.end'...
 2024-05-31 18:22:24.748 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'input.start'...
-2024-05-31 18:22:35.102 | INFO     | aces.constraints:check_constraints:93 - Excluding 12,212 rows as they failed to satisfy 5 <= _ANY_EVENT <= None.
+2024-05-31 18:22:35.102 | INFO     | aces.constraints:check_constraints:93 - Excluding 12,212 rows as they failed to satisfy '5 <= _ANY_EVENT <= None'.
 2024-05-31 18:22:35.116 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'gap.end'...
-2024-05-31 18:22:38.992 | INFO     | aces.constraints:check_constraints:93 - Excluding 353 rows as they failed to satisfy None <= admission <= 0.
-2024-05-31 18:22:38.993 | INFO     | aces.constraints:check_constraints:93 - Excluding 9,596 rows as they failed to satisfy None <= discharge <= 0.
-2024-05-31 18:22:38.993 | INFO     | aces.constraints:check_constraints:93 - Excluding 88 rows as they failed to satisfy None <= death <= 0.
+2024-05-31 18:22:38.992 | INFO     | aces.constraints:check_constraints:93 - Excluding 353 rows as they failed to satisfy 'None <= admission <= 0'.
+2024-05-31 18:22:38.993 | INFO     | aces.constraints:check_constraints:93 - Excluding 9,596 rows as they failed to satisfy 'None <= discharge <= 0'.
+2024-05-31 18:22:38.993 | INFO     | aces.constraints:check_constraints:93 - Excluding 88 rows as they failed to satisfy 'None <= death <= 0'.
 2024-05-31 18:22:38.995 | INFO     | aces.extract_subtree:extract_subtree:249 - Summarizing subtree rooted at 'target.end'...
 2024-05-31 18:22:49.754 | INFO     | aces.query:query:57 - Done. 56,893 valid rows returned.
-2024-05-31 18:22:49.864 | INFO     | aces.__main__:main:38 - Completed in 0:00:40.550664. Results saved to sample_configs//inhospital-mortality.parquet.
+2024-05-31 18:22:49.864 | INFO     | aces.__main__:main:38 - Completed in 0:00:40.550664. Results saved to 'sample_configs//inhospital-mortality.parquet'.
 ```
 
 ## Task Configuration File
@@ -322,6 +304,10 @@ We aim to support nested configuration files for cohort querying, whereby the re
 ### Complex Predicates
 
 We hope to support more complex predicates that are not expressed as codes in datasets (ie., those that require aggregations of medians/running averages over time to measure disease progression), as well as derived predicates with `not()` or nested boolean logic. In both cases, predicates can currently be specified manually by creating the predicates dataframe directly.
+
+### Natural Language Interface
+
+Given the standardized configuration language, large language models may be leveraged to provide a natural language interface for the creation of task configurations. Initial GPT-4 testing using in-context learning with the configuration language documentation yielded promising results; however, more detailed and quantitative evaluation is needed to determine the feasibility and accuracy of this interface.
 
 ## Acknowledgements
 

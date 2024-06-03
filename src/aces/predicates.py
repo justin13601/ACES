@@ -126,6 +126,7 @@ def direct_load_plain_predicates(
     else:
         raise TypeError(f"Passed predicates have timestamps of invalid type {ts_type}.")
 
+    logger.info("Cleaning up predicates dataframe...")
     return (
         data.select("subject_id", "timestamp", *predicates)
         .group_by(["subject_id", "timestamp"], maintain_order=True)
@@ -186,7 +187,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         logger.info(f"Added predicate column '{name}'.")
 
     # clean up predicates_df
-    logger.info("Cleaning up predicates DataFrame...")
+    logger.info("Cleaning up predicates dataframe...")
     predicate_cols = list(predicates.keys())
     return (
         data.select(["subject_id", "timestamp"] + predicate_cols)
@@ -264,7 +265,7 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     data = events_df.join(dynamic_measurements_df, on="event_id", how="left")
 
     # clean up predicates_df
-    logger.info("Cleaning up predicates DataFrame...")
+    logger.info("Cleaning up predicates dataframe...")
     return data.select(["subject_id", "timestamp"] + predicate_cols)
 
 
@@ -399,7 +400,7 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         predicate_cols.append(name)
 
     # add a column of 1s representing any predicate
-    logger.info(f"Generating {ANY_EVENT_COLUMN} predicate column...")
+    logger.info(f"Generating '{ANY_EVENT_COLUMN}' predicate column...")
     data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(PRED_CNT_TYPE))
     logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
     predicate_cols.append(ANY_EVENT_COLUMN)

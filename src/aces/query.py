@@ -29,7 +29,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     if not isinstance(predicates_df, pl.DataFrame):
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got {type(predicates_df)}.")
 
-    logger.info("Checking if (subject_id, timestamp) columns are unique...")
+    logger.info("Checking if '(subject_id, timestamp)' columns are unique...")
     try:
         assert (
             predicates_df.n_unique(subset=["subject_id", "timestamp"]) == predicates_df.shape[0]
@@ -63,6 +63,10 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     # add label column if specified
     if cfg.label_window:
+        logger.info(
+            f"Extracting label '{cfg.windows[cfg.label_window].label}' from window "
+            f"'{cfg.label_window}'..."
+        )
         label_col = "end" if cfg.windows[cfg.label_window].root_node == "start" else "start"
         result = result.with_columns(
             pl.col(f"{cfg.label_window}.{label_col}_summary")
@@ -72,12 +76,16 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     # add index_timestamp column if specified
     if cfg.index_timestamp_window:
+        logger.info(
+            f"Setting index timestamp as '{cfg.windows[cfg.index_timestamp_window].index_timestamp}' "
+            f"of window '{cfg.index_timestamp_window}'..."
+        )
         index_timestamp_col = (
             "end" if cfg.windows[cfg.index_timestamp_window].root_node == "start" else "start"
         )
         result = result.with_columns(
             pl.col(f"{cfg.index_timestamp_window}.{index_timestamp_col}_summary")
-            .struct.field("timestamp_at_end")
+            .struct.field(f"timestamp_at_{cfg.windows[cfg.index_timestamp_window].index_timestamp}")
             .alias("index_timestamp")
         )
 
