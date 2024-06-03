@@ -27,7 +27,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         configuration, as well as predicate counts for each window, are provided.
     """
     if not isinstance(predicates_df, pl.DataFrame):
-        raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got {type(predicates_df)}.")
+        raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got: {type(predicates_df)}.")
 
     logger.info("Checking if '(subject_id, timestamp)' columns are unique...")
     try:

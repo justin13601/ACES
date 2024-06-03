@@ -24,6 +24,7 @@ ANY_EVENT_COLUMN = "_ANY_EVENT"
 
 # The key used for the event index
 EVENT_INDEX_COLUMN = "_EVENT_INDEX"
+LAST_EVENT_INDEX_COLUMN = "_LAST_EVENT_INDEX"
 
 
 @dataclasses.dataclass(order=True)
@@ -192,7 +193,7 @@ class ToEventWindowBounds:
         ... )
         Traceback (most recent call last):
             ...
-        ValueError: end_event must be a non-empty string
+        ValueError: The 'end_event' must be a non-empty string.
         >>> bounds = ToEventWindowBounds(
         ...     left_inclusive=True,
         ...     end_event="_RECORD_START",
@@ -213,7 +214,7 @@ class ToEventWindowBounds:
 
     def __post_init__(self):
         if self.end_event == "":
-            raise ValueError("end_event must be a non-empty string")
+            raise ValueError("The 'end_event' must be a non-empty string.")
 
         if self.end_event == START_OF_RECORD_KEY:
             raise ValueError(

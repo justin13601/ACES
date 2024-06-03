@@ -129,12 +129,12 @@ EXPECTED_OUTPUT = {
                 "window_name": "input.end",
                 "timestamp_at_start": "01/27/1991 23:32",
                 "timestamp_at_end": "01/28/1991 23:32",
+                "_LAST_EVENT_INDEX": 15,
                 "admission": 0,
                 "discharge": 0,
                 "death": 0,
                 "discharge_or_death": 0,
                 "_ANY_EVENT": 4,
-                "_RECORD_START": 0,
             }
         ],
         "input.start_summary": [
@@ -142,12 +142,12 @@ EXPECTED_OUTPUT = {
                 "window_name": "input.start",
                 "timestamp_at_start": "12/01/1989 12:03",
                 "timestamp_at_end": "01/28/1991 23:32",
+                "_LAST_EVENT_INDEX": 15,
                 "admission": 2,
                 "discharge": 1,
                 "death": 0,
                 "discharge_or_death": 1,
                 "_ANY_EVENT": 16,
-                "_RECORD_START": 1,
             }
         ],
         "gap.end_summary": [
@@ -155,12 +155,12 @@ EXPECTED_OUTPUT = {
                 "window_name": "gap.end",
                 "timestamp_at_start": "01/28/1991 23:32",
                 "timestamp_at_end": "01/29/1991 23:32",
+                "_LAST_EVENT_INDEX": 16,
                 "admission": 0,
                 "discharge": 0,
                 "death": 0,
                 "discharge_or_death": 0,
                 "_ANY_EVENT": 1,
-                "_RECORD_START": 0,
             }
         ],
         "target.end_summary": [
@@ -168,12 +168,12 @@ EXPECTED_OUTPUT = {
                 "window_name": "target.end",
                 "timestamp_at_start": "01/29/1991 23:32",
                 "timestamp_at_end": "01/31/1991 02:15",
+                "_LAST_EVENT_INDEX": 23,
                 "admission": 0,
                 "discharge": 1,
                 "death": 0,
                 "discharge_or_death": 1,
                 "_ANY_EVENT": 7,
-                "_RECORD_START": 0,
             }
         ],
     }
@@ -195,9 +195,9 @@ def assert_df_equal(want: pl.DataFrame, got: pl.DataFrame, msg: str = None, **kw
         assert_frame_equal(want, got, **kwargs)
     except AssertionError as e:
         pl.Config.set_tbl_rows(-1)
-        print(f"DFs are not equal: {msg}\nwant:")
+        print(f"DFs are not equal: {msg}\nWant:")
         print(want)
-        print("got:")
+        print("Got:")
         print(got)
         raise AssertionError(f"{msg}\n{e}") from e
 

@@ -8,6 +8,7 @@ from loguru import logger
 
 from .aggregate import aggregate_event_bound_window, aggregate_temporal_window
 from .constraints import check_constraints
+from .types import EVENT_INDEX_COLUMN, LAST_EVENT_INDEX_COLUMN
 
 
 def extract_subtree(
@@ -133,6 +134,7 @@ def extract_subtree(
         ...         datetime(year=1999, month=12, day=6,  hour=15, minute=17), # Admission
         ...         datetime(year=1999, month=12, day=6,  hour=16, minute=22), # Discharge
         ...     ],
+        ...     "_EVENT_INDEX": [0, 1, 2, 3, 4,   0, 1, 2, 3, 4,   0, 1, 2],
         ...     "is_admission": [0, 1, 0, 0, 1,   0, 1, 0, 1, 0,   0, 1, 0],
         ...     "is_discharge": [0, 0, 0, 1, 0,   0, 0, 1, 0, 1,   0, 0, 1],
         ...     "is_death":     [0, 0, 0, 0, 0,   0, 0, 0, 0, 1,   0, 0, 0],
@@ -142,20 +144,20 @@ def extract_subtree(
         >>> subtreee_anchor_realizations = (
         ...     predicates_df.filter(pl.col("is_admission") > 0)
         ...     .rename({"timestamp": "subtree_anchor_timestamp"})
-        ... ).select("subject_id", "subtree_anchor_timestamp")
+        ... ).select("subject_id", "subtree_anchor_timestamp", "_EVENT_INDEX")
         >>> print(subtreee_anchor_realizations)
-        shape: (5, 2)
-        ┌────────────┬──────────────────────────┐
-        │ subject_id ┆ subtree_anchor_timestamp │
-        │ ---        ┆ ---                      │
-        │ i64        ┆ datetime[μs]             │
-        ╞════════════╪══════════════════════════╡
-        │ 1          ┆ 1989-12-03 13:14:00      │
-        │ 1          ┆ 1989-12-23 03:12:00      │
-        │ 2          ┆ 1983-12-02 12:03:00      │
-        │ 2          ┆ 1989-12-06 15:17:00      │
-        │ 3          ┆ 1999-12-06 15:17:00      │
-        └────────────┴──────────────────────────┘
+        shape: (5, 3)
+        ┌────────────┬──────────────────────────┬──────────────┐
+        │ subject_id ┆ subtree_anchor_timestamp ┆ _EVENT_INDEX │
+        │ ---        ┆ ---                      ┆ ---          │
+        │ i64        ┆ datetime[μs]             ┆ i64          │
+        ╞════════════╪══════════════════════════╪══════════════╡
+        │ 1          ┆ 1989-12-03 13:14:00      ┆ 1            │
+        │ 1          ┆ 1989-12-23 03:12:00      ┆ 4            │
+        │ 2          ┆ 1983-12-02 12:03:00      ┆ 1            │
+        │ 2          ┆ 1989-12-06 15:17:00      ┆ 3            │
+        │ 3          ┆ 1999-12-06 15:17:00      ┆ 1            │
+        └────────────┴──────────────────────────┴──────────────┘
         >>> out = extract_subtree(root, subtreee_anchor_realizations, predicates_df, timedelta(0))
         >>> out.select(
         ...     "subject_id",
@@ -243,7 +245,9 @@ def extract_subtree(
         └─────────────────────┴─────────────────────┴──────────────┴──────────────┴──────────┴─────────────┘
     """
     recursive_results = []
-    predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
+    predicate_cols = [
+        c for c in predicates_df.columns if c not in {"subject_id", "timestamp", EVENT_INDEX_COLUMN}
+    ]
 
     if not subtree.children:
         return subtree_anchor_realizations
@@ -282,7 +286,7 @@ def extract_subtree(
                     .drop("timestamp")
                 )
             case _:
-                raise ValueError(f"Invalid endpoint expression: {endpoint_expr}")
+                raise ValueError(f"Invalid endpoint expression: '{endpoint_expr}'")
 
         # Step 2: Filter to valid subtree anchors
         window_summary_df = window_summary_df.join(
@@ -294,7 +298,9 @@ def extract_subtree(
 
         # Step 4: Produce child anchor realizations
         child_anchor_realizations = window_summary_df.select(
-            "subject_id", pl.col("child_anchor_timestamp").alias("subtree_anchor_timestamp")
+            "subject_id",
+            pl.col("child_anchor_timestamp").alias("subtree_anchor_timestamp"),
+            EVENT_INDEX_COLUMN,
         )
 
         # Step 5: Recurse
@@ -325,6 +331,7 @@ def extract_subtree(
                 pl.lit(child.name).alias("window_name"),
                 "timestamp_at_start",
                 "timestamp_at_end",
+                pl.col(EVENT_INDEX_COLUMN).alias(LAST_EVENT_INDEX_COLUMN),
                 *predicate_cols,
             ).alias(f"{child.name}_summary"),
         )

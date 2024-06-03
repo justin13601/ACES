@@ -44,11 +44,11 @@ def check_constraints(
         >>> check_constraints({"is_A": (None, None), "is_B": (2, 6), "is_C": (1, 1)}, df)
         Traceback (most recent call last):
             ...
-        ValueError: Invalid constraint for is_A: None - None
+        ValueError: Invalid constraint for 'is_A': None - None
         >>> check_constraints({"is_A": (2, 1), "is_B": (2, 6), "is_C": (1, 1)}, df)
         Traceback (most recent call last):
             ...
-        ValueError: Invalid constraint for is_A: 2 - 1
+        ValueError: Invalid constraint for 'is_A': 2 - 1
         >>> check_constraints({"is_A": (3, 4), "is_B": (2, 6), "is_C": (1, 1)}, df)
         shape: (2, 5)
         ┌────────────┬─────────────────────┬──────┬──────┬──────┐
@@ -77,9 +77,9 @@ def check_constraints(
 
     for col, (valid_min_inc, valid_max_inc) in window_constraints.items():
         if valid_min_inc is None and valid_max_inc is None:
-            raise ValueError(f"Invalid constraint for {col}: {valid_min_inc} - {valid_max_inc}")
+            raise ValueError(f"Invalid constraint for '{col}': {valid_min_inc} - {valid_max_inc}")
         elif valid_min_inc is not None and valid_max_inc is not None and valid_max_inc < valid_min_inc:
-            raise ValueError(f"Invalid constraint for {col}: {valid_min_inc} - {valid_max_inc}")
+            raise ValueError(f"Invalid constraint for '{col}': {valid_min_inc} - {valid_max_inc}")
 
         if col == "*":
             col = ANY_EVENT_COLUMN
