@@ -1,0 +1,9 @@
+defaults:
+  - defaults
+  - _self_
+
+# Path to the data file or directory
+path: ???
+
+# Where the results are stored
+_prefix: ""
