@@ -18,7 +18,9 @@ pip install es-aces
 
 **Example: `inhospital-mortality.yaml`**
 
-This task configuration defines a cohort for the binary prediction of in-hospital mortality 48 hours after admission. Patients with 5 or more records between the start of their record and 24 hours after the admission will be included. The cohort includes both those that have been discharged (label=`0`)  and those that have died (label=`1`).
+Please see the [Task Configuration File Overview](https://eventstreamaces.readthedocs.io/en/latest/overview.html#task-configuration-file) for details on how to create this configuration for your own task!
+
+This particular task configuration defines a cohort for the binary prediction of in-hospital mortality 48 hours after admission. Patients with 5 or more records between the start of their record and 24 hours after the admission will be included. The cohort includes both those that have been discharged (label=`0`)  and those that have died (label=`1`).
 
 ```yaml
 predicates:
@@ -98,13 +100,13 @@ aces-cli cohort_name="inhospital-mortality" cohort_dir="sample_configs/" data.st
 **To query from ESGPT**:
 
 ```bash
-aces-cli cohort_name='inhospital-mortality' cohort_dir='sample_configs/' data.standard=esgpt data.path='sample_data/esgpt_sample/'
+aces-cli cohort_name="inhospital-mortality" cohort_dir="sample_configs/" data.standard=esgpt data.path="sample_data/esgpt_sample/"
 ```
 
 **To query from a direct predicates dataframe (`.csv` | `.parquet`)**:
 
 ```bash
-aces-cli cohort_name='inhospital-mortality' cohort_dir='sample_configs/' data.standard=direct data.path='sample_data/sample.csv'
+aces-cli cohort_name="inhospital-mortality" cohort_dir="sample_configs/" data.standard=direct data.path="sample_data/sample.csv"
 ```
 
 **For help using `aces-cli`:**
@@ -115,7 +117,7 @@ aces-cli --help
 
 ### Results
 
-By default, results from the above examples would be saved to `sample_configs/inhospital-mortality/shards/0.parquet` for MEDS with multiple shards, and `sample_configs/inhospital-mortality.parquet` for all other commands. However, these can be overridden using `output_filepath='/path/to/output.parquet'`.
+By default, results from the above examples would be saved to `sample_configs/inhospital-mortality/shards/0.parquet` for MEDS with multiple shards, and `sample_configs/inhospital-mortality.parquet` otherwise. However, these can be overridden using `output_filepath='/path/to/output.parquet'`.
 
 ```plaintext
 shape: (1, 8)
@@ -141,6 +143,8 @@ ______________________________________________________________________
 
 #### Configuration Fields
 
+Hydra configuration files are leveraged for cohort extraction runs. All fields can be overridden by specifying their values in the command-line.
+
 #### Data:
 
 To set a data standard:
@@ -159,7 +163,7 @@ To query from an ESGPT dataset:
 
 To query from a direct predicates dataframe:
 `data.path` Path to the `.csv` or `.parquet` file containing the predicates dataframe
-`ts_format`: Timestamp format for predicates, defaults to "%m/%d/%Y %H:%M"
+`data.ts_format`: Timestamp format for predicates. Defaults to "%m/%d/%Y %H:%M"
 
 #### Task:
 
@@ -168,11 +172,9 @@ To query from a direct predicates dataframe:
 
 The above two fields are used for automatically loading task configurations, saving results, and logging:
 
-`config_path`: Path to the task configuration file, defaults to `${cohort_dir}/${cohort_name}.yaml`
+`config_path`: Path to the task configuration file. Defaults to `${cohort_dir}/${cohort_name}.yaml`
 
-output_filepath: Path to store the outputs. Defaults to `${data._prefix}` addition allows us to add shard specific prefixes in a
-
-# sharded data mode.${cohort_dir}/$\{cohort_name}\${data.\_prefix}.parquet
+`output_filepath`: Path to store the outputs. Defaults to `${cohort_dir}/${cohort_name}/${data.shard}.parquet` for MEDS with multiple shards, and `${cohort_dir}/${cohort_name}.parquet` otherwise.
 
 #### Tab Completion
 
@@ -188,11 +190,35 @@ eval "$(aces-cli -sc install=bash)"
 
 #### Single Shard
 
+Shards are stored as `.parquet` files in MEDS. As such, the data can be loading by providing a path pointing to the `.parquet` file directly.
+
+```bash
+aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data.path="baz.parquet"
+```
+
 #### Multiple Shards
+
+A MEDS dataset can have multiple shards, each stored as a `.parquet` file containing subsets of the full dataset. We can make use of Hydra's launchers and multi-run (`-m`) capabilities to start an extraction job for each shard (`data=sharded`), either in series or in parallel (which can be useful with Slurm). To load data with multiple shards, a data root needs to be provided, along with an expression containing a comma-delimited list of files for each shard. We provide a function `expand_shards` to do this, which accepts a sequence representing `<shards_location>/<number_of_shards>`.
+
+```bash
+aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data=sharded data.root="baz/" "data.shard=$(expand_shards qux/#)" -m
+```
 
 ### ESGPT
 
+A ESGPT dataset will be encapsulated in a directory with two key files, `events_df.parquet` and `dynamic_measurements_df.parquet`. To load data formatting using the ESGPT standard, a directory of a valid ESGPT dataset containing these two tables is needed.
+
+```bash
+aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=esgpt data.path="baz/"
+```
+
 ### Direct
+
+A direct predicates dataset could also be used instead of MEDS or ESGPT to support ***any*** dataset schema. You will need to handle the transformation of your dataset into a predicates dataframe (see [Predicates Dataframe](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)), and save it either to a `.csv` or `.parquet` file. It can then be loaded by passing this file into ACES.
+
+```bash
+aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=direct data.path="baz.csv | baz.parquet"
+```
 
 ### Python
 
@@ -202,7 +228,7 @@ You can also use the `aces.query.query()` function to extract a cohort in Python
 .. autofunction:: aces.query.query
 ```
 
-The `cfg` parameter must be of type `TaskExtractorConfig`, and the `predicates_df` parameter must be of type `polars.DataFrame`.
+The `cfg` parameter must be of type `config.TaskExtractorConfig`, and the `predicates_df` parameter must be of type `polars.DataFrame`.
 
 Details about the configuration language used to define the `cfg` parameter can be found in {doc}`/configuration`.
 
@@ -212,9 +238,9 @@ For example, to query an in-hospital mortality task on the sample data (both the
 >>> from aces import query, predicates, config
 >>> from omegaconf import DictConfig
 
->>> cfg = config.TaskExtractorConfig.load(config_path="../../sample_configs/inhospital-mortality.yaml")
+>>> cfg = config.TaskExtractorConfig.load(config_path="sample_configs/inhospital-mortality.yaml")
 
->>> data_config = DictConfig({"path": "../../sample_data.csv", "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"})
+>>> data_config = DictConfig({"path": "sample_data.csv", "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"})
 >>> predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)
 
 >>> query.query(cfg=cfg, predicates_df=predicates_df)
