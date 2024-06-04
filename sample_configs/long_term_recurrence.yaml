@@ -1,0 +1,53 @@
+# Task: Long-term (3 Years) MI Recurrence Prediction
+predicates:
+  admission:
+    code: event_type//ADMISSION
+  discharge:
+    code: event_type//DISCHARGE
+  diagnosis_ICD9CM_41071:
+    code: diagnosis//ICD9CM_41071
+  diagnosis_ICD10CM_I214:
+    code: diagnosis//ICD10CM_I214
+  # diagnosis_ICD10CM_I21A1:
+  #   code: diagnosis//ICD10CM_I21A1
+  # diagnosis_ICD9CM_41041:
+  #   code: diagnosis//ICD9CM_41041
+  # diagnosis_ICD9CM_41011:
+  #   code: diagnosis//ICD9CM_41011
+  # diagnosis_ICD9CM_41091:
+  #   code: diagnosis//ICD9CM_41091
+  # diagnosis_ICD10CM_I2119:
+  #   code: diagnosis//ICD10CM_I2119
+  # diagnosis_ICD9CM_41072:
+  #   code: diagnosis//ICD9CM_41072
+  # diagnosis_ICD10CM_I2109:
+  #   code: diagnosis//ICD10CM_I2109
+  # diagnosis_ICD10CM_I213:
+  #   code: diagnosis//ICD10CM_I213
+  myocardial_infarction:
+    expr: or(diagnosis_ICD9CM_41071, diagnosis_ICD10CM_I214)
+  # myocardial_infarction:
+  #   expr: or(diagnosis_ICD9CM_41071, diagnosis_ICD10CM_I214, diagnosis_ICD10CM_I21A1, diagnosis_ICD9CM_41041, diagnosis_ICD9CM_41011, diagnosis_ICD9CM_41091, diagnosis_ICD10CM_I2119, diagnosis_ICD9CM_41072, diagnosis_ICD10CM_I2109, diagnosis_ICD10CM_I213)
+
+trigger: discharge
+
+windows:
+  input:
+    start: end <- admission
+    end: trigger
+    start_inclusive: False
+    end_inclusive: True
+    index_timestamp: end
+  gap:
+    start: trigger
+    end: start + 365 days
+    start_inclusive: False
+    end_inclusive: True
+    has:
+      myocardial_infarction: (None, 0)
+  target:
+    start: gap.end
+    end: start + 1095 days
+    start_inclusive: False
+    end_inclusive: True
+    label: myocardial_infarction

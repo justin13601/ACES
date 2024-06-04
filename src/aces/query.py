@@ -61,6 +61,12 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     result = result.rename({"subtree_anchor_timestamp": "trigger"})
 
+    to_return_cols = [
+        "subject_id",
+        "trigger",
+        *[f"{node.node_name}_summary" for node in preorder_iter(cfg.window_tree)][1:],
+    ]
+
     # add label column if specified
     if cfg.label_window:
         logger.info(
@@ -73,6 +79,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
             .struct.field(cfg.windows[cfg.label_window].label)
             .alias("label")
         )
+        to_return_cols.insert(1, "label")
 
     # add index_timestamp column if specified
     if cfg.index_timestamp_window:
@@ -88,11 +95,6 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
             .struct.field(f"timestamp_at_{cfg.windows[cfg.index_timestamp_window].index_timestamp}")
             .alias("index_timestamp")
         )
+        to_return_cols.insert(1, "index_timestamp")
 
-    return result.select(
-        "subject_id",
-        "index_timestamp",
-        "label",
-        cfg.window_tree.name,
-        *[col for col in [f"{node.node_name}_summary" for node in preorder_iter(cfg.window_tree)][1:]],
-    )
+    return result.select(to_return_cols)

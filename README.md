@@ -16,7 +16,7 @@ Automatic Cohort Extraction System (ACES) is a library that streamlines the extr
 
 There are diverse applications in healthcare and beyond. For instance, researchers can effortlessly define subsets of EHR datasets for training of foundation models. Retrospective analyses can also become more accessible to clinicians as it enables the extraction of tailored cohorts for studying specific medical conditions or population demographics.
 
-Currently, two data standards are supported: the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your in one of these two formats by following instructions in their respective repositories. Alternatively, you may also format your data as a `.csv` in the same format as shown in `sample_data/sample_data.csv`. More information about this is available below.
+Currently, two data standards are directly supported: the [Medical Event Data Standard (MEDS)](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your in one of these two formats by following instructions in their respective repositories. ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it as an event stream. More information about this is available below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
 
 This README provides an overview of this tool, including a brief description of the fields in the task configuration file (see configs in `sample_configs/`) and instructions for use. Please refer to the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for more detailed information.
 
@@ -58,7 +58,7 @@ pip install es-aces
 ## Instructions for Use
 
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/configuration.html) for details regarding the configuration language.
-2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample_data.csv` by defining predicate columns (more information below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
+2. **Get Predicates DataFrame**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard so you can leverage ACES to automatically create the predicates dataframe. You can also create your own predicates dataframe directly (more information below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
 3. **Execute Query**: A query may be executed using either the command-line interface or by importing the package in Python:
 
 ### Command-Line Interface:
@@ -99,8 +99,8 @@ df_result = query.query(cfg=cfg, predicates_df=predicates_df)
 **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality cohort using the ESGPT standard:
 
 ```log
-aces-cli data.path='MIMIC_ESD_new_schema_08-31-23-1/' data.standard='esgpt' cohort_dir='sample_configs/' cohort_name='inhospital-mortality'
-2024-06-03 07:34:21.546 | INFO     | aces.__main__:main:33 - Loading config from 'sample_configs//inhospital-mortality.yaml'
+aces-cli data.path='MIMIC_ESD_new_schema_08-31-23-1/' data.standard='esgpt' cohort_dir='sample_configs/' cohort_name='inhospital_mortality'
+2024-06-03 07:34:21.546 | INFO     | aces.__main__:main:33 - Loading config from 'sample_configs//inhospital_mortality.yaml'
 2024-06-03 07:34:21.553 | INFO     | aces.config:load:821 - Parsing predicates...
 2024-06-03 07:34:21.553 | INFO     | aces.config:load:827 - Parsing trigger event...
 2024-06-03 07:34:21.553 | INFO     | aces.config:load:830 - Parsing windows...
@@ -142,7 +142,7 @@ trigger
 2024-06-03 07:35:03.493 | INFO     | aces.query:query:60 - Done. 56,893 valid rows returned.
 2024-06-03 07:35:03.494 | INFO     | aces.query:query:66 - Extracting label 'death' from window 'target'...
 2024-06-03 07:35:03.494 | INFO     | aces.query:query:79 - Setting index timestamp as 'end' of window 'input'...
-2024-06-03 07:35:03.623 | INFO     | aces.__main__:main:44 - Completed in 0:00:42.076554. Results saved to 'sample_configs//inhospital-mortality.parquet'.
+2024-06-03 07:35:03.623 | INFO     | aces.__main__:main:44 - Completed in 0:00:42.076554. Results saved to 'sample_configs//inhospital_mortality.parquet'.
 ```
 
 ## Task Configuration File
@@ -171,7 +171,7 @@ windows:
   ...
 ```
 
-Sample task configuration files for various common tasks are provided in `sample_configs/`.
+Sample task configuration files for 6 common tasks are provided in `sample_configs/`. All task configurations can be directly extracted using `'direct'` model on `sample_data/sample_data.csv` as this predicates dataframe was designed specifically to capture predicates needed for all tasks. However, only `inhospital_mortality.yaml` and `imminent-mortality.yaml` would be able to be extracted on `sample_data/esgpt_sample` and `sample_data/meds_sample` due to a lack of required predicates.
 
 ### Predicates
 
@@ -236,6 +236,16 @@ Field for a "derived" predicate:
 
 A special predicate `_ANY_EVENT` is always defined, which simply represents any event, as the name suggests. This predicate can be used like any other predicate manually defined (ie., setting a constraint on its occurrence or using it as a trigger, more information below).
 
+#### Special Predicates
+
+There are also a few special predicates that you can use. These *do not* need to be defined explicitly in the configuration file, and can be directly used:
+
+`_ANY_EVENT`: specifies any event in the data (ie., effectively set to `1` for every single row in your predicates dataframe)
+
+`_RECORD_START`: specifies the beginning of a patient's record (ie., effectively set to `1` in the first chronological row for every `subject_id`)
+
+`_RECORD_END`: specifies the end of a patient's record (ie., effectively set to `1` in the last chronological row for every `subject_id`)
+
 ### Trigger Event
 
 The trigger event is a simple field with a value of a predicate name. For each trigger event, a predication by a model can be made. For instance, in the following example, the trigger event is an admission. Therefore, in your task, a prediction by a model can be made for each valid admission (after extraction according to other task specifications).
@@ -274,7 +284,7 @@ The `has` field specifies constraints relating to predicates within the window. 
 
 `label` is an optional field and can only exist in ONE window in the task configuration file if defined. It must be a string matching a defined predicate name, and is used to extract the label for the task.
 
-`index_timestamp` is an optional field and can only exist in ONE window in the task configuration file if defined. It must be either `start` or `end`, and is used to create an index column used to easily manipulate the results output. Usually, one would set it to be the time at which the prediction would be made (ie., set to `start` in your target window).
+`index_timestamp` is an optional field and can only exist in ONE window in the task configuration file if defined. It must be either `start` or `end`, and is used to create an index column used to easily manipulate the results output. Usually, one would set it to be the time at which the prediction would be made (ie., set to `end` in your window containing input data). Please ensure that you are validating your interpretation of `index_timestamp` for your task. For instance, if `index_timestamp` is set to the `end` of a particular window, the timestamp would be the event at the window boundary. However, in some cases, your task may want to exclude this boundary event, so ensure you are correctly interpreting the timestamp during extraction.
 
 ## FAQs
 
