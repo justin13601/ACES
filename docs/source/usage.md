@@ -45,7 +45,7 @@ windows:
       _ANY_EVENT: (5, None)
     index_timestamp: end
   gap:
-    start: input.end
+    start: trigger
     end: start + 24h
     start_inclusive: false
     end_inclusive: true
@@ -118,7 +118,7 @@ aces-cli --help
 By default, results from the above examples would be saved to `sample_configs/inhospital_mortality/shards/0.parquet` for MEDS with multiple shards, and `sample_configs/inhospital_mortality.parquet` otherwise. However, these can be overridden using `output_filepath='/path/to/output.parquet'`.
 
 ```plaintext
-shape: (1, 8)
+shape: (2, 8)
 ┌────────────┬────────────┬───────┬────────────┬────────────┬────────────┬────────────┬────────────┐
 │ subject_id ┆ index_time ┆ label ┆ trigger    ┆ input.end_ ┆ input.star ┆ gap.end_su ┆ target.end │
 │ ---        ┆ stamp      ┆ ---   ┆ ---        ┆ summary    ┆ t_summary  ┆ mmary      ┆ _summary   │
@@ -128,8 +128,12 @@ shape: (1, 8)
 ╞════════════╪════════════╪═══════╪════════════╪════════════╪════════════╪════════════╪════════════╡
 │ 1          ┆ 1991-01-28 ┆ 0     ┆ 1991-01-27 ┆ {"input.en ┆ {"input.st ┆ {"gap.end" ┆ {"target.e │
 │            ┆ 23:32:00   ┆       ┆ 23:32:00   ┆ d",1991-01 ┆ art",1989- ┆ ,1991-01-2 ┆ nd",1991-0 │
-│            ┆            ┆       ┆            ┆ -27        ┆ 12-01      ┆ 8          ┆ 1-29       │
+│            ┆            ┆       ┆            ┆ -27        ┆ 12-01      ┆ 7          ┆ 1-29       │
 │            ┆            ┆       ┆            ┆ 23:32:…    ┆ 12:0…      ┆ 23:32:00…  ┆ 23:32…     │
+│ 2          ┆ 1996-06-06 ┆ 1     ┆ 1996-06-05 ┆ {"input.en ┆ {"input.st ┆ {"gap.end" ┆ {"target.e │
+│            ┆ 00:32:00   ┆       ┆ 00:32:00   ┆ d",1996-06 ┆ art",1996- ┆ ,1996-06-0 ┆ nd",1996-0 │
+│            ┆            ┆       ┆            ┆ -05        ┆ 03-08      ┆ 5          ┆ 6-07       │
+│            ┆            ┆       ┆            ┆ 00:32:…    ┆ 02:2…      ┆ 00:32:00…  ┆ 00:32…     │
 └────────────┴────────────┴───────┴────────────┴────────────┴────────────┴────────────┴────────────┘
 ```
 

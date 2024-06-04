@@ -236,6 +236,16 @@ Field for a "derived" predicate:
 
 A special predicate `_ANY_EVENT` is always defined, which simply represents any event, as the name suggests. This predicate can be used like any other predicate manually defined (ie., setting a constraint on its occurrence or using it as a trigger, more information below).
 
+#### Special Predicates
+
+There are also a few special predicates that you can use. These *do not* need to be defined explicitly in the configuration file, and can be directly used:
+
+`_ANY_EVENT`: specifies any event in the data (ie., effectively set to `1` for every single row in your predicates dataframe)
+
+`_RECORD_START`: specifies the beginning of a patient's record (ie., effectively set to `1` in the first chronological row for every `subject_id`)
+
+`_RECORD_END`: specifies the end of a patient's record (ie., effectively set to `1` in the last chronological row for every `subject_id`)
+
 ### Trigger Event
 
 The trigger event is a simple field with a value of a predicate name. For each trigger event, a predication by a model can be made. For instance, in the following example, the trigger event is an admission. Therefore, in your task, a prediction by a model can be made for each valid admission (after extraction according to other task specifications).

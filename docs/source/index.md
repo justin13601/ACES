@@ -15,10 +15,10 @@ maxdepth: 2
 ---
 Overview <overview>
 Usage Guide <usage>
-Sample Data Tutorial <notebooks/tutorial>
-Configuration Language <configuration>
-Predicates DataFrame <notebooks/predicates>
 Task Examples <notebooks/examples>
+Sample Data Tutorial <notebooks/tutorial>
+Predicates DataFrame <notebooks/predicates>
+Configuration Language <configuration>
 Algorithm & Terminology <terminology>
 Module API Reference <api/modules>
 License <license>

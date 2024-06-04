@@ -100,8 +100,8 @@ TASKS_CFGS = {
             _ANY_EVENT: (5, None)
           index_timestamp: end
         gap:
-          start: input.end
-          end: start + 24h
+          start: trigger
+          end: start + 48h
           start_inclusive: False
           end_inclusive: True
           has:
@@ -120,10 +120,10 @@ TASKS_CFGS = {
 # Expected output
 EXPECTED_OUTPUT = {
     "inhospital_mortality": {
-        "subject_id": [1],
-        "index_timestamp": ["01/28/1991 23:32"],
-        "label": [0],
-        "trigger": ["01/27/1991 23:32"],
+        "subject_id": [1, 2],
+        "index_timestamp": ["01/28/1991 23:32", "06/06/1996 00:32"],
+        "label": [0, 1],
+        "trigger": ["01/27/1991 23:32", "06/05/1996 00:32"],
         "input.end_summary": [
             {
                 "window_name": "input.end",
@@ -134,7 +134,17 @@ EXPECTED_OUTPUT = {
                 "death": 0,
                 "discharge_or_death": 0,
                 "_ANY_EVENT": 4,
-            }
+            },
+            {
+                "window_name": "input.end",
+                "timestamp_at_start": "06/05/1996 00:32",
+                "timestamp_at_end": "06/06/1996 00:32",
+                "admission": 0,
+                "discharge": 0,
+                "death": 0,
+                "discharge_or_death": 0,
+                "_ANY_EVENT": 2,
+            },
         ],
         "input.start_summary": [
             {
@@ -146,19 +156,39 @@ EXPECTED_OUTPUT = {
                 "death": 0,
                 "discharge_or_death": 1,
                 "_ANY_EVENT": 16,
-            }
+            },
+            {
+                "window_name": "input.start",
+                "timestamp_at_start": "03/08/1996 02:24",
+                "timestamp_at_end": "06/06/1996 00:32",
+                "admission": 2,
+                "discharge": 1,
+                "death": 0,
+                "discharge_or_death": 1,
+                "_ANY_EVENT": 8,
+            },
         ],
         "gap.end_summary": [
             {
                 "window_name": "gap.end",
-                "timestamp_at_start": "01/28/1991 23:32",
+                "timestamp_at_start": "01/27/1991 23:32",
                 "timestamp_at_end": "01/29/1991 23:32",
                 "admission": 0,
                 "discharge": 0,
                 "death": 0,
                 "discharge_or_death": 0,
-                "_ANY_EVENT": 1,
-            }
+                "_ANY_EVENT": 5,
+            },
+            {
+                "window_name": "gap.end",
+                "timestamp_at_start": "06/05/1996 00:32",
+                "timestamp_at_end": "06/07/1996 00:32",
+                "admission": 0,
+                "discharge": 0,
+                "death": 0,
+                "discharge_or_death": 0,
+                "_ANY_EVENT": 2,
+            },
         ],
         "target.end_summary": [
             {
@@ -170,7 +200,17 @@ EXPECTED_OUTPUT = {
                 "death": 0,
                 "discharge_or_death": 1,
                 "_ANY_EVENT": 7,
-            }
+            },
+            {
+                "window_name": "target.end",
+                "timestamp_at_start": "06/07/1996 00:32",
+                "timestamp_at_end": "06/08/1996 03:00",
+                "admission": 0,
+                "discharge": 0,
+                "death": 1,
+                "discharge_or_death": 1,
+                "_ANY_EVENT": 5,
+            },
         ],
     }
 }

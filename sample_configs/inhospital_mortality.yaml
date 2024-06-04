@@ -21,8 +21,8 @@ windows:
       _ANY_EVENT: (5, None)
     index_timestamp: end
   gap:
-    start: input.end
-    end: start + 24h
+    start: trigger
+    end: start + 48h
     start_inclusive: False
     end_inclusive: True
     has:
