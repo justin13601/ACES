@@ -2,7 +2,7 @@
 
 ACES is a library designed for the automatic extraction of cohorts from event stream time series datasets.
 
-Check out {doc}`/usage` for further information and installation instructions.
+Check out the {doc}`/usage` for installation instructions and further information on how to extract cohorts!
 
 ______________________________________________________________________
 

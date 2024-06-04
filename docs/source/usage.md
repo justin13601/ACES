@@ -4,37 +4,179 @@
 
 ### Installation
 
-To use ACES, first determine which data standard you'd like to use. Currently, ACES can be automatically applied to the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it as an event stream - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
+To use ACES, first determine which data standard you'd like to use. Currently, ACES can be automatically applied to the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. Alternatively, ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it **directly** as an event stream - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
 
 **Note:** If you choose to use the ESGPT standard, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
 
-To install ACES:
+**To install ACES:**
 
 ```bash
 pip install es-aces
 ```
 
-### Define Task Configuration
+### Task Configuration Example
+
+**Example: `inhospital-mortality.yaml`**
+
+This task configuration defines a cohort for the binary prediction of in-hospital mortality 48 hours after admission. Patients with 5 or more records between the start of their record and 24 hours after the admission will be included. The cohort includes both those that have been discharged (label=`0`)  and those that have died (label=`1`).
+
+```yaml
+predicates:
+  admission:
+    code: code//ADMISSION
+  discharge:
+    code: code//DISCHARGE
+  death:
+    code: code//DEATH
+  discharge_or_death:
+    expr: or(discharge, death)
+
+trigger: admission
+
+windows:
+  input:
+    start:
+    end: trigger + 24h
+    start_inclusive: true
+    end_inclusive: true
+    has:
+      _ANY_EVENT: (5, None)
+    index_timestamp: end
+  gap:
+    start: input.end
+    end: start + 24h
+    start_inclusive: false
+    end_inclusive: true
+    has:
+      admission: (None, 0)
+      discharge: (None, 0)
+      death: (None, 0)
+  target:
+    start: gap.end
+    end: start -> discharge_or_death
+    start_inclusive: false
+    end_inclusive: true
+    label: death
+```
 
 ### Run the CLI
 
-You can run `aces-cli` in your terminal:
+You can now run `aces-cli` in your terminal. Suppose we have a directory structure like the following:
 
-```bash
-aces-cli data.path='/path/to/data/file/or/directory' data.standard='<esgpt/meds/direct>' cohort_dir='/directory/to/task/config/' cohort_name='<task_config_name>'
+```
+ACES/
+├── sample_data/
+│   ├── esgpt_sample/
+│   │   ├── ...
+│   │   ├── events_df.parquet
+│   │   └── dynamic_measurements_df.parquet
+│   ├── meds_sample/
+│   │   ├── shards/
+│   │   │   ├── 0.parquet
+│   │   │   ├── 1.parquet
+│   │   │   ├── ...
+│   │   │   └── 4.parquet
+│   │   └── sample_shard.parquet
+│   └── sample_data.csv
+├── sample_configs/
+│   └── inhospital-mortality.yaml
+└── ...
 ```
 
-For help using `aces-cli`:
+**To query from a single MEDS shard**:
+
+```bash
+aces-cli cohort_name="inhospital-mortality" cohort_dir="sample_configs/" data.standard=meds data.path="sample_data/meds_sample/sample_shard.parquet"
+```
+
+**To query from multiple MEDS shards**:
+
+```bash
+aces-cli cohort_name="inhospital-mortality" cohort_dir="sample_configs/" data.standard=meds data=sharded data.root="sample_data/meds_sample/" "data.shard=$(expand_shards shards/5)" -m
+```
+
+**To query from ESGPT**:
+
+```bash
+aces-cli cohort_name='inhospital-mortality' cohort_dir='sample_configs/' data.standard=esgpt data.path='sample_data/esgpt_sample/'
+```
+
+**To query from a direct predicates dataframe (`.csv` | `.parquet`)**:
+
+```bash
+aces-cli cohort_name='inhospital-mortality' cohort_dir='sample_configs/' data.standard=direct data.path='sample_data/sample.csv'
+```
+
+**For help using `aces-cli`:**
 
 ```bash
 aces-cli --help
+```
+
+### Results
+
+By default, results from the above examples would be saved to `sample_configs/inhospital-mortality/shards/0.parquet` for MEDS with multiple shards, and `sample_configs/inhospital-mortality.parquet` for all other commands. However, these can be overridden using `output_filepath='/path/to/output.parquet'`.
+
+```plaintext
+shape: (1, 8)
+┌────────────┬────────────┬───────┬────────────┬────────────┬────────────┬────────────┬────────────┐
+│ subject_id ┆ index_time ┆ label ┆ trigger    ┆ input.end_ ┆ input.star ┆ gap.end_su ┆ target.end │
+│ ---        ┆ stamp      ┆ ---   ┆ ---        ┆ summary    ┆ t_summary  ┆ mmary      ┆ _summary   │
+│ i64        ┆ ---        ┆ i64   ┆ datetime[μ ┆ ---        ┆ ---        ┆ ---        ┆ ---        │
+│            ┆ datetime[μ ┆       ┆ s]         ┆ struct[8]  ┆ struct[8]  ┆ struct[8]  ┆ struct[8]  │
+│            ┆ s]         ┆       ┆            ┆            ┆            ┆            ┆            │
+╞════════════╪════════════╪═══════╪════════════╪════════════╪════════════╪════════════╪════════════╡
+│ 1          ┆ 1991-01-28 ┆ 0     ┆ 1991-01-27 ┆ {"input.en ┆ {"input.st ┆ {"gap.end" ┆ {"target.e │
+│            ┆ 23:32:00   ┆       ┆ 23:32:00   ┆ d",1991-01 ┆ art",1989- ┆ ,1991-01-2 ┆ nd",1991-0 │
+│            ┆            ┆       ┆            ┆ -27        ┆ 12-01      ┆ 8          ┆ 1-29       │
+│            ┆            ┆       ┆            ┆ 23:32:…    ┆ 12:0…      ┆ 23:32:00…  ┆ 23:32…     │
+└────────────┴────────────┴───────┴────────────┴────────────┴────────────┴────────────┴────────────┘
 ```
 
 ______________________________________________________________________
 
 ## Detailed Instructions
 
-Additionally, you may enable shell completion for configuration files. For Bash, please run:
+### Hydra
+
+#### Configuration Fields
+
+#### Data:
+
+To set a data standard:
+`data.standard`: String specifying the data standard, must be 'meds' OR 'esgpt' OR 'direct'
+
+To query from a single MEDS shard:
+`data.path`: Path to the `.parquet`shard file
+
+To query from multiple MEDS shards, you must set `data=sharded`. Additionally:
+
+`data.root`: Root directory of MEDS dataset containing shard directories
+`data.shard`: Expression specifying MEDS shards (`$(expand_shards <str>/<int>)`)
+
+To query from an ESGPT dataset:
+`data.path`: Directory of the full ESGPT dataset
+
+To query from a direct predicates dataframe:
+`data.path` Path to the `.csv` or `.parquet` file containing the predicates dataframe
+`ts_format`: Timestamp format for predicates, defaults to "%m/%d/%Y %H:%M"
+
+#### Task:
+
+`cohort_dir`: Directory the your task configuration file
+`cohort_name`: Name of the task configuration file
+
+The above two fields are used for automatically loading task configurations, saving results, and logging:
+
+`config_path`: Path to the task configuration file, defaults to `${cohort_dir}/${cohort_name}.yaml`
+
+output_filepath: Path to store the outputs. Defaults to `${data._prefix}` addition allows us to add shard specific prefixes in a
+
+# sharded data mode.${cohort_dir}/$\{cohort_name}\${data.\_prefix}.parquet
+
+#### Tab Completion
+
+Shell completion can be enabled for the Hydra configuration fields. For Bash, please run:
 
 ```bash
 eval "$(aces-cli -sc install=bash)"
@@ -42,7 +184,19 @@ eval "$(aces-cli -sc install=bash)"
 
 **Note**: you may have to run this command for every terminal - please visit [Hydra's Documentation](https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/) for more details.
 
-Alternatively, you can use the `aces.query.query()` function:
+### MEDS
+
+#### Single Shard
+
+#### Multiple Shards
+
+### ESGPT
+
+### Direct
+
+### Python
+
+You can also use the `aces.query.query()` function to extract a cohort in Python directly. Please see the [Module API Reference](https://eventstreamaces.readthedocs.io/en/latest/api/modules.html) for specifics.
 
 ```{eval-rst}
 .. autofunction:: aces.query.query
@@ -58,28 +212,12 @@ For example, to query an in-hospital mortality task on the sample data (both the
 >>> from aces import query, predicates, config
 >>> from omegaconf import DictConfig
 
->>> cfg = config.TaskExtractorConfig.load(config_path="/home/justinxu/esgpt/ESGPTTaskQuerying/sample_configs/inhospital-mortality.yaml")
+>>> cfg = config.TaskExtractorConfig.load(config_path="../../sample_configs/inhospital-mortality.yaml")
 
->>> data_config = DictConfig({"path": "sample_data.csv", "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"})
+>>> data_config = DictConfig({"path": "../../sample_data.csv", "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"})
 >>> predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)
 
 >>> query.query(cfg=cfg, predicates_df=predicates_df)
-```
-
-```plaintext
-shape: (1, 8)
-┌────────────┬────────────┬───────┬────────────┬────────────┬────────────┬────────────┬────────────┐
-│ subject_id ┆ index_time ┆ label ┆ trigger    ┆ input.star ┆ target.end ┆ gap.end_su ┆ input.end_ │
-│ ---        ┆ stamp      ┆ ---   ┆ ---        ┆ t_summary  ┆ _summary   ┆ mmary      ┆ summary    │
-│ i64        ┆ ---        ┆ i64   ┆ datetime[μ ┆ ---        ┆ ---        ┆ ---        ┆ ---        │
-│            ┆ datetime[μ ┆       ┆ s]         ┆ struct[8]  ┆ struct[8]  ┆ struct[8]  ┆ struct[8]  │
-│            ┆ s]         ┆       ┆            ┆            ┆            ┆            ┆            │
-╞════════════╪════════════╪═══════╪════════════╪════════════╪════════════╪════════════╪════════════╡
-│ 1          ┆ 1991-01-28 ┆ 0     ┆ 1991-01-27 ┆ {"input.st ┆ {"target.e ┆ {"gap.end" ┆ {"input.en │
-│            ┆ 23:32:00   ┆       ┆ 23:32:00   ┆ art",1989- ┆ nd",1991-0 ┆ ,1991-01-2 ┆ d",1991-01 │
-│            ┆            ┆       ┆            ┆ 12-01      ┆ 1-29       ┆ 8          ┆ -27        │
-│            ┆            ┆       ┆            ┆ 12:0…      ┆ 23:32…     ┆ 23:32:00…  ┆ 23:32:…    │
-└────────────┴────────────┴───────┴────────────┴────────────┴────────────┴────────────┴────────────┘
 ```
 
 ______________________________________________________________________

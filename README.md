@@ -16,7 +16,7 @@ Automatic Cohort Extraction System (ACES) is a library that streamlines the extr
 
 There are diverse applications in healthcare and beyond. For instance, researchers can effortlessly define subsets of EHR datasets for training of foundation models. Retrospective analyses can also become more accessible to clinicians as it enables the extraction of tailored cohorts for studying specific medical conditions or population demographics.
 
-Currently, two data standards are supported: the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your in one of these two formats by following instructions in their respective repositories. Alternatively, you may also format your data as a `.csv` in the same format as shown in `sample_data/sample_data.csv`. More information about this is available below.
+Currently, two data standards are directly supported: the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your in one of these two formats by following instructions in their respective repositories. ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it as an event stream. More information about this is available below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
 
 This README provides an overview of this tool, including a brief description of the fields in the task configuration file (see configs in `sample_configs/`) and instructions for use. Please refer to the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for more detailed information.
 
@@ -58,7 +58,7 @@ pip install es-aces
 ## Instructions for Use
 
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or the [documentation](https://eventstreamaces.readthedocs.io/en/latest/configuration.html) for details regarding the configuration language.
-2. **Prepare Dataset into Supported Standards**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard. You could also create a `.csv` in the same format as `sample_data/sample_data.csv` by defining predicate columns (more information below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
+2. **Get Predicates DataFrame**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard so you can leverage ACES to automatically create the predicates dataframe. You can also create your own predicates dataframe directly (more information below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
 3. **Execute Query**: A query may be executed using either the command-line interface or by importing the package in Python:
 
 ### Command-Line Interface:
