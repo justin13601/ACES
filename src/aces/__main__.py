@@ -5,6 +5,7 @@ from importlib.resources import files
 import hydra
 import hydra.core
 import hydra.core.hydra_config
+from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 
 config_yaml = files("aces").joinpath("configs/aces.yaml")
@@ -14,10 +15,9 @@ if not config_yaml.is_file():
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
 def main(cfg: DictConfig):
+    import os
     from datetime import datetime
     from pathlib import Path
-
-    from loguru import logger
 
     from . import config, predicates, query, utils
 
@@ -40,6 +40,7 @@ def main(cfg: DictConfig):
     result = query.query(task_cfg, predicates_df)
 
     # save results to parquet
+    os.makedirs(os.path.dirname(cfg.output_filepath), exist_ok=True)
     result.write_parquet(cfg.output_filepath, use_pyarrow=True)
     logger.info(f"Completed in {datetime.now() - st}. Results saved to '{cfg.output_filepath}'.")
 
