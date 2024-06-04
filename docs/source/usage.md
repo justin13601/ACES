@@ -232,7 +232,7 @@ The `cfg` parameter must be of type `config.TaskExtractorConfig`, and the `predi
 
 Details about the configuration language used to define the `cfg` parameter can be found in {doc}`/configuration`.
 
-For example, to query an in-hospital mortality task on the sample data (both the configuration file and data are provided in the repository) using the 'direct' predicates method:
+For example, to query an in-hospital mortality task on the sample data (both the configuration file and data are provided in the repository) using the `'direct'` predicates method:
 
 ```python
 >>> from aces import query, predicates, config

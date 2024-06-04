@@ -1,4 +1,4 @@
-subject_id,timestamp,admission,death,discharge,lab,spo2,normal_spo2,abnormally_low_spo2,abnormally_high_spo2,procedure_start,procedure_end,ventilation,diagnosis_ICD9CM/41071,diagnosis_ICD10CM/I214
+subject_id,timestamp,admission,death,discharge,lab,spo2,normal_spo2,abnormally_low_spo2,abnormally_high_spo2,procedure_start,procedure_end,ventilation,diagnosis_ICD9CM_41071,diagnosis_ICD10CM_I214
 1,12/1/1989 12:03,1,0,0,0,0,0,0,0,0,0,0,0,0
 1,12/1/1989 13:14,0,0,0,1,1,1,0,0,0,0,0,0,0
 1,12/1/1989 15:17,0,0,0,1,1,1,0,0,0,0,0,0,0

@@ -171,7 +171,7 @@ windows:
   ...
 ```
 
-Sample task configuration files for various common tasks are provided in `sample_configs/`.
+Sample task configuration files for 6 common tasks are provided in `sample_configs/`. All task configurations can be directly extracted using `'direct'` model on `sample_data/sample_data.csv` as this predicates dataframe was designed specifically to capture predicates needed for all tasks. However, only `inhospital-mortality.yaml` and `imminent-mortality.yaml` would be able to be extracted on `sample_data/esgpt_sample` and `sample_data/meds_sample` due to a lack of required predicates.
 
 ### Predicates
 
