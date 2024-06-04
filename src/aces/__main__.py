@@ -1,5 +1,6 @@
 """Main script for end-to-end task querying."""
 
+import sys
 from importlib.resources import files
 
 import hydra
@@ -11,6 +12,12 @@ from omegaconf import DictConfig, OmegaConf
 config_yaml = files("aces").joinpath("configs/aces.yaml")
 if not config_yaml.is_file():
     raise FileNotFoundError("Core configuration not successfully installed!")
+
+if len(sys.argv) == 1:
+    print("Usage: aces-cli [OPTIONS]")
+    print("Try 'aces-cli --help' for more information.")
+    print("For more information, visit: https://eventstreamaces.readthedocs.io/en/latest/usage.html")
+    sys.exit(1)
 
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
