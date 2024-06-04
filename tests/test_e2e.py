@@ -76,7 +76,7 @@ subject_id,timestamp,admission,death,discharge,lab,spo2,normal_spo2,abnormally_l
 
 # Tasks (input)
 TASKS_CFGS = {
-    "inhospital-mortality": """
+    "inhospital_mortality": """
       # Task: 24-hour In-hospital Mortality Prediction
       predicates:
         admission:
@@ -119,7 +119,7 @@ TASKS_CFGS = {
 
 # Expected output
 EXPECTED_OUTPUT = {
-    "inhospital-mortality": {
+    "inhospital_mortality": {
         "subject_id": [1],
         "index_timestamp": ["01/28/1991 23:32"],
         "label": [0],

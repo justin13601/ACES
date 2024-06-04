@@ -4,7 +4,7 @@
 
 ### Installation
 
-To use ACES, first determine which data standard you'd like to use. Currently, ACES can be automatically applied to the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. Alternatively, ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it **directly** as an event stream - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
+To use ACES, first determine which data standard you'd like to use. Currently, ACES can be automatically applied to the [Medical Event Data Standard (MEDS)](https://github.com/Medical-Event-Data-Standard/meds) and [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT). Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. Alternatively, ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it **directly** as an event stream - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
 
 **Note:** If you choose to use the ESGPT standard, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
 
@@ -16,7 +16,7 @@ pip install es-aces
 
 ### Task Configuration Example
 
-**Example: `inhospital-mortality.yaml`**
+**Example: `inhospital_mortality.yaml`**
 
 Please see the [Task Configuration File Overview](https://eventstreamaces.readthedocs.io/en/latest/overview.html#task-configuration-file) for details on how to create this configuration for your own task!
 
@@ -75,38 +75,36 @@ ACES/
 │   ├── meds_sample/
 │   │   ├── shards/
 │   │   │   ├── 0.parquet
-│   │   │   ├── 1.parquet
-│   │   │   ├── ...
-│   │   │   └── 4.parquet
+│   │   │   └── 1.parquet
 │   │   └── sample_shard.parquet
 │   └── sample_data.csv
 ├── sample_configs/
-│   └── inhospital-mortality.yaml
+│   └── inhospital_mortality.yaml
 └── ...
 ```
 
 **To query from a single MEDS shard**:
 
 ```bash
-aces-cli cohort_name="inhospital-mortality" cohort_dir="sample_configs/" data.standard=meds data.path="sample_data/meds_sample/sample_shard.parquet"
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data.path="sample_data/meds_sample/sample_shard.parquet"
 ```
 
 **To query from multiple MEDS shards**:
 
 ```bash
-aces-cli cohort_name="inhospital-mortality" cohort_dir="sample_configs/" data.standard=meds data=sharded data.root="sample_data/meds_sample/" "data.shard=$(expand_shards shards/5)" -m
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data=sharded data.root="sample_data/meds_sample/" "data.shard=$(expand_shards shards/5)" -m
 ```
 
 **To query from ESGPT**:
 
 ```bash
-aces-cli cohort_name="inhospital-mortality" cohort_dir="sample_configs/" data.standard=esgpt data.path="sample_data/esgpt_sample/"
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=esgpt data.path="sample_data/esgpt_sample/"
 ```
 
 **To query from a direct predicates dataframe (`.csv` | `.parquet`)**:
 
 ```bash
-aces-cli cohort_name="inhospital-mortality" cohort_dir="sample_configs/" data.standard=direct data.path="sample_data/sample.csv"
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=direct data.path="sample_data/sample.csv"
 ```
 
 **For help using `aces-cli`:**
@@ -117,7 +115,7 @@ aces-cli --help
 
 ### Results
 
-By default, results from the above examples would be saved to `sample_configs/inhospital-mortality/shards/0.parquet` for MEDS with multiple shards, and `sample_configs/inhospital-mortality.parquet` otherwise. However, these can be overridden using `output_filepath='/path/to/output.parquet'`.
+By default, results from the above examples would be saved to `sample_configs/inhospital_mortality/shards/0.parquet` for MEDS with multiple shards, and `sample_configs/inhospital_mortality.parquet` otherwise. However, these can be overridden using `output_filepath='/path/to/output.parquet'`.
 
 ```plaintext
 shape: (1, 8)
@@ -141,11 +139,9 @@ ______________________________________________________________________
 
 ### Hydra
 
-#### Configuration Fields
-
 Hydra configuration files are leveraged for cohort extraction runs. All fields can be overridden by specifying their values in the command-line.
 
-#### Data:
+#### Data Configuration
 
 To set a data standard:
 `data.standard`: String specifying the data standard, must be 'meds' OR 'esgpt' OR 'direct'
@@ -165,7 +161,7 @@ To query from a direct predicates dataframe:
 `data.path` Path to the `.csv` or `.parquet` file containing the predicates dataframe
 `data.ts_format`: Timestamp format for predicates. Defaults to "%m/%d/%Y %H:%M"
 
-#### Task:
+#### Task Configuration
 
 `cohort_dir`: Directory the your task configuration file
 `cohort_name`: Name of the task configuration file
@@ -238,7 +234,7 @@ For example, to query an in-hospital mortality task on the sample data (both the
 >>> from aces import query, predicates, config
 >>> from omegaconf import DictConfig
 
->>> cfg = config.TaskExtractorConfig.load(config_path="sample_configs/inhospital-mortality.yaml")
+>>> cfg = config.TaskExtractorConfig.load(config_path="sample_configs/inhospital_mortality.yaml")
 
 >>> data_config = DictConfig({"path": "sample_data.csv", "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"})
 >>> predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)

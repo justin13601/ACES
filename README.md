@@ -16,7 +16,7 @@ Automatic Cohort Extraction System (ACES) is a library that streamlines the extr
 
 There are diverse applications in healthcare and beyond. For instance, researchers can effortlessly define subsets of EHR datasets for training of foundation models. Retrospective analyses can also become more accessible to clinicians as it enables the extraction of tailored cohorts for studying specific medical conditions or population demographics.
 
-Currently, two data standards are directly supported: the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your in one of these two formats by following instructions in their respective repositories. ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it as an event stream. More information about this is available below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
+Currently, two data standards are directly supported: the [Medical Event Data Standard (MEDS)](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your in one of these two formats by following instructions in their respective repositories. ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it as an event stream. More information about this is available below and in the [documentation](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
 
 This README provides an overview of this tool, including a brief description of the fields in the task configuration file (see configs in `sample_configs/`) and instructions for use. Please refer to the [documentation](https://eventstreamaces.readthedocs.io/en/latest/) for more detailed information.
 
@@ -99,8 +99,8 @@ df_result = query.query(cfg=cfg, predicates_df=predicates_df)
 **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality cohort using the ESGPT standard:
 
 ```log
-aces-cli data.path='MIMIC_ESD_new_schema_08-31-23-1/' data.standard='esgpt' cohort_dir='sample_configs/' cohort_name='inhospital-mortality'
-2024-06-03 07:34:21.546 | INFO     | aces.__main__:main:33 - Loading config from 'sample_configs//inhospital-mortality.yaml'
+aces-cli data.path='MIMIC_ESD_new_schema_08-31-23-1/' data.standard='esgpt' cohort_dir='sample_configs/' cohort_name='inhospital_mortality'
+2024-06-03 07:34:21.546 | INFO     | aces.__main__:main:33 - Loading config from 'sample_configs//inhospital_mortality.yaml'
 2024-06-03 07:34:21.553 | INFO     | aces.config:load:821 - Parsing predicates...
 2024-06-03 07:34:21.553 | INFO     | aces.config:load:827 - Parsing trigger event...
 2024-06-03 07:34:21.553 | INFO     | aces.config:load:830 - Parsing windows...
@@ -142,7 +142,7 @@ trigger
 2024-06-03 07:35:03.493 | INFO     | aces.query:query:60 - Done. 56,893 valid rows returned.
 2024-06-03 07:35:03.494 | INFO     | aces.query:query:66 - Extracting label 'death' from window 'target'...
 2024-06-03 07:35:03.494 | INFO     | aces.query:query:79 - Setting index timestamp as 'end' of window 'input'...
-2024-06-03 07:35:03.623 | INFO     | aces.__main__:main:44 - Completed in 0:00:42.076554. Results saved to 'sample_configs//inhospital-mortality.parquet'.
+2024-06-03 07:35:03.623 | INFO     | aces.__main__:main:44 - Completed in 0:00:42.076554. Results saved to 'sample_configs//inhospital_mortality.parquet'.
 ```
 
 ## Task Configuration File
@@ -171,7 +171,7 @@ windows:
   ...
 ```
 
-Sample task configuration files for 6 common tasks are provided in `sample_configs/`. All task configurations can be directly extracted using `'direct'` model on `sample_data/sample_data.csv` as this predicates dataframe was designed specifically to capture predicates needed for all tasks. However, only `inhospital-mortality.yaml` and `imminent-mortality.yaml` would be able to be extracted on `sample_data/esgpt_sample` and `sample_data/meds_sample` due to a lack of required predicates.
+Sample task configuration files for 6 common tasks are provided in `sample_configs/`. All task configurations can be directly extracted using `'direct'` model on `sample_data/sample_data.csv` as this predicates dataframe was designed specifically to capture predicates needed for all tasks. However, only `inhospital_mortality.yaml` and `imminent-mortality.yaml` would be able to be extracted on `sample_data/esgpt_sample` and `sample_data/meds_sample` due to a lack of required predicates.
 
 ### Predicates
 

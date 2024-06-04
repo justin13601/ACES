@@ -79,7 +79,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
             .struct.field(cfg.windows[cfg.label_window].label)
             .alias("label")
         )
-        to_return_cols.insert(2, "label")
+        to_return_cols.insert(1, "label")
 
     # add index_timestamp column if specified
     if cfg.index_timestamp_window:

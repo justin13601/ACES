@@ -18,7 +18,7 @@ Usage Guide <usage>
 Sample Data Tutorial <notebooks/tutorial>
 Configuration Language <configuration>
 Predicates DataFrame <notebooks/predicates>
-MIMIC-IV Examples <notebooks/examples>
+Task Examples <notebooks/examples>
 Algorithm & Terminology <terminology>
 Module API Reference <api/modules>
 License <license>
