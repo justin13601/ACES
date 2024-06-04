@@ -13,7 +13,7 @@ each row's event, or a count (integer) for the number of times that certain prop
 event. We'll call these additional properties/columns "predicates" over the events, as they can often be
 interpreted as boolean or count functions over the event.
 
-For example, we may consider a dataframe `df_clincial_events` that quantifies clinical events happening to
+For example, we may consider a dataframe `df_clinical_events` that quantifies clinical events happening to
 patients, with predicates `"is_admission"`, `"is_discharge"`, `"is_death"`, and `"is_covid_dx"`, like this:
 
 | `subject_id` | `timestamp`         | `is_admission` | `is_discharge` | `is_death` | `is_covid_dx` |
@@ -53,7 +53,7 @@ applications.
 
 We will specify these windows using a configuration file language that is ultimately interpreted into a tree
 structure. For example, suppose we wish to extract a dataset for the prediction of in-hospital mortality from
-the data defined in the above `df_clincial_events` dataframe, such that we wish to include the first 24 hours
+the data defined in the above `df_clinical_events` dataframe, such that we wish to include the first 24 hours
 of data of each hospitalization as an input to a model, and predict whether the patient will die within the
 hospital. Suppose we also subject the dataset to constraints where the admission in question must be at least
 48 hours in length and that the patient must not have a COVID diagnosis within that admission.
@@ -85,12 +85,12 @@ positive and negative samples (patients that died in the hospital and patients t
 `target` "window" concludes at either a `"is_death"` event (patients that died) or a`"is_discharge"` event
 (patients that didn't die).
 
-Note that this is pseudocode and not the actual configuration language, which may look slightly different.
-Nevertheless, we can see that this set of specifications can be realized in a "valid" form for a patient if
-there exist a set of time points such that, within 48 hours after an admission, there are no discharges,
-deaths, or COVID diagnoses, and that there exists a discharge or death event after the first 48 hours of
-an admission where there were no COVID diagnoses between the end of that first 48 hours and the subsequent
-discharge or death event.
+Note that this is conceptual pseudocode and not the actual configuration language, which may look slightly
+different. Nevertheless, we can see that this set of specifications can be realized in a "valid" form for a
+patient if there exist a set of time points such that, within 48 hours after an admission, there are no
+discharges, deaths, or COVID diagnoses, and that there exists a discharge or death event after the first 48
+hours of an admission where there were no COVID diagnoses between the end of that first 48 hours and the
+subsequent discharge or death event.
 
 Note that these windows form a naturally hierarchical, tree-based structure based on their relative
 dependencies on one another. In particular, we can realize the following tree structure constructed by nodes
@@ -110,10 +110,15 @@ search operations to extract the windows that satisfy the constraints of the con
 over each subtree to find windows that satisfy the constraints of those subtrees individually.
 
 In the rest of this document, we will detail how our algorithm automatically extracts records that meet
-these criteria, the terminology we use to describe our algorithm (both here and in the raw source code and
-code comments), and the limitations of this algorithm and kinds of tasks it cannot yet express. Details about
-the true configuration language that is used in practice to specify "windows" can be found in
-{doc}`/configuration`. MIMIC-IV examples are available in {doc}`/notebooks/examples`.
+these criteria and the terminology we use to describe our algorithm (both here and in the raw source code and
+code comments). There are certain limitations of this algorithm where some kinds of tasks cannot yet be
+expressed directly (more information available in the
+[FAQs](https://eventstreamaces.readthedocs.io/en/latest/overview.html#faqs) and the
+[Future Roadmap](https://eventstreamaces.readthedocs.io/en/latest/overview.html#future-roadmap)). Details
+about the true configuration language that is used in practice to specify "windows" can be found in
+{doc}`/configuration`. Some task examples are available in {doc}`/notebooks/examples`.
+
+______________________________________________________________________
 
 ## Algorithm Terminology
 
@@ -170,6 +175,8 @@ exist in the dataset proper.
 This notion of an _anchor_ will be useful in the algorithm as it will correspond to rows from which we will
 perform temporal and event-based aggregations to determine whether windows satisfy subtree constraints.
 
+______________________________________________________________________
+
 ## Algorithm Design
 
 ### Initialization
@@ -202,6 +209,8 @@ thus this first step can significantly filter our cohort.
 ##### Recurse over Each Subtree
 
 With this dataframe, we can proceed to traverse the tree and recurse over each subtree rooted at each node.
+
+______________________________________________________________________
 
 ### Recursive Step
 
@@ -293,11 +302,13 @@ computational step.
 With this filtered set of possible prospective child anchor nodes, we can now recurse through the child
 subtree.
 
+______________________________________________________________________
+
 ### Clean-Up
 
 #### Inputs
 
-After recursion, we will have the following dataframe:
+After recursion, we will have a `result` dataframe:
 
 ##### `result`
 
@@ -326,5 +337,7 @@ prediction can be made (ie., at the end of the `input` windows).
 ##### Re-order & Return
 
 Finally, given this dataframe, the algorithm will sort the columns by placing `subject_id`, `index_timestamp`,
-`label`, and `trigger` first, in that order, followed by all other window summary columns in the order of a
-pre-order traversal of the task tree.
+`label`, and `trigger` first, if available and in that order, followed by all other window summary columns in
+the order of a pre-order traversal of the task tree.
+
+______________________________________________________________________

@@ -15,9 +15,9 @@ _predicate_ functions, _aka_ "predicates") which are _dataset specific_ and incl
 criteria which, conditioned on a set of predicate definitions, are _dataset agnostic_.
 
 Predicates are currently limited to "count" predicates, which are predicates that count the number of times a
-boolean condition is satisfied over a given time window, which can either be a single timepoint, thus tracking
+boolean condition is satisfied over a given time window, which can either be a single timestamp, thus tracking
 whether how many observations there were that satisfied the boolean condition in that event (_aka_ at that
-timepoint) or over 1-dimensional windows. In the future, predicates may expand to include other notions of
+timestamp) or over 1-dimensional windows. In the future, predicates may expand to include other notions of
 functional characterization, such as tracking the average/min/max value a concept takes on over a time-period,
 etc.
 
@@ -51,9 +51,9 @@ These configs consist of the following four fields:
 - `value_min`: If specified, an observation will only satisfy this predicate if the occurrence of the
   underlying `code` with a reported numerical value that is either greater than or greater than or equal to
   `value_min` (with these options being decided on the basis of `value_min_inclusive`, where
-  `value_min_incusive=True` indicating that an observation satisfies this predicate if its value is greater
+  `value_min_inclusive=True` indicating that an observation satisfies this predicate if its value is greater
   than or equal to `value_min`, and `value_min_inclusive=False` indicating a greater than but not equal to
-  will be used.
+  will be used).
 - `value_max`: If specified, an observation will only satisfy this predicate if the occurrence of the
   underlying `code` with a reported numerical value that is either less than or less than or equal to
   `value_max` (with these options being decided on the basis of `value_max_inclusive`, where
@@ -89,13 +89,13 @@ on its source format.
 
 #### `DerivedPredicateConfig`: Configuration of Predicates that Depend on Other Predicates
 
-These confiuration objects consist of only a single string field--`expr`--which contains a limited grammar of
+These configuration objects consist of only a single string field--`expr`--which contains a limited grammar of
 accepted operations that can be applied to other predicates, containing precisely the following:
 
 - `and(pred_1_name, pred_2_name, ...)`: Asserts that all of the specified predicates must be true.
 - `or(pred_1_name, pred_2_name, ...)`: Asserts that any of the specified predicates must be true.
 
-Note that, currently, `and`s and `or`s cannot be nested. Upon user request, we may support further advanced
+Note that, currently, `and`'s and `or`'s cannot be nested. Upon user request, we may support further advanced
 analytic operations over predicates.
 
 ______________________________________________________________________
@@ -126,42 +126,42 @@ Valid windows always progress in time from the `start` field to the `end` field.
 symbolic form, the relationship between the start and end time of the window. These two fields must obey the
 following rules:
 
-_Linkage to other windows_: Firstly, exactly one of these two fields must reference an external event, as
-specified either through the name of the trigger event or the start or end event of another window. The other
-field must either be `null`/`None`/omitted (which has a very specific meaning, to be explained shortly) or
-must reference the field that references the external event.
+1. _Linkage to other windows_: Firstly, exactly one of these two fields must reference an external event, as
+   specified either through the name of the trigger event or the start or end event of another window. The other
+   field must either be `null`/`None`/omitted (which has a very specific meaning, to be explained shortly) or
+   must reference the field that references the external event.
 
-_Linkage reference language_: Secondly, for both events, regardless of whether they reference an external
-event or an internal event, that reference must be expressed in one of the following ways.
+2. _Linkage reference language_: Secondly, for both events, regardless of whether they reference an external
+   event or an internal event, that reference must be expressed in one of the following ways.
 
-1. `$REFERENCING = $REFERENCED + $TIME_DELTA`, `$REFERENCING = $REFERENCED - $TIME_DELTA`, etc.
-   In this case, the referencing event (either the start or end of the window) will be defined as occurring
-   exactly `$TIME_DELTA` either after or before the event being referenced (either the external event or the
-   end or start of the window).
-   Note that if `$REFERENCED` is the `start` field, then `$TIME_DELTA` must be positive, and if
-   `$REFERENCED` is the `end` field, then `$TIME_DELTA` must be negative to preserve the time ordering of
-   the window fields.
-2. `$REFERENCING = $REFERENCED -> $PREDICATE`, `$REFERENCING = $REFERENCED <- $PREDICATE`
-   In this case, the referencing event will be defined as the next or previous event satisfying the
-   predicate, `$PREDICATE`. Note that if the `$REFERENCED` is the `start` field, then the "next predicate
-   ordering" (`$REFERENCED -> $PREDICATE`) must be used, and if the `$REFERENCED` is the `end` field, then the
-   "previous predicate ordering" (`$REFERENCED <- $PREDICATE`) must be used to preserve the time ordering of
-   the window fields. Note that these forms can lead to windows being defined as single pointe vents, if the
-   `$REFERENCED` event itself satisfies `$PREDICATE` and the appropriate constraints are satisfied and
-   inclusive values are set.
-3. `$REFERENCING = $REFERENCED`
-   In this case, the referencing event will be defined as the same event as the referenced event.
+   1. `$REFERENCING = $REFERENCED + $TIME_DELTA`, `$REFERENCING = $REFERENCED - $TIME_DELTA`, etc.
+      In this case, the referencing event (either the start or end of the window) will be defined as occurring
+      exactly `$TIME_DELTA` either after or before the event being referenced (either the external event or the
+      end or start of the window).
+      Note that if `$REFERENCED` is the `start` field, then `$TIME_DELTA` must be positive, and if
+      `$REFERENCED` is the `end` field, then `$TIME_DELTA` must be negative to preserve the time ordering of
+      the window fields.
+   2. `$REFERENCING = $REFERENCED -> $PREDICATE`, `$REFERENCING = $REFERENCED <- $PREDICATE`
+      In this case, the referencing event will be defined as the next or previous event satisfying the
+      predicate, `$PREDICATE`. Note that if the `$REFERENCED` is the `start` field, then the "next predicate
+      ordering" (`$REFERENCED -> $PREDICATE`) must be used, and if the `$REFERENCED` is the `end` field, then the
+      "previous predicate ordering" (`$REFERENCED <- $PREDICATE`) must be used to preserve the time ordering of
+      the window fields. Note that these forms can lead to windows being defined as single pointe vents, if the
+      `$REFERENCED` event itself satisfies `$PREDICATE` and the appropriate constraints are satisfied and
+      inclusive values are set.
+   3. `$REFERENCING = $REFERENCED`
+      In this case, the referencing event will be defined as the same event as the referenced event.
 
-_`null`/`None`/omitted_: If `start` is `null`/`None`/omitted, then the window will start at the beginning of
-the patient's record. If `end` is `null`/`None`/omitted, then the window will end at the end of the patient's
-record. In either of these cases, the other field must reference an external event, per rule 1.
+3. _`null`/`None`/omitted_: If `start` is `null`/`None`/omitted, then the window will start at the beginning of
+   the patient's record. If `end` is `null`/`None`/omitted, then the window will end at the end of the patient's
+   record. In either of these cases, the other field must reference an external event, per rule 1.
 
 ##### `start_inclusive` and `end_inclusive`
 
 These two fields specify whether the start and end of the window are inclusive or exclusive, respectively.
 This applies both to whether they are included in the calculation of the predicate values over the windows,
 but also, in the `$REFERENCING = $REFERENCED -> $PREDICATE` and `$REFERENCING = $PREDICATE -> $REFERENCED`
-cases, to which events are possible to use for valid next or prior `$PREDCIATE` events. E.g., if we have that
+cases, to which events are possible to use for valid next or prior `$PREDICATE` events. E.g., if we have that
 `start_inclusive=False` and the `end` field is equal to `start -> $PREDICATE`, and it so happens that the
 `start` event itself satisfies `$PREDICATE`, the fact that `start_inclusive=False` will mean that we do not
 consider the `start` event itself to be a valid start to any window that ends at the same `start` event, as
