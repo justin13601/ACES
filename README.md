@@ -6,28 +6,25 @@
 
 <p align="center">
   <a href="https://www.python.org/downloads/release/python-3100/">
-    <img alt="Python" src="https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white">
-  </a>
+    <img alt="Python" src="https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white"></a>
 
-<a href="https://hydra.cc/">
-    <img alt="Python" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd">
-  </a>
+<a href="https://hydra.cc/"><img alt="Hydra" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd"></a>
 
 <a href="https://codecov.io/gh/justin13601/ACES">
-    <img alt="Python" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV">
+    <img alt="Codecov" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV">
   </a>
 
 <a href="https://github.com/justin13601/ACES/actions/workflows/test.yml">
-    <img alt="Python" src="https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg">
+    <img alt="Tests" src="https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg">
   </a>
 
 <a href="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml">
-    <img alt="Python" src="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml/badge.svg">
+    <img alt="Code Quality" src="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml/badge.svg">
   </a>
 
-<a href="https://eventstreamaces.readthedocs.io/en/latest/">
-    <img alt="Documentation" src="https://eventstreamaces.readthedocs.io/en/latest/?badge=latest">
-  </a>
+<a href='https://eventstreamaces.readthedocs.io/en/latest/?badge=latest'>
+    <img src='https://readthedocs.org/projects/eventstreamaces/badge/?version=latest' alt='Documentation' />
+</a>
 
 <a href="https://github.com/justin13601/ACES/graphs/contributors">
     <img alt="Contributors" src="https://img.shields.io/github/contributors/justin13601/ACES.svg">
@@ -42,11 +39,9 @@
   </a>
 </p>
 
-<h2 align="center">
+<h3 align="center">
     Automatic Cohort Extraction System for Event Stream Datasets
-</h2>
-
-## Background
+</h3>
 
 Automatic Cohort Extraction System (ACES) is a library that streamlines the extraction of task-specific cohorts from time series datasets formatted as event streams, such as Electronic Health Records (EHR). ACES is designed to query these EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML task configuration file. This offers a powerful and user-friendly solution to researchers and developers. The use of a human-readable YAML configuration file also eliminates the need for users to be proficient in complex dataframe querying, making the extraction process accessible to a broader audience.
 
