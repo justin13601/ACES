@@ -92,7 +92,7 @@ aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.st
 **To query from multiple MEDS shards**:
 
 ```bash
-aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data=sharded data.root="sample_data/meds_sample/" "data.shard=$(expand_shards shards/5)" -m
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data=sharded data.root="sample_data/meds_sample/" "data.shard=$(expand_shards train/1 test/0)" -m
 ```
 
 **To query from ESGPT**:
@@ -115,7 +115,7 @@ aces-cli --help
 
 ### Results
 
-By default, results from the above examples would be saved to `sample_configs/inhospital_mortality/shards/0.parquet` for MEDS with multiple shards, and `sample_configs/inhospital_mortality.parquet` otherwise. However, these can be overridden using `output_filepath='/path/to/output.parquet'`.
+By default, results from the above examples would be saved to `sample_configs/inhospital_mortality/` containing `[train/0.parquet, train/1.parquet, test/0.parquet]` for MEDS with multiple shards, and `sample_configs/inhospital_mortality.parquet` otherwise. However, these can be overridden using `output_filepath='/path/to/output.parquet'`.
 
 ```plaintext
 shape: (2, 8)
@@ -148,26 +148,33 @@ Hydra configuration files are leveraged for cohort extraction runs. All fields c
 #### Data Configuration
 
 To set a data standard:
+
 `data.standard`: String specifying the data standard, must be 'meds' OR 'esgpt' OR 'direct'
 
 To query from a single MEDS shard:
+
 `data.path`: Path to the `.parquet`shard file
 
 To query from multiple MEDS shards, you must set `data=sharded`. Additionally:
 
 `data.root`: Root directory of MEDS dataset containing shard directories
+
 `data.shard`: Expression specifying MEDS shards (`$(expand_shards <str>/<int>)`)
 
 To query from an ESGPT dataset:
+
 `data.path`: Directory of the full ESGPT dataset
 
 To query from a direct predicates dataframe:
+
 `data.path` Path to the `.csv` or `.parquet` file containing the predicates dataframe
+
 `data.ts_format`: Timestamp format for predicates. Defaults to "%m/%d/%Y %H:%M"
 
 #### Task Configuration
 
 `cohort_dir`: Directory the your task configuration file
+
 `cohort_name`: Name of the task configuration file
 
 The above two fields are used for automatically loading task configurations, saving results, and logging:
