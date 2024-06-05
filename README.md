@@ -1,14 +1,50 @@
-# ACES: Automatic Cohort Extraction System for Event Stream Datasets
+<p align="center">
+  <picture>
+    <img alt="ACES" src="./docs/source/assets/aces_logo_text.svg" width=55%>
+  </picture>
+</p>
 
-[![Python](https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white)](https://www.python.org/downloads/release/python-3100/)
-[![Hydra](https://img.shields.io/badge/Config-Hydra_1.3-89b8cd)](https://hydra.cc/)
-[![Codecov](https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV)](https://codecov.io/gh/justin13601/ACES)
-[![Tests](https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg)](https://github.com/justin13601/ACES/actions/workflows/test.yml)
-[![Code Quality](https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml/badge.svg)](https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml)
-[![Documentation Status](https://readthedocs.org/projects/eventstreamaces/badge/?version=latest)](https://eventstreamaces.readthedocs.io/en/latest/?badge=latest)
-[![Contributors](https://img.shields.io/github/contributors/justin13601/ACES.svg)](https://github.com/justin13601/ACES/graphs/contributors)
-[![Pull Requests](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/justin13601/ACES/pulls)
-[![License](https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray)](https://github.com/justin13601/ACES#license)
+<p align="center">
+  <a href="https://www.python.org/downloads/release/python-3100/">
+    <img alt="Python" src="https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white">
+  </a>
+
+<a href="https://hydra.cc/">
+    <img alt="Python" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd">
+  </a>
+
+<a href="https://codecov.io/gh/justin13601/ACES">
+    <img alt="Python" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV">
+  </a>
+
+<a href="https://github.com/justin13601/ACES/actions/workflows/test.yml">
+    <img alt="Python" src="https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg">
+  </a>
+
+<a href="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml">
+    <img alt="Python" src="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml/badge.svg">
+  </a>
+
+<a href="https://eventstreamaces.readthedocs.io/en/latest/">
+    <img alt="Documentation" src="https://eventstreamaces.readthedocs.io/en/latest/?badge=latest">
+  </a>
+
+<a href="https://github.com/justin13601/ACES/graphs/contributors">
+    <img alt="Contributors" src="https://img.shields.io/github/contributors/justin13601/ACES.svg">
+  </a>
+
+<a href="https://github.com/justin13601/ACES/pulls">
+    <img alt="Pull Requests" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg">
+  </a>
+
+<a href="https://github.com/justin13601/ACES#license">
+    <img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray">
+  </a>
+</p>
+
+<h2 align="center">
+    Automatic Cohort Extraction System for Event Stream Datasets
+</h2>
 
 ## Background
 
