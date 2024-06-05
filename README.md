@@ -1,7 +1,5 @@
 <p align="center">
-  <picture>
-    <img alt="ACES" src="docs/source/assets/aces_logo_text.png" width=35%>
-  </picture>
+  <a href="https://eventstreamaces.readthedocs.io/en/latest/index.html"><img alt="Python" src="docs/source/assets/aces_logo_text.png" width=35%></a>
 </p>
 
 <p align="center">
@@ -17,9 +15,7 @@
   <a href="https://github.com/justin13601/ACES#license"><img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray"></a>
 </p>
 
-# Automatic Cohort Extraction System for Event-Stream Datasets
-
-## Background
+# Automatic Cohort Extraction System for Event-Streams
 
 Automatic Cohort Extraction System (ACES) is a library that streamlines the extraction of task-specific cohorts from time series datasets formatted as event-streams, such as Electronic Health Records (EHR). ACES is designed to query these EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML task configuration file. This offers a powerful and user-friendly solution to researchers and developers. The use of a human-readable YAML configuration file also eliminates the need for users to be proficient in complex dataframe querying, making the extraction process accessible to a broader audience.
 
