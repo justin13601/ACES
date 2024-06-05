@@ -24,7 +24,7 @@ sys.path.insert(0, str(__src__))
 
 # -- Project information
 
-project = "Event Stream Automatic Cohort Extraction System (ACES)"
+project = "ACES: Automatic Cohort Extraction System for Event-Streams"
 copyright = "2024, Justin Xu & Matthew McDermott"
 author = "Justin Xu & Matthew McDermott"
 

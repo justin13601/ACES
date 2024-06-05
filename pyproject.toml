@@ -5,7 +5,7 @@ authors = [
   { name="Justin Xu", email="justin13601@hotmail.com" },
   { name="Matthew McDermott", email="mattmcdermott8@gmail.com" },
 ]
-description = "Event Stream Automatic Cohort Extraction System (ACES)"
+description = "ACES: Automatic Cohort Extraction System for Event-Streams"
 readme = "README.md"
 requires-python = ">=3.10"
 classifiers = [
