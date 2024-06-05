@@ -5,38 +5,15 @@
 </p>
 
 <p align="center">
-  <a href="https://www.python.org/downloads/release/python-3100/">
-    <img alt="Python" src="https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white"></a>
-
-<a href="https://hydra.cc/"><img alt="Hydra" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd"></a>
-
-<a href="https://codecov.io/gh/justin13601/ACES">
-    <img alt="Codecov" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV">
-  </a>
-
-<a href="https://github.com/justin13601/ACES/actions/workflows/test.yml">
-    <img alt="Tests" src="https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg">
-  </a>
-
-<a href="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml">
-    <img alt="Code Quality" src="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml/badge.svg">
-  </a>
-
-<a href='https://eventstreamaces.readthedocs.io/en/latest/?badge=latest'>
-    <img src='https://readthedocs.org/projects/eventstreamaces/badge/?version=latest' alt='Documentation' />
-</a>
-
-<a href="https://github.com/justin13601/ACES/graphs/contributors">
-    <img alt="Contributors" src="https://img.shields.io/github/contributors/justin13601/ACES.svg">
-  </a>
-
-<a href="https://github.com/justin13601/ACES/pulls">
-    <img alt="Pull Requests" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg">
-  </a>
-
-<a href="https://github.com/justin13601/ACES#license">
-    <img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray">
-  </a>
+  <a href="https://www.python.org/downloads/release/python-3100/"><img alt="Python" src="https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white"></a>
+  <a href="https://hydra.cc/"><img alt="Hydra" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd"></a>
+  <a href="https://codecov.io/gh/justin13601/ACES"><img alt="Codecov" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV"></a>
+  <a href="https://github.com/justin13601/ACES/actions/workflows/test.yml"><img alt="Tests" src="https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg"></a>
+  <a href="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml"><img alt="Code Quality" src="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml/badge.svg"></a>
+  <a href="https://eventstreamaces.readthedocs.io/en/latest/?badge=latest"><img alt="Documentation" src="https://readthedocs.org/projects/eventstreamaces/badge/?version=latest"/></a>
+  <a href="https://github.com/justin13601/ACES/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/justin13601/ACES.svg"></a>
+  <a href="https://github.com/justin13601/ACES/pulls"><img alt="Pull Requests" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
+  <a href="https://github.com/justin13601/ACES#license"><img alt="License" src="https://img.shields.io/badge/License-MIT-green.svg?labelColor=gray"></a>
 </p>
 
 <h3 align="center">
