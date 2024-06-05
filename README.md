@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://eventstreamaces.readthedocs.io/en/latest/index.html"><img alt="ACES" src="https://github.com/justin13601/ACES/blob/6cfebe9802b5661b420a4c9df15c7fd7423b29af/docs/source/assets/aces_logo_text.svg" width=35%></a>
+  <a href="https://eventstreamaces.readthedocs.io/en/latest/index.html"><img alt="ACES" src="https://raw.githubusercontent.com/justin13601/ACES/fafb6c2fe1baf5fe2adb17dfbaebe545da843859/docs/source/assets/aces_logo_text.svg" width=35%></a>
 </p>
 
 <p align="center">
