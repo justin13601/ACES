@@ -106,7 +106,7 @@ The event config consists of only a single field, `predicate`, which specifies t
 observed with value greater than one to satisfy the event. There can only be one defined "event" with an
 "EventConfig" in a valid configuration, and it will define the "trigger" event of the cohort.
 
-The value of its field can be any defined predicate
+The value of its field can be any defined predicate.
 
 ______________________________________________________________________
 

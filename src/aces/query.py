@@ -57,7 +57,11 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     if result.is_empty():
         logger.info("No valid rows found.")
     else:
-        logger.info(f"Done. {result.shape[0]:,} valid rows returned.")
+        # number of patients
+        logger.info(
+            f"Done. {result.shape[0]:,} valid rows returned corresponding to "
+            f"{result['subject_id'].n_unique():,} subjects."
+        )
 
     result = result.rename({"subtree_anchor_timestamp": "trigger"})
 
