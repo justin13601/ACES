@@ -104,7 +104,7 @@ aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.st
 **To query from a direct predicates dataframe (`.csv` | `.parquet`)**:
 
 ```bash
-aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=direct data.path="sample_data/sample.csv"
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=direct data.path="sample_data/sample_data.csv"
 ```
 
 **For help using `aces-cli`:**
