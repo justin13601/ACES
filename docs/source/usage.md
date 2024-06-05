@@ -4,7 +4,7 @@
 
 ### Installation
 
-To use ACES, first determine which data standard you'd like to use. Currently, ACES can be automatically applied to the [Medical Event Data Standard (MEDS)](https://github.com/Medical-Event-Data-Standard/meds) and [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT). Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. Alternatively, ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it **directly** as an event-stream - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/predicates.html).
+To use ACES, first determine which data standard you'd like to use. Currently, ACES can be automatically applied to the [Medical Event Data Standard (MEDS)](https://github.com/Medical-Event-Data-Standard/meds) and [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT). Please first follow instructions on their respective repositories to install and/or transform your data into one of these standards. Alternatively, ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it **directly** as an event-stream - details are provided [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html).
 
 **Note:** If you choose to use the ESGPT standard, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
 
@@ -18,7 +18,7 @@ pip install es-aces
 
 **Example: `inhospital_mortality.yaml`**
 
-Please see the [Task Configuration File Overview](https://eventstreamaces.readthedocs.io/en/latest/overview.html#task-configuration-file) for details on how to create this configuration for your own task!
+Please see the [Task Configuration File Overview](https://eventstreamaces.readthedocs.io/en/latest/overview.html#task-configuration-file) for details on how to create this configuration for your own task! More examples are available [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/examples.html).
 
 This particular task configuration defines a cohort for the binary prediction of in-hospital mortality 48 hours after admission. Patients with 5 or more records between the start of their record and 24 hours after the admission will be included. The cohort includes both those that have been discharged (label=`0`)  and those that have died (label=`1`).
 
