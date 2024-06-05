@@ -28,8 +28,8 @@ project = "ACES: Automatic Cohort Extraction System for Event-Streams"
 copyright = "2024, Justin Xu & Matthew McDermott"
 author = "Justin Xu & Matthew McDermott"
 
-release = "0.2.2"
-version = "0.2.2"
+release = "0.2.3"
+version = "0.2.3"
 
 
 def ensure_pandoc_installed(_):
