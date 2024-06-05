@@ -2,9 +2,9 @@ name: Tests
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
-    branches: [master, "release/*", "dev"]
+    branches: [main, "release/*", "dev"]
 
 jobs:
   run_tests_ubuntu:
