@@ -13,14 +13,16 @@ config_path: ${cohort_dir}/${cohort_name}.yaml
 # sharded data mode.
 output_filepath: ${cohort_dir}/${cohort_name}${data._prefix}.parquet
 
+log_dir: ${cohort_dir}/${cohort_name}/.logs
+
 # Hydra
 hydra:
   job:
-    name: ${cohort_name}_${now:%Y-%m-%d_%H-%M-%S}
+    name: aces_${now:%Y-%m-%d_%H-%M-%S}
   run:
-    dir: ${cohort_dir}/.logs/${hydra.job.name}
+    dir: ${log_dir}
   sweep:
-    dir: ${cohort_dir}/.logs/${hydra.job.name}
+    dir: ${log_dir}
   help:
     app_name: aces-cli
     footer: |-
