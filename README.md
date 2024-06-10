@@ -302,33 +302,37 @@ Support for static data depends on your data standard and those variables are ex
 
 ## Future Roadmap
 
-### Sequential Decoding & Time-to-Event Tasks
+### Usability:
 
-We hope to directly support tasks whose labels cannot be reliably summarized as a single numerical value (ie., a sequential decoding task where we want to predict a sequence of outputs, such as future treatment sequences). For tasks that rely on time-to-event as a paradigm, labels can currently be manually extracted via the window `start`/`end` times (ie., subtracting `start` from `end` of your window containing your event of interest, and then bucketing appropriately post-hoc).
+- Extract indexing information for easier setup of downstream tasks [#37](/../../issues/37)
+- Allow separate predicates-only files and criteria-only files
 
-### Case-Control Matching Extraction
+### Coverage:
 
-Currently, case-control matching (ie., gender-matching, age-matching, etc.) is not directly supported. In order to extract matched cohorts, you may extract the cases and controls cohorts separately, then perform post-hoc matching.
+- Directly support nested configuration files
+- Support timestamp binning for use in predicates or as qualifiers
+- Support additional label types
+- Support additional predicate types
+- Better handle criteria for static variables
+- Allow chaining of multiple task configurations
 
-### Tasks with Multiple Endpoints
+### Generalizability:
 
-It is currently tricky to express tasks that have multiple endpoints. For instance, to extract a cohort for 30-day mortality, you would require patients that died within 30 days of a given timestamp (ie., contains `death` predicate in a window), as well as patients that did not die within the same 30 days (ie., patients with data 30-days past the given timestamp). An overlapping 30-day window could be used to express this, which would create two branches in the task tree. However, it is not yet possible to express an `OR` condition across branches (ie., the `AND` relationship is evaluated across different branches). As such, to extract this cohort, you would also have to make use of two configuration files, one to extract a cohort of those that meet criteria for the first branch (ie., death within 30 days), and one for the other branch (ie., data past 30 days).
+- Promote generalizability across other common data models
 
-### Timestamp Binning
+### Causal Usage:
 
-Unfortunately, it is currently not possible to index at a specific wall time (ie., have time of day offsets). As such, cohorts that require a prediction at 11:59 PM on the day of the patient's admission, for example, cannot be directly extracted.
+- Directly support case-control matching
+- Directly support profiling of excluded populations
 
-### Nested Configurations
+### Additional Tasks:
 
-We aim to support nested configuration files for cohort querying, whereby the results of a particular extraction can be expressed as a predicate to inform the extraction of another cohort. This would allows users to extract cohorts for very complex and specific tasks.
-
-### Complex Predicates
-
-We hope to support more complex predicates that are not expressed as codes in datasets (ie., those that require aggregations of medians/running averages over time to measure disease progression), as well as derived predicates with `not()` or nested boolean logic. In both cases, predicates can currently be specified manually by creating the predicates dataframe directly.
+- Support for additional task types and outputs
+- Directly support tasks with multiple endpoints
 
 ### Natural Language Interface
 
-Given the standardized configuration language, large language models may be leveraged to provide a natural language interface for the creation of task configurations. Initial GPT-4 testing using in-context learning with the configuration language documentation yielded promising results; however, more detailed and quantitative evaluation is needed to determine the feasibility and accuracy of this interface.
+- LLM integration for extraction
 
 ## Acknowledgements
 

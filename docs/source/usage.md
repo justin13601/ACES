@@ -211,6 +211,8 @@ A MEDS dataset can have multiple shards, each stored as a `.parquet` file contai
 aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data=sharded data.root="baz/" "data.shard=$(expand_shards qux/#)" -m
 ```
 
+<!-- Including in usage guide parallelizing across tasks and/or shards via hydra launchers (e.g., joblib for parallel, submitit for slurm) -->
+
 ### ESGPT
 
 A ESGPT dataset will be encapsulated in a directory with two key files, `events_df.parquet` and `dynamic_measurements_df.parquet`. To load data formatting using the ESGPT standard, a directory of a valid ESGPT dataset containing these two tables is needed.
