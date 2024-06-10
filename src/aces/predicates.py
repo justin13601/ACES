@@ -231,8 +231,10 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     parquet_data.write_parquet(data_path)
-        ...     generate_plain_predicates_from_meds(data_path, {"discharge":
-        ...                                                         PlainPredicateConfig("discharge")})
+        ...     generate_plain_predicates_from_meds(
+        ...         data_path,
+        ...         {"discharge": PlainPredicateConfig("discharge")}
+        ...     )
         shape: (3, 3)
         ┌────────────┬─────────────────────┬───────────┐
         │ subject_id ┆ timestamp           ┆ discharge │
@@ -266,6 +268,95 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         .group_by(["subject_id", "timestamp"], maintain_order=True)
         .agg(*(pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols))
     )
+
+
+def process_esgpt_data(
+    events_df: pl.DataFrame,
+    dynamic_measurements_df: pl.DataFrame,
+    value_columns: dict[str, str],
+    predicates: dict,
+) -> pl.DataFrame:
+    """Process ESGPT data to generate plain predicate columns.
+
+    Args:
+        events_df: The Polars DataFrame containing the events data.
+        dynamic_measurements_df: The Polars DataFrame containing the dynamic measurements data.
+
+    Returns:
+        The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
+        ESGPT dataset.
+
+    Examples:
+        >>> from datetime import datetime
+        >>> events_df = pl.DataFrame({
+        ...    "event_id": [1, 2, 3, 4],
+        ...    "subject_id": [1, 1, 2, 2],
+        ...    "timestamp": [
+        ...         datetime(2021, 1, 1, 0, 0),
+        ...         datetime(2021, 1, 1, 12, 0),
+        ...         datetime(2021, 1, 2, 0, 0),
+        ...         datetime(2021, 1, 2, 12, 0),
+        ...    ],
+        ...    "event_type": ["adm", "dis", "adm", "death"],
+        ...    "age": [30, 30, 40, 40],
+        ... })
+        >>> dynamic_measurements_df = pl.DataFrame({
+        ...    "event_id": [1, 1, 1, 2, 2, 3, 4, 5],
+        ...    "adm_loc": [],
+        ...    "dis_loc": [],
+        ...    "HR": [],
+        ...    "lab": [],
+        ...    "lab_val": [],
+        ... })
+        >>> value_columns = {
+        ...    "is_admission": None,
+        ...    "is_discharge": None,
+        ...    "high_HR": "HR",
+        ...    "high_Potassium": "lab_val",
+        ... }
+        >>> predicates = {
+        ...    "is_admission": PlainPredicateConfig(code="event_type//adm"),
+        ...    "is_discharge": PlainPredicateConfig(code="event_type//dis"),
+        ...    "high_HR": PlainPredicateConfig(code="HR//HR", value_min: 140),
+        ...    "high_Potassium": PlainPredicateConfig(code="lab//Potassium", value_min: 5.0),
+        ... }
+        >>> process_esgpt_data(events_df, dynamic_measurements_df, value_columns, predicates)
+    """
+
+    logger.info("Generating plain predicate columns...")
+    for name, plain_predicate in predicates.items():
+        if "event_type" in plain_predicate.code:
+            events_df = events_df.with_columns(
+                plain_predicate.ESGPT_eval_expr().cast(PRED_CNT_TYPE).alias(name)
+            )
+        else:
+            values_column = value_columns[name]
+            dynamic_measurements_df = dynamic_measurements_df.with_columns(
+                plain_predicate.ESGPT_eval_expr(values_column).cast(PRED_CNT_TYPE).alias(name)
+            )
+        logger.info(f"Added predicate column '{name}'.")
+
+    predicate_cols = list(predicates.keys())
+
+    # aggregate dynamic_measurements_df by summing predicates (counts)
+    dynamic_measurements_df = (
+        dynamic_measurements_df.group_by(["event_id"])
+        .agg(
+            *[
+                pl.col(c).sum().cast(PRED_CNT_TYPE)
+                for c in dynamic_measurements_df.columns
+                if c in predicate_cols
+            ],
+        )
+        .select(["event_id"] + [c for c in dynamic_measurements_df.columns if c in predicate_cols])
+    )
+
+    # join events_df and dynamic_measurements_df for the final predicates_df
+    data = events_df.join(dynamic_measurements_df, on="event_id", how="left")
+
+    # clean up predicates_df
+    logger.info("Cleaning up predicates dataframe...")
+    return data.select(["subject_id", "timestamp"] + predicate_cols)
 
 
 def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> pl.DataFrame:
@@ -305,40 +396,15 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     dynamic_measurements_df = ESD.dynamic_measurements_df
     config = ESD.config
 
-    logger.info("Generating plain predicate columns...")
+    value_columns = {}
     for name, plain_predicate in predicates.items():
         if "event_type" in plain_predicate.code:
-            events_df = events_df.with_columns(
-                plain_predicate.ESGPT_eval_expr().cast(PRED_CNT_TYPE).alias(name)
-            )
+            value_columns[name] = None
         else:
-            values_column = config.measurement_configs[plain_predicate.code.split("//")[0]].values_column
-            dynamic_measurements_df = dynamic_measurements_df.with_columns(
-                plain_predicate.ESGPT_eval_expr(values_column).cast(PRED_CNT_TYPE).alias(name)
-            )
-        logger.info(f"Added predicate column '{name}'.")
+            measurement_name = plain_predicate.code.split("//")[0]
+            value_columns[name] = config.measurement_configs[measurement_name].values_column
 
-    predicate_cols = list(predicates.keys())
-
-    # aggregate dynamic_measurements_df by summing predicates (counts)
-    dynamic_measurements_df = (
-        dynamic_measurements_df.group_by(["event_id"])
-        .agg(
-            *[
-                pl.col(c).sum().cast(PRED_CNT_TYPE)
-                for c in dynamic_measurements_df.columns
-                if c in predicate_cols
-            ],
-        )
-        .select(["event_id"] + [c for c in dynamic_measurements_df.columns if c in predicate_cols])
-    )
-
-    # join events_df and dynamic_measurements_df for the final predicates_df
-    data = events_df.join(dynamic_measurements_df, on="event_id", how="left")
-
-    # clean up predicates_df
-    logger.info("Cleaning up predicates dataframe...")
-    return data.select(["subject_id", "timestamp"] + predicate_cols)
+    return process_esgpt_data(events_df, dynamic_measurements_df, value_columns, predicates)
 
 
 def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.DataFrame:
