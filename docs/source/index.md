@@ -1,4 +1,4 @@
-# Welcome to ACES!
+# Welcome!
 
 <p align="center">
   <a href="https://eventstreamaces.readthedocs.io/en/latest/index.html"><img alt="ACES" src="https://raw.githubusercontent.com/justin13601/ACES/bbde3d2047d30f2203cc09a288a8e3565a0d7d62/docs/source/assets/aces_logo_text.svg" width=35%></a>
