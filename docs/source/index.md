@@ -8,24 +8,44 @@ ACES is a library designed for the automatic extraction of cohorts from event-st
 
 ______________________________________________________________________
 
-<!-- Why should use this ecosystem? If you have a dataset you want to do something with, you can do the following:
+## Why ACES?
+
+Why should use this ecosystem? If you have a dataset you want to do something with, you can do the following:
+
+### 1. Transform to MEDS
+
 Put your dataset in MEDS form (Link to ETL) -- this will take some human effort, but is simple, easy (relative to other CDMs), and won’t introduce significant biases in your data relative to its raw form.
+
+### 2. Identify Predicates
+
 Identify the predicates necessary for the tasks of interest either for new tasks or in the pre-defined criteria we have across these N tasks and M clinical areas you can find here: <LINK>
+
+### 3. Set Dataset-Agnostic Criteria
+
 Merge those predicates into the dataset-agnostic criteria files at the prior link -- see <HERE> and <HERE> for examples of these on other public (MIMIC-IV, eICU) or private (...) datasets
+
+### 4. Run ACES
+
 Run ACES to extract your tasks (show command)
+
+### 5. Run MEDS-Tab
+
 Run MEDS-Tab to produce comparable, reproducible, and well-tuned XGBoost results for each of these tasks over your dataset-specific feature space (see here)
-You can see this in action for MIMIC-IV <HERE>, eICU <HERE>, and it reliably takes no more than a week of full time human effort to perform steps i - v on new datasets in reasonable raw formulations. -->
+
+## Examples
+
+You can see this in action for MIMIC-IV <HERE>, eICU <HERE>, and it reliably takes no more than a week of full time human effort to perform steps i - v on new datasets in reasonable raw formulations.
 
 ______________________________________________________________________
 
-## Contents
+## Documentation Contents
 
 ```{toctree}
 ---
 glob:
 maxdepth: 2
 ---
-README <readme>
+GitHub README <readme>
 Usage Guide <usage>
 Task Examples <notebooks/examples>
 Sample Data Tutorial <notebooks/tutorial>
