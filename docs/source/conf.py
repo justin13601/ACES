@@ -327,7 +327,7 @@ latex_elements = {  # type: ignore
     # The font size ("10pt", "11pt" or "12pt").
     "pointsize": "10pt",
     # Additional stuff for the LaTeX preamble.
-    "preamble": "".join((r"\DeclareUnicodeCharacter{2501}{━}",)),
+    # "preamble": "".join((r"\DeclareUnicodeCharacter{2501}{━}",)),
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
