@@ -167,7 +167,7 @@ source_suffix = [".rst", ".md"]
 # source_encoding = 'utf-8-sig'
 
 # The master toctree document.
-master_doc = "overview"
+master_doc = "index"
 
 # The reST default role (used for this markup: `text`) to use for all documents.
 default_role = "py:obj"
@@ -333,7 +333,7 @@ latex_elements = {  # type: ignore
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ("overview", "aces_documentation.tex", "ACES Documentation", "Justin Xu & Matthew McDermott", "manual")
+    ("index", "aces_documentation.tex", "ACES Documentation", "Justin Xu & Matthew McDermott", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
