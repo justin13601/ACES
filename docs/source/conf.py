@@ -327,13 +327,31 @@ latex_elements = {  # type: ignore
     # The font size ("10pt", "11pt" or "12pt").
     "pointsize": "10pt",
     # Additional stuff for the LaTeX preamble.
-    "preamble": "",
+    "preamble": "\n".join([
+        r"\DeclareUnicodeCharacter{2501}{-}",
+        r"\DeclareUnicodeCharacter{2503}{|}",
+        r"\DeclareUnicodeCharacter{2500}{=}",
+        r"\DeclareUnicodeCharacter{2550}{=}",
+        r"\DeclareUnicodeCharacter{2517}{+}",
+        r"\DeclareUnicodeCharacter{2518}{+}",
+        r"\DeclareUnicodeCharacter{2534}{+}",
+        r"\DeclareUnicodeCharacter{250C}{+}",
+        r"\DeclareUnicodeCharacter{252C}{+}",
+        r"\DeclareUnicodeCharacter{2510}{+}",
+        r"\DeclareUnicodeCharacter{2502}{|}",
+        r"\DeclareUnicodeCharacter{2506}{|}",
+        r"\DeclareUnicodeCharacter{2561}{|}",
+        r"\DeclareUnicodeCharacter{256A}{|}",
+        r"\DeclareUnicodeCharacter{2523}{|}",
+        r"\DeclareUnicodeCharacter{03BC}{\ensuremath{\mu}}",
+        r"\DeclareUnicodeCharacter{255E}{|}",
+    ])
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ("index", "aces_documentation.tex", "ACES Documentation", "Justin Xu & Matthew McDermott", "manual")
+    ("index", "aces_documentation.tex", "ACES Documentation", "Justin Xu \& Matthew McDermott", "manual")
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
