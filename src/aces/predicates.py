@@ -54,6 +54,45 @@ def direct_load_plain_predicates(
         │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
         │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
         └────────────┴─────────────────────┴──────────────┴──────────────┘
+
+    If the timestamp column is already a timestamp, then the `ts_format` argument id not needed, but can be
+    used without an error.
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     (
+        ...         CSV_data
+        ...         .with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
+        ...         .write_parquet(data_path)
+        ...     )
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], "%m/%d/%Y %H:%M")
+        shape: (3, 4)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
+        └────────────┴─────────────────────┴──────────────┴──────────────┘
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     (
+        ...         CSV_data
+        ...         .with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
+        ...         .write_parquet(data_path)
+        ...     )
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], None)
+        shape: (3, 4)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
+        └────────────┴─────────────────────┴──────────────┴──────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
@@ -96,6 +135,34 @@ def direct_load_plain_predicates(
         Traceback (most recent call last):
             ...
         ValueError: Unsupported file format: .foo
+        >>> with tempfile.TemporaryDirectory() as d:
+        ...     data_path = Path(d) / "data.csv"
+        ...     assert not data_path.exists()
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], "%m/%d/%Y %H:%M")
+        Traceback (most recent call last):
+            ...
+        FileNotFoundError: Direct predicates file ... does not exist!
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     CSV_data.write_parquet(data_path)
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], None)
+        Traceback (most recent call last):
+            ...
+        ValueError: Must provide a timestamp format for direct predicates with str timestamps.
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     (
+        ...         CSV_data
+        ...         .with_columns(
+        ...             pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
+        ...             .dt.timestamp()
+        ...         )
+        ...         .write_parquet(data_path)
+        ...     )
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], None)
+        Traceback (most recent call last):
+            ...
+        TypeError: Passed predicates have timestamps of invalid type Int64.
     """
 
     columns = ["subject_id", "timestamp"] + predicates
