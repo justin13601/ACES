@@ -302,37 +302,37 @@ Support for static data depends on your data standard and those variables are ex
 
 ## Future Roadmap
 
-### Usability:
+### Usability
 
-- Extract indexing information for easier setup of downstream tasks [#37](/../../issues/37)
-- Allow separate predicates-only files and criteria-only files
+- Extract indexing information for easier setup of downstream tasks ([#37](https://github.com/justin13601/ACES/issues/37))
+- Allow separate predicates-only files and criteria-only files ([#42](https://github.com/justin13601/ACES/issues/42))
 
-### Coverage:
+### Coverage
 
-- Directly support nested configuration files
-- Support timestamp binning for use in predicates or as qualifiers
-- Support additional label types
-- Support additional predicate types
-- Better handle criteria for static variables
-- Allow chaining of multiple task configurations
+- Directly support nested configuration files ([#43](https://github.com/justin13601/ACES/issues/43))
+- Support timestamp binning for use in predicates or as qualifiers ([#44](https://github.com/justin13601/ACES/issues/44))
+- Support additional label types ([#45](https://github.com/justin13601/ACES/issues/45))
+- Support additional predicate types ([#47](https://github.com/justin13601/ACES/issues/47))
+- Better handle criteria for static variables ([#48](https://github.com/justin13601/ACES/issues/48))
+- Allow chaining of multiple task configurations ([#49](https://github.com/justin13601/ACES/issues/49))
 
-### Generalizability:
+### Generalizability
 
-- Promote generalizability across other common data models
+- Promote generalizability across other common data models ([#50](https://github.com/justin13601/ACES/issues/50))
 
-### Causal Usage:
+### Causal Usage
 
-- Directly support case-control matching
-- Directly support profiling of excluded populations
+- Directly support case-control matching ([#51](https://github.com/justin13601/ACES/issues/51))
+- Directly support profiling of excluded populations ([#52](https://github.com/justin13601/ACES/issues/52))
 
-### Additional Tasks:
+### Additional Tasks
 
-- Support for additional task types and outputs
-- Directly support tasks with multiple endpoints
+- Support for additional task types and outputs ([#53](https://github.com/justin13601/ACES/issues/53))
+- Directly support tasks with multiple endpoints ([#54](https://github.com/justin13601/ACES/issues/54))
 
 ### Natural Language Interface
 
-- LLM integration for extraction
+- LLM integration for extraction ([#55](https://github.com/justin13601/ACES/issues/55))
 
 ## Acknowledgements
 
