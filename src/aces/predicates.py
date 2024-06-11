@@ -318,7 +318,7 @@ def process_esgpt_data(
         >>> predicates = {
         ...    "is_admission": PlainPredicateConfig(code="event_type//adm"),
         ...    "is_discharge": PlainPredicateConfig(code="event_type//dis"),
-        ...    "high_HR": PlainPredicateConfig(code="HR//HR", value_min=140),
+        ...    "high_HR": PlainPredicateConfig(code="HR", value_min=140),
         ...    "high_Potassium": PlainPredicateConfig(code="lab//K", value_min=5.0),
         ... }
         >>> process_esgpt_data(events_df, dynamic_measurements_df, value_columns, predicates)

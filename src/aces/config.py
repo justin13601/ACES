@@ -81,6 +81,11 @@ class PlainPredicateConfig:
         expected outputs have been validated on polars version 0.20.30.
 
         Examples:
+            >>> # Should handle univariate regression values
+            >>> expr = PlainPredicateConfig("HR", value_min=120, value_min_inclusive=False)
+            >>> expr = expr.ESGPT_eval_expr("HR")
+            >>> print(expr)
+            [(col("HR")) > (dyn int: 120)]
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).ESGPT_eval_expr("BP_value")
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("BP")) == (String(systolic))].all_horizontal([[(col("BP_value")) >=
