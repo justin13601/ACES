@@ -329,7 +329,7 @@ latex_elements = {  # type: ignore
     # Additional stuff for the LaTeX preamble.
     "preamble": "\n".join(
         [
-            "\\usepackage[utf8]{inputenc}",
+            r"\usepackage{fontspec}",
             # r"\DeclareUnicodeCharacter{2501}{-}",
             # r"\DeclareUnicodeCharacter{2503}{|}",
             # r"\DeclareUnicodeCharacter{2500}{=}",
