@@ -288,6 +288,7 @@ def process_esgpt_data(
 
     Examples:
         >>> from datetime import datetime
+        >>> from .config import PlainPredicateConfig
         >>> events_df = pl.DataFrame({
         ...    "event_id": [1, 2, 3, 4],
         ...    "subject_id": [1, 1, 2, 2],
@@ -297,16 +298,16 @@ def process_esgpt_data(
         ...         datetime(2021, 1, 2, 0, 0),
         ...         datetime(2021, 1, 2, 12, 0),
         ...    ],
-        ...    "event_type": ["adm", "dis", "adm", "death"],
+        ...    "event_type": ["adm", "dis", "adm", "obs"],
         ...    "age": [30, 30, 40, 40],
         ... })
         >>> dynamic_measurements_df = pl.DataFrame({
-        ...    "event_id": [1, 1, 1, 2, 2, 3, 4, 5],
-        ...    "adm_loc": [],
-        ...    "dis_loc": [],
-        ...    "HR": [],
-        ...    "lab": [],
-        ...    "lab_val": [],
+        ...    "event_id": [1,     1,    1,    2,    2,    2,    3,     4,    5],
+        ...    "adm_loc":  ["foo", None, None, None, None, None, "bar", None, None],
+        ...    "dis_loc":  [None,  None, None, None, None, "H",  None,  None, None],
+        ...    "HR":       [None,  150,  None, 120,  None, None, None,  177,  89],
+        ...    "lab":      [None,  None, "K",  None, "K",  None, None,  None, "SpO2"],
+        ...    "lab_val":  [None,  None, 5.1,  None, 3.8,  None, None,  None, 99],
         ... })
         >>> value_columns = {
         ...    "is_admission": None,
@@ -317,8 +318,8 @@ def process_esgpt_data(
         >>> predicates = {
         ...    "is_admission": PlainPredicateConfig(code="event_type//adm"),
         ...    "is_discharge": PlainPredicateConfig(code="event_type//dis"),
-        ...    "high_HR": PlainPredicateConfig(code="HR//HR", value_min: 140),
-        ...    "high_Potassium": PlainPredicateConfig(code="lab//Potassium", value_min: 5.0),
+        ...    "high_HR": PlainPredicateConfig(code="HR//HR", value_min=140),
+        ...    "high_Potassium": PlainPredicateConfig(code="lab//K", value_min=5.0),
         ... }
         >>> process_esgpt_data(events_df, dynamic_measurements_df, value_columns, predicates)
     """
