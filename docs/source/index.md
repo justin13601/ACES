@@ -27,7 +27,7 @@ ______________________________________________________________________
 
 ## Why ACES?
 
-If you have a dataset and want to leverage it for machine learning tasks, the ACES ecosystem offers a streamlined and user-friendly approach. Here's how you can easily transform, prepare, and utilize your dataset for efficient and effective machine learning:
+If you have a dataset and want to leverage it for machine learning tasks, the ACES ecosystem offers a streamlined and user-friendly approach. Here's how you can easily transform, prepare, and utilize your dataset with MEDS and ACES for efficient and effective machine learning:
 
 ### 1. Transform to MEDS
 
