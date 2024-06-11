@@ -9,6 +9,8 @@
 glob:
 maxdepth: 2
 ---
+ACES is a library designed for the automatic extraction of cohorts from event-stream time series datasets. Check out the {doc}`/usage` for installation instructions and further information on how to extract cohorts!
+
 GitHub README <readme>
 Usage Guide <usage>
 Task Examples <notebooks/examples>
@@ -19,8 +21,6 @@ Algorithm & Terminology <terminology>
 Module API Reference <api/modules>
 License <license>
 ```
-
-ACES is a library designed for the automatic extraction of cohorts from event-stream time series datasets. Check out the {doc}`/usage` for installation instructions and further information on how to extract cohorts!
 
 ______________________________________________________________________
 
