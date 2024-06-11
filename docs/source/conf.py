@@ -83,6 +83,7 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
+    "sphinx.ext.imgconverter",
     "sphinxcontrib.collections",
     "sphinx_subfigure",
     "sphinx_immaterial",
