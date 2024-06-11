@@ -6,7 +6,11 @@
 
 ACES is a library designed for the automatic extraction of cohorts from event-stream datasets for downstream machine learning tasks. Check out below for an overview of ACES and how it could be useful in your workflows!
 
-## Documentation
+## Why ACES?
+
+Why should use this ecosystem? If you have a dataset you want to do something with, you can do the following:
+
+______________________________________________________________________
 
 ```{toctree}
 ---
@@ -25,10 +29,6 @@ License <license>
 ```
 
 ______________________________________________________________________
-
-## Why ACES?
-
-Why should use this ecosystem? If you have a dataset you want to do something with, you can do the following:
 
 ### 1. Transform to MEDS
 
