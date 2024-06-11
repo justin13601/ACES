@@ -3,9 +3,10 @@
 <p align="center">
   <a href="https://eventstreamaces.readthedocs.io/en/latest/index.html"><img alt="ACES" src="https://raw.githubusercontent.com/justin13601/ACES/bbde3d2047d30f2203cc09a288a8e3565a0d7d62/docs/source/assets/aces_logo_text.svg" width=35%></a>
 </p>
-______________________________________________________________________
 
-ACES is a library designed for the automatic extraction of cohorts from event-stream time series datasets. Check out the {doc}`/usage` for installation instructions and further information on how to extract cohorts!
+ACES is a library designed for the automatic extraction of cohorts from event-stream datasets for downstream machine learning tasks. Check out below for an overview of ACES and how it could be useful in your workflows!
+
+## TOC
 
 ```{toctree}
 ---
