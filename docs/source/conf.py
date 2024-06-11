@@ -329,6 +329,7 @@ latex_elements = {  # type: ignore
     # Additional stuff for the LaTeX preamble.
     "preamble": "\n".join(
         [
+            r"\usepackage{svg}",
             r"\DeclareUnicodeCharacter{2501}{-}",
             r"\DeclareUnicodeCharacter{2503}{|}",
             r"\DeclareUnicodeCharacter{2500}{=}",
@@ -346,6 +347,11 @@ latex_elements = {  # type: ignore
             r"\DeclareUnicodeCharacter{2523}{|}",
             r"\DeclareUnicodeCharacter{03BC}{\ensuremath{\mu}}",
             r"\DeclareUnicodeCharacter{255E}{|}",
+            r"\DeclareUnicodeCharacter{255F}{+}",
+            r"\DeclareUnicodeCharacter{254E}{|}",
+            r"\DeclareUnicodeCharacter{257C}{-}",
+            r"\DeclareUnicodeCharacter{257E}{-}",
+            r"\DeclareUnicodeCharacter{2559}{+}",
         ]
     ),
 }

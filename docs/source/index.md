@@ -6,7 +6,7 @@
 
 ACES is a library designed for the automatic extraction of cohorts from event-stream datasets for downstream machine learning tasks. Check out below for an overview of ACES and how it could be useful in your workflows!
 
-## TOC
+## Documentation
 
 ```{toctree}
 ---
@@ -49,6 +49,8 @@ Run ACES to extract your tasks (show command)
 ### 5. Run MEDS-Tab
 
 Run MEDS-Tab to produce comparable, reproducible, and well-tuned XGBoost results for each of these tasks over your dataset-specific feature space (see here)
+
+______________________________________________________________________
 
 ## Examples
 
