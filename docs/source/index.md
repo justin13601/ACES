@@ -18,6 +18,7 @@ Sample Data Tutorial <notebooks/tutorial>
 Predicates DataFrame <notebooks/predicates>
 Configuration Language <configuration>
 Algorithm & Terminology <terminology>
+Profiling <profiling>
 Module API Reference <api/modules>
 License <license>
 ```
@@ -26,32 +27,39 @@ ______________________________________________________________________
 
 ## Why ACES?
 
-Why should use this ecosystem? If you have a dataset you want to do something with, you can do the following:
+If you have a dataset and want to leverage it for machine learning tasks, the ACES ecosystem offers a streamlined and user-friendly approach. Here's how you can easily transform, prepare, and utilize your dataset for efficient and effective machine learning:
 
 ### 1. Transform to MEDS
 
-Put your dataset in MEDS form (Link to ETL) -- this will take some human effort, but is simple, easy (relative to other CDMs), and won’t introduce significant biases in your data relative to its raw form.
+- Simplicity: Converting your dataset to the Medical Event Data Standard (MEDS) is straightforward and user-friendly compared to other Common Data Models (CDMs).
+- Minimal Bias: This conversion process ensures that your data remains as close to its raw form as possible, minimizing the introduction of biases.
+- [MEDS-ETL](https://github.com/Medical-Event-Data-Standard/meds_etl): Follow this link for detailed instructions and ETLs to transform your dataset into the MEDS format!
 
 ### 2. Identify Predicates
 
-Identify the predicates necessary for the tasks of interest either for new tasks or in the pre-defined criteria we have across these N tasks and M clinical areas you can find here: <LINK>
+- Task-Specific Concepts: Identify the predicates (data concepts) required for your specific machine learning tasks.
+- Pre-Defined Criteria: Utilize our pre-defined criteria across various tasks and clinical areas to expedite this process.
+- [PIE-MD](https://github.com/mmcdermott/PIE_MD/tree/main/tasks/criteria): Access our repository of tasks to find relevant predicates!
 
 ### 3. Set Dataset-Agnostic Criteria
 
-Merge those predicates into the dataset-agnostic criteria files at the prior link -- see <HERE> and <HERE> for examples of these on other public (MIMIC-IV, eICU) or private (...) datasets
+- Standardization: Combine the identified predicates with standardized, dataset-agnostic criteria files.
+- Examples: Refer to the [MIMIC-IV](https://github.com/mmcdermott/PIE_MD/tree/main/tasks/MIMIC-IV) and [eICU](https://github.com/mmcdermott/PIE_MD/tree/main/tasks/eICU) examples for guidance on how to structure your criteria files for your private datasets!
 
 ### 4. Run ACES
 
-Run ACES to extract your tasks (show command)
+- Run the ACES Command-Line Interface tool (`aces-cli`) to extract cohorts based on your task - check out the [Usage Guide](https://eventstreamaces.readthedocs.io/en/latest/usage.html)!
 
 ### 5. Run MEDS-Tab
 
-Run MEDS-Tab to produce comparable, reproducible, and well-tuned XGBoost results for each of these tasks over your dataset-specific feature space (see here)
+Painless Reproducibility: Use [MEDS-Tab](https://github.com/mmcdermott/MEDS_TAB_MIMIC_IV/tree/main/tasks) to obtain comparable, reproducible, and well-tuned XGBoost results tailored to your dataset-specific feature space.
+
+By following these steps, you can seamlessly transform your dataset, define necessary criteria, and leverage powerful machine learning tools within the ACES ecosystem. This approach not only simplifies the process but also ensures high-quality, reproducible results for your machine learning for health projects.
 
 ______________________________________________________________________
 
 ## Examples
 
-You can see this in action for MIMIC-IV <HERE>, eICU <HERE>, and it reliably takes no more than a week of full time human effort to perform steps i - v on new datasets in reasonable raw formulations.
+You can see ACES in action for MIMIC-IV <HERE> and eICU <HERE>. It can reliably take no more than a week of full-time human effort to perform steps 1-5 on new datasets in reasonable raw formulations!
 
 ______________________________________________________________________
