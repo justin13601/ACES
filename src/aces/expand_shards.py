@@ -29,5 +29,9 @@ def expand_shards(*shards: str) -> str:
     return ",".join(result)
 
 
-if __name__ == "__main__":
+def main():
     print(expand_shards(*sys.argv[1:]))
+
+
+if __name__ == "__main__":
+    main()
