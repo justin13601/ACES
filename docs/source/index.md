@@ -18,7 +18,7 @@ Sample Data Tutorial <notebooks/tutorial>
 Predicates DataFrame <notebooks/predicates>
 Configuration Language <configuration>
 Algorithm & Terminology <terminology>
-Profiling <profiling>
+Computational Profiling <profiling>
 Module API Reference <api/modules>
 License <license>
 ```
