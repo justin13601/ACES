@@ -24,11 +24,12 @@ def main(cfg: DictConfig):
     from datetime import datetime
     from pathlib import Path
 
+    from hydra.core.hydra_config import HydraConfig
     from omegaconf import OmegaConf
 
     from . import config, predicates, query, utils
 
-    utils.hydra_loguru_init(f"{cfg.hydra.job.name}.log")
+    utils.hydra_loguru_init(f"{HydraConfig.get().job.name}.log")
 
     st = datetime.now()
 
