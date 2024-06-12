@@ -27,7 +27,7 @@ contain events that satisfy certain aggregation functions over predicates for th
 
 ______________________________________________________________________
 
-## Machine Form (used by ACES)
+## Machine Form (ACES)
 
 In the machine form, the configuration file consists of three parts:
 
