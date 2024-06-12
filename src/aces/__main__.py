@@ -4,10 +4,8 @@ import sys
 from importlib.resources import files
 
 import hydra
-import hydra.core
-import hydra.core.hydra_config
 from loguru import logger
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 config_yaml = files("aces").joinpath("configs/aces.yaml")
 if not config_yaml.is_file():
@@ -26,9 +24,11 @@ def main(cfg: DictConfig):
     from datetime import datetime
     from pathlib import Path
 
+    from omegaconf import OmegaConf
+
     from . import config, predicates, query, utils
 
-    utils.hydra_loguru_init(f"{hydra.core.hydra_config.HydraConfig.get().job.name}.log")
+    utils.hydra_loguru_init(f"{cfg.hydra.job.name}.log")
 
     st = datetime.now()
 

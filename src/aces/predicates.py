@@ -464,7 +464,10 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ...         end="start + 24h",
         ...         start_inclusive=False,
         ...         end_inclusive=True,
-        ...         has={"death_or_dis": "(None, 0)", "adm": "(None, 0)"},
+        ...         has={
+        ...             "death_or_dis": "(None, 0)",
+        ...             "adm": "(None, 0)",
+        ...         },
         ...     ),
         ...     "target": WindowConfig(
         ...         start="gap.end",
@@ -513,6 +516,41 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
         │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0   ┆ 1     ┆ 1            ┆ 1          │
         └────────────┴─────────────────────┴─────┴─────┴───────┴──────────────┴────────────┘
+        >>> any_event_trigger = EventConfig("_ANY_EVENT")
+        >>> adm_only_predicates = {"adm": PlainPredicateConfig("adm")}
+        >>> st_end_windows = {
+        ...     "input": WindowConfig(
+        ...         start="end - 365d",
+        ...         end="trigger + 24h",
+        ...         start_inclusive=True,
+        ...         end_inclusive=True,
+        ...         has={
+        ...             "_RECORD_END": "(None, 0)",   # These are added just to show start/end predicates
+        ...             "_RECORD_START": "(None, 0)", # These are added just to show start/end predicates
+        ...         },
+        ...     ),
+        ... }
+        >>> st_end_config = TaskExtractorConfig(
+        ...     predicates=adm_only_predicates, trigger=any_event_trigger, windows=st_end_windows
+        ... )
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
+        ...     data_path = Path(f.name)
+        ...     data.write_csv(data_path)
+        ...     data_config = DictConfig({
+        ...         "path": str(data_path), "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"
+        ...     })
+        ...     get_predicates_df(st_end_config, data_config)
+        shape: (4, 6)
+        ┌────────────┬─────────────────────┬─────┬────────────┬───────────────┬─────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ _ANY_EVENT ┆ _RECORD_START ┆ _RECORD_END │
+        │ ---        ┆ ---                 ┆ --- ┆ ---        ┆ ---           ┆ ---         │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64        ┆ i64           ┆ i64         │
+        ╞════════════╪═════════════════════╪═════╪════════════╪═══════════════╪═════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 1          ┆ 1             ┆ 0           │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1          ┆ 0             ┆ 1           │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 1          ┆ 1             ┆ 0           │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 1          ┆ 0             ┆ 1           │
+        └────────────┴─────────────────────┴─────┴────────────┴───────────────┴─────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     data.write_csv(data_path)
