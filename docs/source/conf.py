@@ -321,40 +321,40 @@ htmlhelp_basename = "aces-doc"
 
 
 # -- Options for LaTeX output
-latex_engine = "xelatex"
+# latex_engine = "xelatex"
 latex_elements = {  # type: ignore
     # The paper size ("letterpaper" or "a4paper").
     "papersize": "letterpaper",
     # The font size ("10pt", "11pt" or "12pt").
     "pointsize": "10pt",
     # Additional stuff for the LaTeX preamble.
-    # "preamble": "\n".join(
-    #     [
-    #         r"\usepackage{svg}",
-    #         r"\DeclareUnicodeCharacter{2501}{-}",
-    #         r"\DeclareUnicodeCharacter{2503}{|}",
-    #         r"\DeclareUnicodeCharacter{2500}{-}",
-    #         r"\DeclareUnicodeCharacter{2550}{-}",
-    #         r"\DeclareUnicodeCharacter{2517}{+}",
-    #         r"\DeclareUnicodeCharacter{2518}{+}",
-    #         r"\DeclareUnicodeCharacter{2534}{+}",
-    #         r"\DeclareUnicodeCharacter{250C}{+}",
-    #         r"\DeclareUnicodeCharacter{252C}{+}",
-    #         r"\DeclareUnicodeCharacter{2510}{+}",
-    #         r"\DeclareUnicodeCharacter{2502}{|}",
-    #         r"\DeclareUnicodeCharacter{2506}{|}",
-    #         r"\DeclareUnicodeCharacter{2561}{|}",
-    #         r"\DeclareUnicodeCharacter{256A}{|}",
-    #         r"\DeclareUnicodeCharacter{2523}{|}",
-    #         r"\DeclareUnicodeCharacter{03BC}{\ensuremath{\mu}}",
-    #         r"\DeclareUnicodeCharacter{255E}{|}",
-    #         r"\DeclareUnicodeCharacter{255F}{+}",
-    #         r"\DeclareUnicodeCharacter{254E}{|}",
-    #         r"\DeclareUnicodeCharacter{257C}{-}",
-    #         r"\DeclareUnicodeCharacter{257E}{-}",
-    #         r"\DeclareUnicodeCharacter{2559}{+}",
-    #     ]
-    # ),
+    "preamble": "\n".join(
+        [
+            r"\usepackage{svg}",
+            r"\DeclareUnicodeCharacter{2501}{-}",
+            r"\DeclareUnicodeCharacter{2503}{|}",
+            r"\DeclareUnicodeCharacter{2500}{-}",
+            r"\DeclareUnicodeCharacter{2550}{-}",
+            r"\DeclareUnicodeCharacter{2517}{+}",
+            r"\DeclareUnicodeCharacter{2518}{+}",
+            r"\DeclareUnicodeCharacter{2534}{+}",
+            r"\DeclareUnicodeCharacter{250C}{+}",
+            r"\DeclareUnicodeCharacter{252C}{+}",
+            r"\DeclareUnicodeCharacter{2510}{+}",
+            r"\DeclareUnicodeCharacter{2502}{|}",
+            r"\DeclareUnicodeCharacter{2506}{|}",
+            r"\DeclareUnicodeCharacter{2561}{|}",
+            r"\DeclareUnicodeCharacter{256A}{|}",
+            r"\DeclareUnicodeCharacter{2523}{|}",
+            r"\DeclareUnicodeCharacter{03BC}{\ensuremath{\mu}}",
+            r"\DeclareUnicodeCharacter{255E}{|}",
+            r"\DeclareUnicodeCharacter{255F}{+}",
+            r"\DeclareUnicodeCharacter{254E}{|}",
+            r"\DeclareUnicodeCharacter{257C}{-}",
+            r"\DeclareUnicodeCharacter{257E}{-}",
+            r"\DeclareUnicodeCharacter{2559}{+}",
+        ]
+    ),
 }
 
 # Grouping the document tree into LaTeX files. List of tuples
