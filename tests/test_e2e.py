@@ -216,13 +216,16 @@ EXPECTED_OUTPUT = {
 }
 
 
-def run_command(script: str, hydra_kwargs: dict[str, str], test_name: str):
+def run_command(script: str, hydra_kwargs: dict[str, str], test_name: str, expected_returncode: int = 0):
     command_parts = [script] + [f"{k}={v}" for k, v in hydra_kwargs.items()]
     command_out = subprocess.run(" ".join(command_parts), shell=True, capture_output=True)
     stderr = command_out.stderr.decode()
     stdout = command_out.stdout.decode()
-    if command_out.returncode != 0:
-        raise AssertionError(f"{test_name} failed!\nstdout:\n{stdout}\nstderr:\n{stderr}")
+    if command_out.returncode != expected_returncode:
+        raise AssertionError(
+            f"{test_name} returned {command_out.returncode} (expected {expected_returncode})!\n"
+            f"stdout:\n{stdout}\nstderr:\n{stderr}"
+        )
     return stderr, stdout
 
 
@@ -239,6 +242,18 @@ def assert_df_equal(want: pl.DataFrame, got: pl.DataFrame, msg: str = None, **kw
 
 
 def test_e2e():
+    # Testing expand_shards
+    es_stderr, es_stdout = run_command("expand_shards train/3 tuning/1", {}, "expand_shards")
+    assert (
+        es_stdout == "train/0,train/1,train/2,tuning/0\n"
+    ), f"Expected 'train/0,train/1,train/2,tuning/0' but got '{es_stdout}'"
+
+    # Running with the empty directory
+    help_stderr, help_stdout = run_command("aces-cli", {}, "help", expected_returncode=1)
+    assert (
+        "Usage: aces-cli [OPTIONS]" in help_stdout
+    ), f"Expected help message not found in stdout. Got {help_stdout}"
+
     with tempfile.TemporaryDirectory() as d:
         data_dir = Path(d) / "sample_data"
         configs_dir = Path(d) / "sample_configs"

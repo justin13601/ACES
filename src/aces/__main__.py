@@ -8,8 +8,6 @@ from loguru import logger
 from omegaconf import DictConfig
 
 config_yaml = files("aces").joinpath("configs/aces.yaml")
-if not config_yaml.is_file():
-    raise FileNotFoundError("Core configuration not successfully installed!")
 
 if len(sys.argv) == 1:
     print("Usage: aces-cli [OPTIONS]")
