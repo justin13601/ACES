@@ -322,6 +322,17 @@ def process_esgpt_data(
         ...    "high_Potassium": PlainPredicateConfig(code="lab//K", value_min=5.0),
         ... }
         >>> process_esgpt_data(events_df, dynamic_measurements_df, value_columns, predicates)
+        shape: (4, 6)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┬─────────┬────────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge ┆ high_HR ┆ high_Potassium │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          ┆ ---     ┆ ---            │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          ┆ i64     ┆ i64            │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╪═════════╪════════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            ┆ 1       ┆ 1              │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            ┆ 0       ┆ 0              │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0              │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0            ┆ 0            ┆ 1       ┆ 0              │
+        └────────────┴─────────────────────┴──────────────┴──────────────┴─────────┴────────────────┘
     """
 
     logger.info("Generating plain predicate columns...")

@@ -110,11 +110,11 @@ class PlainPredicateConfig:
                 criteria = [pl.col("event_type").cast(pl.Utf8).str.split("&").list.contains(code)]
             else:
                 criteria = [pl.col(measurement_name) == code]
-
         elif (self.value_min is None) and (self.value_max is None):
             return pl.col(code).is_not_null()
         else:
             values_column = self.code
+            criteria = []
 
         if self.value_min is not None:
             if values_column is None:
