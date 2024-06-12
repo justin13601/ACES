@@ -23,20 +23,35 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     Returns:
         polars.DataFrame: The result of the task query, containing subjects who satisfy the conditions
-        defined in cfg. Timestamps for the start/end boundaries of each window specified in the task
-        configuration, as well as predicate counts for each window, are provided.
+            defined in cfg. Timestamps for the start/end boundaries of each window specified in the task
+            configuration, as well as predicate counts for each window, are provided.
+
+    Raises:
+        TypeError: If predicates_df is not a polars.DataFrame.
+        ValueError: If the (subject_id, timestamp) columns are not unique.
+
+    Examples:
+    These examples just show the error cases for now; see the `tests` directory for full examples.
+        >>> cfg = None # This is obviously invalid, but we're just testing the error case.
+        >>> predicates_df = {"subject_id": [1, 1], "timestamp": [1, 1]}
+        >>> query(cfg, predicates_df)
+        Traceback (most recent call last):
+            ...
+        TypeError: Predicates dataframe type must be a polars.DataFrame. Got: <class 'dict'>.
+        >>> query(cfg, pl.DataFrame(predicates_df))
+        Traceback (most recent call last):
+            ...
+        ValueError: The (subject_id, timestamp) columns must be unique.
     """
     if not isinstance(predicates_df, pl.DataFrame):
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got: {type(predicates_df)}.")
 
     logger.info("Checking if '(subject_id, timestamp)' columns are unique...")
-    try:
-        assert (
-            predicates_df.n_unique(subset=["subject_id", "timestamp"]) == predicates_df.shape[0]
-        ), "The (subject_id, timestamp) columns must be unique."
-    except AssertionError as e:
-        logger.error(str(e))
-        return pl.DataFrame()
+
+    is_unique = predicates_df.n_unique(subset=["subject_id", "timestamp"]) == predicates_df.shape[0]
+
+    if not is_unique:
+        raise ValueError("The (subject_id, timestamp) columns must be unique.")
 
     log_tree(cfg.window_tree)
 
@@ -45,12 +60,9 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     prospective_root_anchors = check_constraints({cfg.trigger.predicate: (1, None)}, predicates_df).select(
         "subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp")
     )
-    try:
-        assert (
-            not prospective_root_anchors.is_empty()
-        ), f"No valid rows found for the trigger event '{cfg.trigger.predicate}'. Exiting."
-    except AssertionError as e:
-        logger.error(str(e))
+
+    if prospective_root_anchors.is_empty():
+        logger.warning(f"No valid rows found for the trigger event '{cfg.trigger.predicate}'. Exiting.")
         return pl.DataFrame()
 
     result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)

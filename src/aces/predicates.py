@@ -54,6 +54,45 @@ def direct_load_plain_predicates(
         │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
         │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
         └────────────┴─────────────────────┴──────────────┴──────────────┘
+
+    If the timestamp column is already a timestamp, then the `ts_format` argument id not needed, but can be
+    used without an error.
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     (
+        ...         CSV_data
+        ...         .with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
+        ...         .write_parquet(data_path)
+        ...     )
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], "%m/%d/%Y %H:%M")
+        shape: (3, 4)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
+        └────────────┴─────────────────────┴──────────────┴──────────────┘
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     (
+        ...         CSV_data
+        ...         .with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
+        ...         .write_parquet(data_path)
+        ...     )
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], None)
+        shape: (3, 4)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
+        └────────────┴─────────────────────┴──────────────┴──────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
@@ -96,6 +135,34 @@ def direct_load_plain_predicates(
         Traceback (most recent call last):
             ...
         ValueError: Unsupported file format: .foo
+        >>> with tempfile.TemporaryDirectory() as d:
+        ...     data_path = Path(d) / "data.csv"
+        ...     assert not data_path.exists()
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], "%m/%d/%Y %H:%M")
+        Traceback (most recent call last):
+            ...
+        FileNotFoundError: Direct predicates file ... does not exist!
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     CSV_data.write_parquet(data_path)
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], None)
+        Traceback (most recent call last):
+            ...
+        ValueError: Must provide a timestamp format for direct predicates with str timestamps.
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     (
+        ...         CSV_data
+        ...         .with_columns(
+        ...             pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M")
+        ...             .dt.timestamp()
+        ...         )
+        ...         .write_parquet(data_path)
+        ...     )
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], None)
+        Traceback (most recent call last):
+            ...
+        TypeError: Passed predicates have timestamps of invalid type Int64.
     """
 
     columns = ["subject_id", "timestamp"] + predicates
@@ -164,8 +231,10 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     parquet_data.write_parquet(data_path)
-        ...     generate_plain_predicates_from_meds(data_path, {"discharge":
-        ...                                                         PlainPredicateConfig("discharge")})
+        ...     generate_plain_predicates_from_meds(
+        ...         data_path,
+        ...         {"discharge": PlainPredicateConfig("discharge")}
+        ...     )
         shape: (3, 3)
         ┌────────────┬─────────────────────┬───────────┐
         │ subject_id ┆ timestamp           ┆ discharge │
@@ -199,6 +268,107 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         .group_by(["subject_id", "timestamp"], maintain_order=True)
         .agg(*(pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols))
     )
+
+
+def process_esgpt_data(
+    events_df: pl.DataFrame,
+    dynamic_measurements_df: pl.DataFrame,
+    value_columns: dict[str, str],
+    predicates: dict,
+) -> pl.DataFrame:
+    """Process ESGPT data to generate plain predicate columns.
+
+    Args:
+        events_df: The Polars DataFrame containing the events data.
+        dynamic_measurements_df: The Polars DataFrame containing the dynamic measurements data.
+
+    Returns:
+        The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
+        ESGPT dataset.
+
+    Examples:
+        >>> from datetime import datetime
+        >>> from .config import PlainPredicateConfig
+        >>> events_df = pl.DataFrame({
+        ...    "event_id": [1, 2, 3, 4],
+        ...    "subject_id": [1, 1, 2, 2],
+        ...    "timestamp": [
+        ...         datetime(2021, 1, 1, 0, 0),
+        ...         datetime(2021, 1, 1, 12, 0),
+        ...         datetime(2021, 1, 2, 0, 0),
+        ...         datetime(2021, 1, 2, 12, 0),
+        ...    ],
+        ...    "event_type": ["adm", "dis", "adm", "obs"],
+        ...    "age": [30, 30, 40, 40],
+        ... })
+        >>> dynamic_measurements_df = pl.DataFrame({
+        ...    "event_id": [1,     1,    1,    2,    2,    2,    3,     4,    5],
+        ...    "adm_loc":  ["foo", None, None, None, None, None, "bar", None, None],
+        ...    "dis_loc":  [None,  None, None, None, None, "H",  None,  None, None],
+        ...    "HR":       [None,  150,  None, 120,  None, None, None,  177,  89],
+        ...    "lab":      [None,  None, "K",  None, "K",  None, None,  None, "SpO2"],
+        ...    "lab_val":  [None,  None, 5.1,  None, 3.8,  None, None,  None, 99],
+        ... })
+        >>> value_columns = {
+        ...    "is_admission": None,
+        ...    "is_discharge": None,
+        ...    "high_HR": "HR",
+        ...    "high_Potassium": "lab_val",
+        ... }
+        >>> predicates = {
+        ...    "is_admission": PlainPredicateConfig(code="event_type//adm"),
+        ...    "is_discharge": PlainPredicateConfig(code="event_type//dis"),
+        ...    "high_HR": PlainPredicateConfig(code="HR", value_min=140),
+        ...    "high_Potassium": PlainPredicateConfig(code="lab//K", value_min=5.0),
+        ... }
+        >>> process_esgpt_data(events_df, dynamic_measurements_df, value_columns, predicates)
+        shape: (4, 6)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┬─────────┬────────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge ┆ high_HR ┆ high_Potassium │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          ┆ ---     ┆ ---            │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          ┆ i64     ┆ i64            │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╪═════════╪════════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            ┆ 1       ┆ 1              │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            ┆ 0       ┆ 0              │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0              │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0            ┆ 0            ┆ 1       ┆ 0              │
+        └────────────┴─────────────────────┴──────────────┴──────────────┴─────────┴────────────────┘
+    """
+
+    logger.info("Generating plain predicate columns...")
+    for name, plain_predicate in predicates.items():
+        if "event_type" in plain_predicate.code:
+            events_df = events_df.with_columns(
+                plain_predicate.ESGPT_eval_expr().cast(PRED_CNT_TYPE).alias(name)
+            )
+        else:
+            values_column = value_columns[name]
+            dynamic_measurements_df = dynamic_measurements_df.with_columns(
+                plain_predicate.ESGPT_eval_expr(values_column).cast(PRED_CNT_TYPE).alias(name)
+            )
+        logger.info(f"Added predicate column '{name}'.")
+
+    predicate_cols = list(predicates.keys())
+
+    # aggregate dynamic_measurements_df by summing predicates (counts)
+    dynamic_measurements_df = (
+        dynamic_measurements_df.group_by(["event_id"])
+        .agg(
+            *[
+                pl.col(c).sum().cast(PRED_CNT_TYPE)
+                for c in dynamic_measurements_df.columns
+                if c in predicate_cols
+            ],
+        )
+        .select(["event_id"] + [c for c in dynamic_measurements_df.columns if c in predicate_cols])
+    )
+
+    # join events_df and dynamic_measurements_df for the final predicates_df
+    data = events_df.join(dynamic_measurements_df, on="event_id", how="left")
+
+    # clean up predicates_df
+    logger.info("Cleaning up predicates dataframe...")
+    return data.select(["subject_id", "timestamp"] + predicate_cols)
 
 
 def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> pl.DataFrame:
@@ -238,40 +408,15 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     dynamic_measurements_df = ESD.dynamic_measurements_df
     config = ESD.config
 
-    logger.info("Generating plain predicate columns...")
+    value_columns = {}
     for name, plain_predicate in predicates.items():
         if "event_type" in plain_predicate.code:
-            events_df = events_df.with_columns(
-                plain_predicate.ESGPT_eval_expr().cast(PRED_CNT_TYPE).alias(name)
-            )
+            value_columns[name] = None
         else:
-            values_column = config.measurement_configs[plain_predicate.code.split("//")[0]].values_column
-            dynamic_measurements_df = dynamic_measurements_df.with_columns(
-                plain_predicate.ESGPT_eval_expr(values_column).cast(PRED_CNT_TYPE).alias(name)
-            )
-        logger.info(f"Added predicate column '{name}'.")
+            measurement_name = plain_predicate.code.split("//")[0]
+            value_columns[name] = config.measurement_configs[measurement_name].values_column
 
-    predicate_cols = list(predicates.keys())
-
-    # aggregate dynamic_measurements_df by summing predicates (counts)
-    dynamic_measurements_df = (
-        dynamic_measurements_df.group_by(["event_id"])
-        .agg(
-            *[
-                pl.col(c).sum().cast(PRED_CNT_TYPE)
-                for c in dynamic_measurements_df.columns
-                if c in predicate_cols
-            ],
-        )
-        .select(["event_id"] + [c for c in dynamic_measurements_df.columns if c in predicate_cols])
-    )
-
-    # join events_df and dynamic_measurements_df for the final predicates_df
-    data = events_df.join(dynamic_measurements_df, on="event_id", how="left")
-
-    # clean up predicates_df
-    logger.info("Cleaning up predicates dataframe...")
-    return data.select(["subject_id", "timestamp"] + predicate_cols)
+    return process_esgpt_data(events_df, dynamic_measurements_df, value_columns, predicates)
 
 
 def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.DataFrame:
@@ -319,7 +464,10 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ...         end="start + 24h",
         ...         start_inclusive=False,
         ...         end_inclusive=True,
-        ...         has={"death_or_dis": "(None, 0)", "adm": "(None, 0)"},
+        ...         has={
+        ...             "death_or_dis": "(None, 0)",
+        ...             "adm": "(None, 0)",
+        ...         },
         ...     ),
         ...     "target": WindowConfig(
         ...         start="gap.end",
@@ -368,6 +516,41 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
         │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0   ┆ 1     ┆ 1            ┆ 1          │
         └────────────┴─────────────────────┴─────┴─────┴───────┴──────────────┴────────────┘
+        >>> any_event_trigger = EventConfig("_ANY_EVENT")
+        >>> adm_only_predicates = {"adm": PlainPredicateConfig("adm")}
+        >>> st_end_windows = {
+        ...     "input": WindowConfig(
+        ...         start="end - 365d",
+        ...         end="trigger + 24h",
+        ...         start_inclusive=True,
+        ...         end_inclusive=True,
+        ...         has={
+        ...             "_RECORD_END": "(None, 0)",   # These are added just to show start/end predicates
+        ...             "_RECORD_START": "(None, 0)", # These are added just to show start/end predicates
+        ...         },
+        ...     ),
+        ... }
+        >>> st_end_config = TaskExtractorConfig(
+        ...     predicates=adm_only_predicates, trigger=any_event_trigger, windows=st_end_windows
+        ... )
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
+        ...     data_path = Path(f.name)
+        ...     data.write_csv(data_path)
+        ...     data_config = DictConfig({
+        ...         "path": str(data_path), "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"
+        ...     })
+        ...     get_predicates_df(st_end_config, data_config)
+        shape: (4, 6)
+        ┌────────────┬─────────────────────┬─────┬────────────┬───────────────┬─────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ _ANY_EVENT ┆ _RECORD_START ┆ _RECORD_END │
+        │ ---        ┆ ---                 ┆ --- ┆ ---        ┆ ---           ┆ ---         │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64        ┆ i64           ┆ i64         │
+        ╞════════════╪═════════════════════╪═════╪════════════╪═══════════════╪═════════════╡
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 1          ┆ 1             ┆ 0           │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1          ┆ 0             ┆ 1           │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 1          ┆ 1             ┆ 0           │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 1          ┆ 0             ┆ 1           │
+        └────────────┴─────────────────────┴─────┴────────────┴───────────────┴─────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     data.write_csv(data_path)

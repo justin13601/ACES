@@ -52,6 +52,6 @@ If you have a dataset and want to leverage it for machine learning tasks, the AC
 
 ### 5. Run MEDS-Tab
 
-Painless Reproducibility: Use [MEDS-Tab](https://github.com/mmcdermott/MEDS_TAB_MIMIC_IV/tree/main/tasks) to obtain comparable, reproducible, and well-tuned XGBoost results tailored to your dataset-specific feature space.
+- Painless Reproducibility: Use [MEDS-Tab](https://github.com/mmcdermott/MEDS_TAB_MIMIC_IV/tree/main/tasks) to obtain comparable, reproducible, and well-tuned XGBoost results tailored to your dataset-specific feature space!
 
 By following these steps, you can seamlessly transform your dataset, define necessary criteria, and leverage powerful machine learning tools within the ACES ecosystem. This approach not only simplifies the process but also ensures high-quality, reproducible results for your machine learning for health projects. It can reliably take no more than a week of full-time human effort to perform steps 1-5 on new datasets in reasonable raw formulations!
