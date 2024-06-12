@@ -300,6 +300,17 @@ The `has` field specifies constraints relating to predicates within the window. 
 
 Support for static data depends on your data standard and those variables are expressed. For instance, in MEDS, it is feasible to express static data as a predicate, and thus criteria can be set normally. However, this is not yet incorporated for ESGPT. If a predicates dataframe is directly used, you may create a predicate column that specifies your static variable.
 
+### Complementary Tools
+
+% Using ACES in Concert with Other tools
+
+ACES is a component of the MEDS ecosystem; to learn more about other tools with which you can use ACES, please see the following:
+\\begin\{itemize}
+\\item To extract data in the MEDS format, LINK
+\\item To produce automated tabular (XGBoost) baseline methods over ACES defined task dataframes for MEDS datasets, see LINK
+\\item ...
+\\end\{itemize}
+
 ### Alternative Tools
 
 TODO
