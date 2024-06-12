@@ -29,6 +29,19 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     Raises:
         TypeError: If predicates_df is not a polars.DataFrame.
         ValueError: If the (subject_id, timestamp) columns are not unique.
+
+    Examples:
+    These examples just show the error cases for now; see the `tests` directory for full examples.
+        >>> cfg = None # This is obviously invalid, but we're just testing the error case.
+        >>> predicates_df = {"subject_id": [1, 1], "timestamp": [1, 1]}
+        >>> query(cfg, predicates_df)
+        Traceback (most recent call last):
+            ...
+        TypeError: Predicates dataframe type must be a polars.DataFrame. Got: <class 'dict'>.
+        >>> query(cfg, pl.DataFrame(predicates_df))
+        Traceback (most recent call last):
+            ...
+        ValueError: The (subject_id, timestamp) columns must be unique.
     """
     if not isinstance(predicates_df, pl.DataFrame):
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got: {type(predicates_df)}.")
