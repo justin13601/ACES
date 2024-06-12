@@ -14,24 +14,24 @@ event. We'll call these additional properties/columns "predicates" over the even
 interpreted as boolean or count functions over the event.
 
 For example, we may consider a dataframe `df_clinical_events` that quantifies clinical events happening to
-patients, with predicates `"is_admission"`, `"is_discharge"`, `"is_death"`, and `"is_covid_dx"`, like this:
+patients, with predicates `"admission"`, `"discharge"`, `"death"`, and `"covid_dx"`, like this:
 
-| `subject_id` | `timestamp`         | `is_admission` | `is_discharge` | `is_death` | `is_covid_dx` |
-| ------------ | ------------------- | -------------- | -------------- | ---------- | ------------- |
-| 1            | 2020-01-01 12:03:31 | 1              | 0              | 0          | 0             |
-| 1            | 2020-01-01 12:33:01 | 0              | 0              | 0          | 0             |
-| 1            | 2020-01-01 13:02:58 | 0              | 0              | 0          | 0             |
-| 1            | 2020-01-01 15:00:00 | 0              | 0              | 0          | 0             |
-| 1            | 2020-01-04 11:12:00 | 0              | 1              | 0          | 0             |
-| 1            | 2022-04-22 07:45:00 | 0              | 0              | 1          | 0             |
-| 2            | 2020-01-01 12:03:31 | 1              | 0              | 0          | 0             |
-| 2            | 2020-01-02 10:18:29 | 0              | 0              | 0          | 0             |
-| 2            | 2020-01-02 16:18:29 | 0              | 0              | 0          | 1             |
-| 2            | 2020-01-03 14:47:31 | 0              | 0              | 1          | 0             |
-| 3            | 2020-01-01 12:03:31 | 1              | 0              | 0          | 0             |
-| 3            | 2020-01-02 12:03:31 | 0              | 1              | 0          | 0             |
-| 3            | 2022-01-01 12:03:31 | 1              | 0              | 0          | 0             |
-| 3            | 2022-01-06 12:03:31 | 0              | 0              | 1          | 0             |
+| `subject_id` | `timestamp`         | `admission` | `discharge` | `death` | `covid_dx` |
+| ------------ | ------------------- | ----------- | ----------- | ------- | ---------- |
+| 1            | 2020-01-01 12:03:31 | 1           | 0           | 0       | 0          |
+| 1            | 2020-01-01 12:33:01 | 0           | 0           | 0       | 0          |
+| 1            | 2020-01-01 13:02:58 | 0           | 0           | 0       | 0          |
+| 1            | 2020-01-01 15:00:00 | 0           | 0           | 0       | 0          |
+| 1            | 2020-01-04 11:12:00 | 0           | 1           | 0       | 0          |
+| 1            | 2022-04-22 07:45:00 | 0           | 0           | 1       | 0          |
+| 2            | 2020-01-01 12:03:31 | 1           | 0           | 0       | 0          |
+| 2            | 2020-01-02 10:18:29 | 0           | 0           | 0       | 0          |
+| 2            | 2020-01-02 16:18:29 | 0           | 0           | 0       | 1          |
+| 2            | 2020-01-03 14:47:31 | 0           | 0           | 1       | 0          |
+| 3            | 2020-01-01 12:03:31 | 1           | 0           | 0       | 0          |
+| 3            | 2020-01-02 12:03:31 | 0           | 1           | 0       | 0          |
+| 3            | 2022-01-01 12:03:31 | 1           | 0           | 0       | 0          |
+| 3            | 2022-01-06 12:03:31 | 0           | 0           | 1       | 0          |
 
 In this case, we have 3 subjects (patients), which have the following respective approximate time series of
 events:
@@ -62,27 +62,27 @@ We might then specify these windows using the defined predicates in the configur
 follows:
 
 ```yaml
-trigger: is_admission
+trigger: admission
 gap:
   start: trigger
   end: trigger + 48h
   excludes:
-    - is_discharge
-    - is_death
-    - is_covid_dx
+    - discharge
+    - death
+    - covid_dx
 target:
   start: gap.end
-  end: is_discharge | is_death
-  label: is_death
+  end: discharge | death
+  label: death
   excludes:
-    - is_covid_dx
+    - covid_dx
 input:
   end: trigger + 24h
 ```
 
 Given that our machine learning model seeks to predict in-hospital mortality, our dataset should include both
 positive and negative samples (patients that died in the hospital and patients that didn't die). Hence, the
-`target` "window" concludes at either a `"is_death"` event (patients that died) or a`"is_discharge"` event
+`target` "window" concludes at either a `"death"` event (patients that died) or a`"discharge"` event
 (patients that didn't die).
 
 Note that this is conceptual pseudocode and not the actual configuration language, which may look slightly
@@ -101,7 +101,7 @@ inferred for the above configuration:
   - Gap Start (Trigger)
     - Gap End (Gap Start + 48h)
       - Target Start (Gap End)
-        - Target End (subsequent "is_discharge" or "is_death")
+        - Target End (subsequent "discharge" or "death")
   - Input End
 ```
 
@@ -157,8 +157,8 @@ using our example in-hospital mortality task above, the subtree `Gap End -> Targ
 be _realized_ if, given the "Gap End" timestamp, we can find:
 
 - A timestamp for "Target Start", which is equal to the timestamp of "Gap End" in this example.
-- A timestamp for "Target End", which should be equal to the timestamp of a `"is_death"` or `"is_discharge"`
-  event and there are no `"is_covid_dx"` events between the timestamp of "Target Start" and the timestamp of
+- A timestamp for "Target End", which should be equal to the timestamp of a `"death"` or `"discharge"`
+  event and there are no `"covid_dx"` events between the timestamp of "Target Start" and the timestamp of
   "Target End".
 
 #### An "Anchor" or "Anchor Event" of a Subtree
@@ -271,7 +271,7 @@ anchor of the passed subtree, this suffices for our intended computation, and we
 ###### Event-bound Aggregation
 
 If the edge linking the subtree root to the child is an event-bound relationship (e.g., in our example above,
-the "Target End" node is defined as the first subsequent `"is_discharge"` or `"is_death"` event after the
+the "Target End" node is defined as the first subsequent `"discharge"` or `"death"` event after the
 "Target Start" node), we will aggregate the predicates by using a custom row-predicate-bound aggregation over
 the database that will be implemented using differences of cumulative sums within the global `predicates_df`
 dataframe. In particular, we will first construct the following three dataframes from our inputs:
