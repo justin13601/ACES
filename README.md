@@ -8,7 +8,7 @@
   <a href="https://hydra.cc/"><img alt="Hydra" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd"></a>
   <a href="https://codecov.io/gh/justin13601/ACES"><img alt="Codecov" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV"></a>
   <a href="https://github.com/justin13601/ACES/actions/workflows/test.yml"><img alt="Tests" src="https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg"></a>
-  <a href="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml"><img alt="Code Quality" src="https://github.com/justin13601/ACES/actions/workflows/code-quality-master.yaml/badge.svg"></a>
+  <a href="https://github.com/justin13601/ACES/actions/workflows/code-quality-main.yaml"><img alt="Code Quality" src="https://github.com/justin13601/ACES/actions/workflows/code-quality-main.yaml/badge.svg"></a>
   <a href="https://eventstreamaces.readthedocs.io/en/latest/?badge=latest"><img alt="Documentation" src="https://readthedocs.org/projects/eventstreamaces/badge/?version=latest"/></a>
   <a href="https://github.com/justin13601/ACES/graphs/contributors"><img alt="Contributors" src="https://img.shields.io/github/contributors/justin13601/ACES.svg"></a>
   <a href="https://github.com/justin13601/ACES/pulls"><img alt="Pull Requests" src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg"></a>
@@ -299,6 +299,10 @@ The `has` field specifies constraints relating to predicates within the window. 
 ### Static Data
 
 Support for static data depends on your data standard and those variables are expressed. For instance, in MEDS, it is feasible to express static data as a predicate, and thus criteria can be set normally. However, this is not yet incorporated for ESGPT. If a predicates dataframe is directly used, you may create a predicate column that specifies your static variable.
+
+### Alternative Tools
+
+TODO
 
 ## Future Roadmap
 
