@@ -67,22 +67,13 @@ windows:
 
 You can now run `aces-cli` in your terminal. Suppose we have a directory structure like the following:
 
-```
-ACES/
-├── sample_data/
-│   ├── esgpt_sample/
-│   │   ├── ...
-│   │   ├── events_df.parquet
-│   │   └── dynamic_measurements_df.parquet
-│   ├── meds_sample/
-│   │   ├── shards/
-│   │   │   ├── 0.parquet
-│   │   │   └── 1.parquet
-│   │   └── sample_shard.parquet
-│   └── sample_data.csv
-├── sample_configs/
-│   └── inhospital_mortality.yaml
-└── ...
+```yaml
+ACES/ ├── sample_data/ │   ├── esgpt_sample/ │   │   ├── ... │   │   ├── events_df.parquet
+│   │   └── dynamic_measurements_df.parquet │   ├── meds_sample/ │   │   ├── shards/
+│   │   │   ├── 0.parquet │   │   │   └── 1.parquet │   │   └── sample_shard.parquet
+│   └── sample_data.csv ├── sample_configs/ │   └── inhospital_mortality.yaml └──
+...
+...
 ```
 
 **To query from a single MEDS shard**:
@@ -175,7 +166,7 @@ To query from a direct predicates dataframe:
 
 #### Task Configuration
 
-`cohort_dir`: Directory the your task configuration file
+`cohort_dir`: Directory of your task configuration file
 
 `cohort_name`: Name of the task configuration file
 
@@ -237,7 +228,7 @@ You can also use the `aces.query.query()` function to extract a cohort in Python
 .. autofunction:: aces.query.query
 ```
 
-The `cfg` parameter must be of type :py:mod:`aces.config.TaskExtractorConfig`, and the `predicates_df` parameter must be of type `polars.DataFrame`.
+The `cfg` parameter must be of type {py:class}`aces.config.TaskExtractorConfig`, and the `predicates_df` parameter must be of type `polars.DataFrame`.
 
 Details about the configuration language used to define the `cfg` parameter can be found in {doc}`/configuration`.
 
