@@ -1,4 +1,4 @@
-## Terminology & Design
+## Algorithm Overview
 
 We will assume that we are given a dataframe `df` which details events that have happened to subjects. Each
 row in the dataframe will have a `subject_id` column which identifies the subject, and a `timestamp` column
@@ -121,7 +121,7 @@ about the true configuration language that is used in practice to specify "windo
 
 ______________________________________________________________________
 
-## Terminology
+## Algorithm Terminology
 
 #### Event
 
@@ -178,7 +178,7 @@ perform temporal and event-based aggregations to determine whether windows satis
 
 ______________________________________________________________________
 
-## Design
+## Algorithm Design
 
 ### I. Initialization
 
