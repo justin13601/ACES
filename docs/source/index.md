@@ -14,11 +14,10 @@ maxdepth: 2
 GitHub README <readme>
 Usage Guide <usage>
 Task Examples <notebooks/examples>
-Sample Data Tutorial <notebooks/tutorial>
 Predicates DataFrame <notebooks/predicates>
-Configuration Language <configuration>
-Algorithm & Terminology <terminology>
-Computational Profiling <profiling>
+Sample Data Tutorial <notebooks/tutorial>
+Technical Details <technical>
+Computational Profile <profiling>
 Module API Reference <api/modules>
 License <license>
 ```

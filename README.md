@@ -302,22 +302,21 @@ Support for static data depends on your data standard and those variables are ex
 
 ### Complementary Tools
 
-% Using ACES in Concert with Other tools
+ACES is an integral part of the MEDS ecosystem. To fully leverage its capabilities, you can utilize it alongside other complementary MEDS tools, such as:
 
-ACES is a component of the MEDS ecosystem; to learn more about other tools with which you can use ACES, please see the following:
-\\begin\{itemize}
-\\item To extract data in the MEDS format, LINK
-\\item To produce automated tabular (XGBoost) baseline methods over ACES defined task dataframes for MEDS datasets, see LINK
-\\item ...
-\\end\{itemize}
+- [MEDS-ETL](https://github.com/Medical-Event-Data-Standard/meds_etl), which can be used to transform various data schemas, including some command data models, into the MEDS format.
+- [MEDS-TAB](https://github.com/Medical-Event-Data-Standard/meds_etl), which can be used generate automated tabular baseline methods (ie., XGBoost over ACES-defined tasks).
+- [MEDS-Polars](https://github.com/Medical-Event-Data-Standard/meds_etl), which contains polars-based ETL scripts.
 
 ### Alternative Tools
 
-TODO
+There are existing alternatives for cohort extraction that focus on specific common data models, such as [i2b2 PIC-SURE](https://pic-sure.org/) and [OHDSI ATLAS](https://atlas.ohdsi.org/).
+
+ACES serves as a middle ground between PIC-SURE and ATLAS. While it may offer less capability than PIC-SURE, it compensates with greater ease of use and improved communication value. Compared to ATLAS, ACES provides greater capability, though with slightly lower ease of use, yet it still maintains a higher communication value.
+
+Finally, ACES is not tied to a particular common data model. Built on a flexible event-stream format, ACES is a no-code solution with a descriptive input format, permitting easy and wide iteration over task definitions, and can be applied to a variety of schemas, making it a versatile tool suitable for diverse research needs.
 
 ## Future Roadmap
-
-TODO add more commentary
 
 ### Usability
 
