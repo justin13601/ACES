@@ -175,7 +175,7 @@ To query from a direct predicates dataframe:
 
 #### Task Configuration
 
-`cohort_dir`: Directory the your task configuration file
+`cohort_dir`: Directory of your task configuration file
 
 `cohort_name`: Name of the task configuration file
 
@@ -183,7 +183,9 @@ The above two fields are used for automatically loading task configurations, sav
 
 `config_path`: Path to the task configuration file. Defaults to `${cohort_dir}/${cohort_name}.yaml`
 
-`output_filepath`: Path to store the outputs. Defaults to `${cohort_dir}/${cohort_name}/${data.shard}.parquet` for MEDS with multiple shards, and `${cohort_dir}/${cohort_name}.parquet` otherwise.
+`output_filepath`: Path to store the outputs. Defaults to `${cohort_dir}/${cohort_name}/${data.shard}.parquet` for MEDS with multiple shards, and `${cohort_dir}/${cohort_name}.parquet` otherwise
+
+`log_dir`: Path to store logs. Defaults to `${cohort_dir}/${cohort_name}/.logs`
 
 #### Tab Completion
 
@@ -237,7 +239,7 @@ You can also use the `aces.query.query()` function to extract a cohort in Python
 .. autofunction:: aces.query.query
 ```
 
-The `cfg` parameter must be of type `config.TaskExtractorConfig`, and the `predicates_df` parameter must be of type `polars.DataFrame`.
+The `cfg` parameter must be of type {py:class}`aces.config.TaskExtractorConfig`, and the `predicates_df` parameter must be of type `polars.DataFrame`.
 
 Details about the configuration language used to define the `cfg` parameter can be found in {doc}`/configuration`.
 

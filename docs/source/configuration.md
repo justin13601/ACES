@@ -6,7 +6,7 @@ format (recommended) or the [ESGPT](https://eventstreamml.readthedocs.io/en/late
 system works by defining a configuration object that details the underlying concepts, inclusion/exclusion, and
 labeling criteria for the cohort/task to be extracted, then using a recursive algorithm to identify all
 realizations of valid patient time-ranges of data that satisfy those constraints from the raw data. For more
-details on the recursive algorithm, see the `terminology.md` file.
+details on the recursive algorithm, see [Algorithm Design](https://eventstreamaces.readthedocs.io/en/latest/technical.html#algorithm-design).
 
 As indicated above, these cohorts are specified through a combination of concepts (realized as event
 _predicate_ functions, _aka_ "predicates") which are _dataset specific_ and inclusion/exclusion/labeling
@@ -28,10 +28,10 @@ ______________________________________________________________________
 In the machine form used by ACES, the configuration file consists of three parts:
 
 - `predicates`, stored as a dictionary from string predicate names (which must be unique) to either
-  `PlainPredicateConfig` objects, which store raw predicates with no dependencies on other predicates, or
-  `DerivedPredicateConfig` objects, which store predicates that build on other predicates.
+  {py:class}`aces.config.PlainPredicateConfig` objects, which store raw predicates with no dependencies on other predicates, or
+  {py:class}`aces.config.DerivedPredicateConfig` objects, which store predicates that build on other predicates.
 - `trigger`, stored as a string to `EventConfig`
-- `windows`, stored as a dictionary from string window names (which must be unique) to `WindowConfig`
+- `windows`, stored as a dictionary from string window names (which must be unique) to {py:class}`aces.config.WindowConfig`
   objects.
 
 Below, we will detail each of these configuration objects.
@@ -40,7 +40,7 @@ ______________________________________________________________________
 
 ### Predicates: `PlainPredicateConfig` and `DerivedPredicateConfig`
 
-#### `PlainPredicateConfig`: Configuration of Predicates that can be Computed Directly from Raw Data
+#### {py:class}`aces.config.PlainPredicateConfig`: Configuration of Predicates that can be Computed Directly from Raw Data
 
 These configs consist of the following four fields:
 
@@ -87,7 +87,7 @@ on its source format.
    be of the univariate regression type and its value, if needed, will be pulled from the corresponding
    column.
 
-#### `DerivedPredicateConfig`: Configuration of Predicates that Depend on Other Predicates
+#### {py:class}`aces.config.DerivedPredicateConfig`: Configuration of Predicates that Depend on Other Predicates
 
 These configuration objects consist of only a single string field--`expr`--which contains a limited grammar of
 accepted operations that can be applied to other predicates, containing precisely the following:
@@ -100,7 +100,7 @@ analytic operations over predicates.
 
 ______________________________________________________________________
 
-### Events: `EventConfig`
+### Events: {py:class}`aces.config.EventConfig`
 
 The event config consists of only a single field, `predicate`, which specifies the predicate that must be
 observed with value greater than one to satisfy the event. There can only be one defined "event" with an
@@ -110,7 +110,7 @@ The value of its field can be any defined predicate.
 
 ______________________________________________________________________
 
-### Windows: `WindowConfig`
+### Windows: {py:class}`aces.config.WindowConfig`
 
 Windows contain a tracking `name` field, and otherwise are specified with two parts: (1) A set of four
 parameters (`start`, `end`, `start_inclusive`, and `end_inclusive`) that specify the time range of the window,
