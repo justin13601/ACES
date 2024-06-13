@@ -1,6 +1,4 @@
-# Configuration Language Specification
-
-## Introduction and Terminology
+## Configuration Language Specification
 
 This document specifies the configuration language for the automatic extraction of task dataframes and cohorts
 from structured EHR data organized either via the [MEDS](https://github.com/Medical-Event-Data-Standard/meds)
@@ -26,8 +24,6 @@ temporal relationships on said events. The windows between these time-points can
 contain events that satisfy certain aggregation functions over predicates for these time frames.
 
 ______________________________________________________________________
-
-## Machine Form (ACES)
 
 In the machine form, the configuration file consists of three parts:
 
