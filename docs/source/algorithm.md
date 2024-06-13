@@ -188,7 +188,7 @@ During initialization, we will be given the following inputs:
 
 ##### `cfg`
 
-`cfg` is a `TaskExtractorConfig` object containing our task definition, include all information about
+`cfg` is a {py:class}`aces.config.TaskExtractorConfig` object containing our task definition, include all information about
 predicates, the trigger event, and windows.
 
 ##### `predicates_df`

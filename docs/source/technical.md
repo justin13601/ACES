@@ -3,5 +3,5 @@
 ```{include} configuration.md
 ```
 
-```{include} terminology.md
+```{include} algorithm.md
 ```
