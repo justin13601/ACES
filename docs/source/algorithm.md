@@ -114,8 +114,8 @@ In the rest of this document, we will detail how our algorithm automatically ext
 these criteria and the terminology we use to describe our algorithm (both here and in the raw source code and
 code comments). There are certain limitations of this algorithm where some kinds of tasks cannot yet be
 expressed directly (more information available in the
-[FAQs](https://eventstreamaces.readthedocs.io/en/latest/overview.html#faqs) and the
-[Future Roadmap](https://eventstreamaces.readthedocs.io/en/latest/overview.html#future-roadmap)). Details
+[FAQs](https://eventstreamaces.readthedocs.io/en/latest/readme.html#faqs) and the
+[Future Roadmap](https://eventstreamaces.readthedocs.io/en/latest/readme.html#future-roadmap)). Details
 about the true configuration language that is used in practice to specify "windows" can be found in
 {doc}`/configuration`. Some task examples are available in {doc}`/notebooks/examples`.
 
