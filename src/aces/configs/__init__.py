@@ -2,18 +2,18 @@
 
 Configuration Group File Structure:
 
-```
+.. code-block:: text
     config/
     ├─ data/
     │  ├─ single_file.yaml
     │  ├─ defaults.yaml
     │  ├─ sharded.yaml
     ├─ aces.yaml
-```
+
 
 `aces-cli` help message:
 
-```
+.. code-block:: text
     ================== aces-cli ===================
     Welcome to the command-line interface for ACES!
 
@@ -53,5 +53,4 @@ Configuration Group File Structure:
     Powered by Hydra (https://hydra.cc)
     Use --hydra-help to view Hydra specific help
     ===============================================
-```
 """

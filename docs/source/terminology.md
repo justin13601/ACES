@@ -61,21 +61,25 @@ follows:
 
 ```yaml
 trigger: admission
-gap:
-  start: trigger
-  end: trigger + 48h
-  excludes:
-    - discharge
-    - death
-    - covid_dx
-target:
-  start: gap.end
-  end: discharge | death
-  label: death
-  excludes:
-    - covid_dx
-input:
-  end: trigger + 24h
+
+windows:
+  input:
+    start:
+    end: trigger + 24h
+  gap:
+    start: trigger
+    end: start + 48h
+    has:
+      admission: (None, 0)
+      discharge: (None, 0)
+      death: (None, 0)
+      covid_dx: (None, 0)
+  target:
+    start: gap.end
+    end: start -> discharge_or_death
+    has:
+      covid_dx: (None, 0)
+    label: death
 ```
 
 Given that our machine learning model seeks to predict in-hospital mortality, our dataset should include both
@@ -83,14 +87,13 @@ positive and negative samples (patients that died in the hospital and patients t
 `target` "window" concludes at either a `"death"` event (patients that died) or a`"discharge"` event
 (patients that didn't die).
 
-Note that this is conceptual pseudocode and not the actual configuration language, which may look slightly
-different. Nevertheless, we can see that this set of specifications can be realized in a "valid" form for a
+We can see that this set of specifications can be realized in a "valid" form for a
 patient if there exist a set of time points such that, within 48 hours after an admission, there are no
 discharges, deaths, or COVID diagnoses, and that there exists a discharge or death event after the first 48
 hours of an admission where there were no COVID diagnoses between the end of that first 48 hours and the
 subsequent discharge or death event.
 
-Note that these windows form a naturally hierarchical, tree-based structure based on their relative
+These windows form a naturally hierarchical, tree-based structure based on their relative
 dependencies on one another. In particular, we can realize the following tree structure constructed by nodes
 inferred for the above configuration:
 
@@ -118,7 +121,7 @@ about the true configuration language that is used in practice to specify "windo
 
 ______________________________________________________________________
 
-## Algorithm Terminology
+## Terminology
 
 #### Event
 
@@ -175,9 +178,9 @@ perform temporal and event-based aggregations to determine whether windows satis
 
 ______________________________________________________________________
 
-## Algorithm Design
+## Design
 
-### Initialization
+### I. Initialization
 
 #### Inputs
 
@@ -210,7 +213,7 @@ With this dataframe, we can proceed to traverse the tree and recurse over each s
 
 ______________________________________________________________________
 
-### Recursive Step
+### II. Recursive Step
 
 #### Inputs
 
@@ -302,7 +305,7 @@ subtree.
 
 ______________________________________________________________________
 
-### Clean-Up
+### III. Clean-Up
 
 #### Inputs
 

@@ -25,7 +25,7 @@ contain events that satisfy certain aggregation functions over predicates for th
 
 ______________________________________________________________________
 
-In the machine form, the configuration file consists of three parts:
+In the machine form used by ACES, the configuration file consists of three parts:
 
 - `predicates`, stored as a dictionary from string predicate names (which must be unique) to either
   `PlainPredicateConfig` objects, which store raw predicates with no dependencies on other predicates, or
@@ -34,7 +34,9 @@ In the machine form, the configuration file consists of three parts:
 - `windows`, stored as a dictionary from string window names (which must be unique) to `WindowConfig`
   objects.
 
-Next, we will detail each of these configuration objects.
+Below, we will detail each of these configuration objects.
+
+______________________________________________________________________
 
 ### Predicates: `PlainPredicateConfig` and `DerivedPredicateConfig`
 
@@ -64,11 +66,13 @@ on its source format.
 
 1. If the source data is in [MEDS](https://github.com/Medical-Event-Data-Standard/meds) format
    (recommended), then the `code` will be checked directly against MEDS' `code` field and the `value_min`
-   and `value_max` constraints will be compared against MEDS' `numerical_value` field. **Note**: This syntax
-   does not currently support defining predicates that also rely on matching other, optional fields in the
-   MEDS syntax; if this is a desired feature for you, please let us know by filing a GitHub issue or pull
-   request or upvoting any existing issue/PR that requests/implements this feature, and we will add support
-   for this capability.
+   and `value_max` constraints will be compared against MEDS' `numerical_value` field.
+
+   **Note**: This syntax does not currently support defining predicates that also rely on matching other,
+   optional fields in the MEDS syntax; if this is a desired feature for you, please let us know by filing a
+   GitHub issue or pull request or upvoting any existing issue/PR that requests/implements this feature,
+   and we will add support for this capability.
+
 2. If the source data is in [ESGPT](https://eventstreamml.readthedocs.io/en/latest/) format, then the
    `code` will be interpreted in the following manner:
    a. If the code contains a `"//"`, it will be interpreted as being a two element list joined by the
@@ -91,7 +95,7 @@ accepted operations that can be applied to other predicates, containing precisel
 - `and(pred_1_name, pred_2_name, ...)`: Asserts that all of the specified predicates must be true.
 - `or(pred_1_name, pred_2_name, ...)`: Asserts that any of the specified predicates must be true.
 
-Note that, currently, `and`'s and `or`'s cannot be nested. Upon user request, we may support further advanced
+**Note**: Currently, `and`'s and `or`'s cannot be nested. Upon user request, we may support further advanced
 analytic operations over predicates.
 
 ______________________________________________________________________
@@ -134,17 +138,22 @@ following rules:
       In this case, the referencing event (either the start or end of the window) will be defined as occurring
       exactly `$TIME_DELTA` either after or before the event being referenced (either the external event or the
       end or start of the window).
-      Note that if `$REFERENCED` is the `start` field, then `$TIME_DELTA` must be positive, and if
+
+      **Note**: If `$REFERENCED` is the `start` field, then `$TIME_DELTA` must be positive, and if
       `$REFERENCED` is the `end` field, then `$TIME_DELTA` must be negative to preserve the time ordering of
       the window fields.
+
    2. `$REFERENCING = $REFERENCED -> $PREDICATE`, `$REFERENCING = $REFERENCED <- $PREDICATE`
       In this case, the referencing event will be defined as the next or previous event satisfying the
-      predicate, `$PREDICATE`. Note that if the `$REFERENCED` is the `start` field, then the "next predicate
+      predicate, `$PREDICATE`.
+
+      **Note**: If the `$REFERENCED` is the `start` field, then the "next predicate
       ordering" (`$REFERENCED -> $PREDICATE`) must be used, and if the `$REFERENCED` is the `end` field, then the
       "previous predicate ordering" (`$REFERENCED <- $PREDICATE`) must be used to preserve the time ordering of
-      the window fields. Note that these forms can lead to windows being defined as single pointe vents, if the
+      the window fields. These forms can lead to windows being defined as single point events, if the
       `$REFERENCED` event itself satisfies `$PREDICATE` and the appropriate constraints are satisfied and
       inclusive values are set.
+
    3. `$REFERENCING = $REFERENCED`
       In this case, the referencing event will be defined as the same event as the referenced event.
 
@@ -171,8 +180,9 @@ the `start` event itself.
 The constraints field is a dictionary that maps predicate names to tuples of the form `(min_valid, max_valid)`
 that define the valid range the count of observations of the named predicate that must be found in a window
 for it to be considered valid. Either `min_valid` or `max_valid` constraints can be `None`, in which case
-those endpoints are left unconstrained. Likewise, unreferenced predicates are also left unconstrained. Note
-that as predicate counts are always integral, this specification does not need an additional
+those endpoints are left unconstrained. Likewise, unreferenced predicates are also left unconstrained.
+
+**Note**: As predicate counts are always integral, this specification does not need an additional
 inclusive/exclusive endpoint field, as one can simply increment the bound by one in the appropriate direction
 to achieve the result. Instead, this bound is always interpreted to be inclusive, so a window would satisfy
 the constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of predicate

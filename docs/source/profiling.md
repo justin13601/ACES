@@ -6,11 +6,11 @@ The MIMIC-IV MEDS schema has approximately 50,000 patients per shard with an ave
 
 All tests were executed on a single MEDS shard, which provides a bounded computational overview of ACES. For instance, if one shard costs $M$ memory and $T$ time, then $N$ shards may be executed in parallel with $N*M$ memory and $T$ time, or in series with $M$ memory and $T*N$ time.
 
-| Task                                  | # Patients | # Samples | Total Time (secs) | Max Mem (MB) |
-| ------------------------------------- | ---------- | --------- | ----------------- | ------------ |
-| First 24h in-hospital mortality       | 20,971     | 58,823    | 363.09            | -            |
-| First 48h in-hospital mortality       | 18,847     | 60,471    | 364.62            | -            |
-| First 24h in-ICU mortality            | 4,768      | 7,156     | 216.81            | -            |
-| First 48h in-ICU mortality            | 4,093      | 7,112     | 217.98            | -            |
-| 30d post-hospital-discharge mortality | 28,416     | 68,547    | 182.91            | -            |
-| 30d re-admission                      | 18,908     | 464,821   | 367.41            | -            |
+| Task                                                                                                                                                                                  | # Patients | # Samples | Total Time (secs) | Max Mem (MBs) |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | --------- | ----------------- | ------------- |
+| [First 24h in-hospital mortality](https://github.com/mmcdermott/PIE_MD/blob/e94189864080f957fcf2b7416c1dde401dfe4c15/tasks/MIMIC-IV/mortality/in_hospital/first_24h.yaml)             | 20,971     | 58,823    | 363.09            | -             |
+| [First 48h in-hospital mortality](https://github.com/mmcdermott/PIE_MD/blob/e94189864080f957fcf2b7416c1dde401dfe4c15/tasks/MIMIC-IV/mortality/in_hospital/first_48h.yaml)             | 18,847     | 60,471    | 364.62            | -             |
+| [First 24h in-ICU mortality](https://github.com/mmcdermott/PIE_MD/blob/e94189864080f957fcf2b7416c1dde401dfe4c15/tasks/MIMIC-IV/mortality/in_icu/first_24h.yaml)                       | 4,768      | 7,156     | 216.81            | -             |
+| [First 48h in-ICU mortality](https://github.com/mmcdermott/PIE_MD/blob/e94189864080f957fcf2b7416c1dde401dfe4c15/tasks/MIMIC-IV/mortality/in_icu/first_48h.yaml)                       | 4,093      | 7,112     | 217.98            | -             |
+| [30d post-hospital-discharge mortality](https://github.com/mmcdermott/PIE_MD/blob/e94189864080f957fcf2b7416c1dde401dfe4c15/tasks/MIMIC-IV/mortality/post_hospital_discharge/30d.yaml) | 28,416     | 68,547    | 182.91            | -             |
+| [30d re-admission](https://github.com/mmcdermott/PIE_MD/blob/e94189864080f957fcf2b7416c1dde401dfe4c15/tasks/MIMIC-IV/readmission/30d.yaml)                                            | 18,908     | 464,821   | 367.41            | -             |

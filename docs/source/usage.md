@@ -18,7 +18,7 @@ pip install es-aces
 
 **Example: `inhospital_mortality.yaml`**
 
-Please see the [Task Configuration File Overview](https://eventstreamaces.readthedocs.io/en/latest/overview.html#task-configuration-file) for details on how to create this configuration for your own task! More examples are available [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/examples.html).
+Please see the [Task Configuration File Overview](https://eventstreamaces.readthedocs.io/en/latest/overview.html#task-configuration-file) for details on how to create this configuration for your own task! More examples are available [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/examples.html) and in the [GitHub repository](https://github.com/justin13601/ACES/tree/main/sample_configs).
 
 This particular task configuration defines a cohort for the binary prediction of in-hospital mortality 48 hours after admission. Patients with 5 or more records between the start of their record and 24 hours after the admission will be included. The cohort includes both those that have been discharged (label=`0`)  and those that have died (label=`1`).
 
@@ -60,6 +60,8 @@ windows:
     end_inclusive: true
     label: death
 ```
+
+**Note**: Each configuration file contains [`predicates`](https://eventstreamaces.readthedocs.io/en/latest/readme.html#predicates), a [`trigger`](https://eventstreamaces.readthedocs.io/en/latest/readme.html#trigger-event), and [`windows`](https://eventstreamaces.readthedocs.io/en/latest/readme.html#windows). Additionally, the `label` field is used to extract the predicate count from the window it was defined in, which acts as the task label. This has been set to the `death` predicate from the `target` window in this example. The `index_timestamp` is used to specify the timestamp at which a prediction is made and can be set to `start` or `end` of a particular window. In most tasks, including this one, it can be set to `end` in the window containing input data (`input` in this example).
 
 ### Run the CLI
 

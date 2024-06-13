@@ -11,7 +11,7 @@ ACES is a library designed for the automatic extraction of cohorts from event-st
 glob:
 maxdepth: 2
 ---
-GitHub README <readme>
+README <readme>
 Usage Guide <usage>
 Task Examples <notebooks/examples>
 Predicates DataFrame <notebooks/predicates>

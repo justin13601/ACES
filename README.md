@@ -101,7 +101,7 @@ predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)
 df_result = query.query(cfg=cfg, predicates_df=predicates_df)
 ```
 
-**Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality cohort using the ESGPT standard:
+4. **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality cohort using the ESGPT standard:
 
 ```log
 aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs" data.standard="esgpt" data.path="MIMIC_ESD_new_schema_08-31-23-1/"
