@@ -67,13 +67,22 @@ windows:
 
 You can now run `aces-cli` in your terminal. Suppose we have a directory structure like the following:
 
-```yaml
-ACES/ ├── sample_data/ │   ├── esgpt_sample/ │   │   ├── ... │   │   ├── events_df.parquet
-│   │   └── dynamic_measurements_df.parquet │   ├── meds_sample/ │   │   ├── shards/
-│   │   │   ├── 0.parquet │   │   │   └── 1.parquet │   │   └── sample_shard.parquet
-│   └── sample_data.csv ├── sample_configs/ │   └── inhospital_mortality.yaml └──
-...
-...
+```
+ACES/
+├── sample_data/
+│   ├── esgpt_sample/
+│   │   ├── ...
+│   │   ├── events_df.parquet
+│   │   └── dynamic_measurements_df.parquet
+│   ├── meds_sample/
+│   │   ├── shards/
+│   │   │   ├── 0.parquet
+│   │   │   └── 1.parquet
+│   │   └── sample_shard.parquet
+│   └── sample_data.csv
+├── sample_configs/
+│   └── inhospital_mortality.yaml
+└── ...
 ```
 
 **To query from a single MEDS shard**:
@@ -174,7 +183,9 @@ The above two fields are used for automatically loading task configurations, sav
 
 `config_path`: Path to the task configuration file. Defaults to `${cohort_dir}/${cohort_name}.yaml`
 
-`output_filepath`: Path to store the outputs. Defaults to `${cohort_dir}/${cohort_name}/${data.shard}.parquet` for MEDS with multiple shards, and `${cohort_dir}/${cohort_name}.parquet` otherwise.
+`output_filepath`: Path to store the outputs. Defaults to `${cohort_dir}/${cohort_name}/${data.shard}.parquet` for MEDS with multiple shards, and `${cohort_dir}/${cohort_name}.parquet` otherwise
+
+`log_dir`: Path to store logs. Defaults to `${cohort_dir}/${cohort_name}/.logs`
 
 #### Tab Completion
 
