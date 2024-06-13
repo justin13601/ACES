@@ -3,6 +3,7 @@
 Configuration Group File Structure:
 
 .. code-block:: text
+
     config/
     ├─ data/
     │  ├─ single_file.yaml
@@ -14,6 +15,7 @@ Configuration Group File Structure:
 `aces-cli` help message:
 
 .. code-block:: text
+
     ================== aces-cli ===================
     Welcome to the command-line interface for ACES!
 
