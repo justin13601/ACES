@@ -1,4 +1,4 @@
-## Algorithm & Design
+## Terminology & Design
 
 We will assume that we are given a dataframe `df` which details events that have happened to subjects. Each
 row in the dataframe will have a `subject_id` column which identifies the subject, and a `timestamp` column

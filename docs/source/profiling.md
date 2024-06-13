@@ -8,5 +8,3 @@
 | First 48h in-ICU mortality            | -          | -         | -                 | -            |
 | 30d post-hospital-discharge mortality | -          | -         | -                 | -            |
 | 30d re-admission                      | -          | -         | -                 | -            |
-| Hospital length-of-stay               | -          | -         | -                 | -            |
-| ICU length-of-stay                    | -          | -         | -                 | -            |
