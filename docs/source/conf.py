@@ -321,7 +321,7 @@ htmlhelp_basename = "aces-doc"
 
 
 # -- Options for LaTeX output
-
+# latex_engine = "xelatex"
 latex_elements = {  # type: ignore
     # The paper size ("letterpaper" or "a4paper").
     "papersize": "letterpaper",

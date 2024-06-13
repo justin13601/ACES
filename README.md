@@ -101,7 +101,7 @@ predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)
 df_result = query.query(cfg=cfg, predicates_df=predicates_df)
 ```
 
-**Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality cohort using the ESGPT standard:
+4. **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality cohort using the ESGPT standard:
 
 ```log
 aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs" data.standard="esgpt" data.path="MIMIC_ESD_new_schema_08-31-23-1/"
@@ -300,9 +300,21 @@ The `has` field specifies constraints relating to predicates within the window. 
 
 Support for static data depends on your data standard and those variables are expressed. For instance, in MEDS, it is feasible to express static data as a predicate, and thus criteria can be set normally. However, this is not yet incorporated for ESGPT. If a predicates dataframe is directly used, you may create a predicate column that specifies your static variable.
 
+### Complementary Tools
+
+ACES is an integral part of the MEDS ecosystem. To fully leverage its capabilities, you can utilize it alongside other complementary MEDS tools, such as:
+
+- [MEDS-ETL](https://github.com/Medical-Event-Data-Standard/meds_etl), which can be used to transform various data schemas, including some command data models, into the MEDS format.
+- [MEDS-TAB](https://github.com/Medical-Event-Data-Standard/meds_etl), which can be used generate automated tabular baseline methods (ie., XGBoost over ACES-defined tasks).
+- [MEDS-Polars](https://github.com/Medical-Event-Data-Standard/meds_etl), which contains polars-based ETL scripts.
+
 ### Alternative Tools
 
-TODO
+There are existing alternatives for cohort extraction that focus on specific common data models, such as [i2b2 PIC-SURE](https://pic-sure.org/) and [OHDSI ATLAS](https://atlas.ohdsi.org/).
+
+ACES serves as a middle ground between PIC-SURE and ATLAS. While it may offer less capability than PIC-SURE, it compensates with greater ease of use and improved communication value. Compared to ATLAS, ACES provides greater capability, though with slightly lower ease of use, yet it still maintains a higher communication value.
+
+Finally, ACES is not tied to a particular common data model. Built on a flexible event-stream format, ACES is a no-code solution with a descriptive input format, permitting easy and wide iteration over task definitions, and can be applied to a variety of schemas, making it a versatile tool suitable for diverse research needs.
 
 ## Future Roadmap
 
