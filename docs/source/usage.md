@@ -237,7 +237,7 @@ You can also use the `aces.query.query()` function to extract a cohort in Python
 .. autofunction:: aces.query.query
 ```
 
-The `cfg` parameter must be of type `config.TaskExtractorConfig`, and the `predicates_df` parameter must be of type `polars.DataFrame`.
+The `cfg` parameter must be of type :py:mod:`aces.config.TaskExtractorConfig`, and the `predicates_df` parameter must be of type `polars.DataFrame`.
 
 Details about the configuration language used to define the `cfg` parameter can be found in {doc}`/configuration`.
 
