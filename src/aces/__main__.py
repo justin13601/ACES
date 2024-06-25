@@ -1,4 +1,4 @@
-"""Main script for end-to-end task querying."""
+"""Main script for end-to-end cohort extraction."""
 
 import sys
 from importlib.resources import files
