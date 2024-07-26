@@ -46,7 +46,7 @@ def main(cfg: DictConfig):
     result = query.query(task_cfg, predicates_df)
 
     if cfg.data.standard.lower() == "meds":
-        result = result.rename(columns={"subject_id": "patient_id"})
+        result = result.rename({"subject_id": "patient_id"})
 
     # save results to parquet
     os.makedirs(os.path.dirname(cfg.output_filepath), exist_ok=True)
