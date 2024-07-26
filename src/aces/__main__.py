@@ -47,6 +47,8 @@ def main(cfg: DictConfig):
 
     if cfg.data.standard.lower() == "meds":
         result = result.rename({"subject_id": "patient_id"})
+        if "index_timestamp" in result.columns:
+            result = result.rename({"index_timestamp": "prediction_time"})
 
     # save results to parquet
     os.makedirs(os.path.dirname(cfg.output_filepath), exist_ok=True)
