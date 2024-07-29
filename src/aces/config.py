@@ -883,7 +883,7 @@ class TaskExtractorConfig:
         if windows is None:
             windows = {}
             logger.warning(
-                "No windows specified in configuration file. Extracting only matching trigger " "events."
+                "No windows specified in configuration file. Extracting only matching trigger events."
             )
         else:
             windows = {n: WindowConfig(**w) for n, w in windows.items()}
