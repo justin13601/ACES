@@ -862,7 +862,7 @@ class TaskExtractorConfig:
             predicates = loaded_dict.pop("predicates")
 
         trigger = loaded_dict.pop("trigger")
-        windows = loaded_dict.pop("windows")
+        windows = loaded_dict.pop("windows", None)
 
         # Remove the description if it exists - currently unused except for readability in the YAML
         _ = loaded_dict.pop("description", None)
@@ -880,7 +880,13 @@ class TaskExtractorConfig:
         trigger = EventConfig(trigger)
 
         logger.info("Parsing windows...")
-        windows = {n: WindowConfig(**w) for n, w in windows.items()}
+        if windows is None:
+            windows = {}
+            logger.warning(
+                "No windows specified in configuration file. Extracting only matching trigger " "events."
+            )
+        else:
+            windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
         return cls(predicates=predicates, trigger=trigger, windows=windows)
 
