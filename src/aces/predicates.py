@@ -298,11 +298,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
     """
 
     logger.info("Loading MEDS data...")
-    data = (
-        pl.read_parquet(data_path)
-        .rename({"patient_id": "subject_id"})
-        .drop_nulls(subset=["subject_id", "timestamp"])
-    )
+    data = pl.read_parquet(data_path).rename({"patient_id": "subject_id"})
 
     if data.columns == ["subject_id", "events"]:
         data = unnest_meds(data)
