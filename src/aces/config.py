@@ -808,7 +808,7 @@ class TaskExtractorConfig:
     index_timestamp_window: str | None = None
 
     @classmethod
-    def load(cls, config_path: str | Path) -> TaskExtractorConfig:
+    def load(cls, config_path: str | Path, predicates_path: str | Path = None) -> TaskExtractorConfig:
         """Load a configuration file from the given path and return it as a dict.
 
         Args:
@@ -832,7 +832,35 @@ class TaskExtractorConfig:
                 f"Only supports reading from '.yaml' files currently. Got: '{config_path.suffix}'"
             )
 
-        predicates = loaded_dict.pop("predicates")
+        if predicates_path:
+            if isinstance(predicates_path, str):
+                predicates_path = Path(predicates_path)
+
+            if not predicates_path.is_file():
+                raise FileNotFoundError(
+                    f"Cannot load missing predicates file {str(predicates_path.resolve())}!"
+                )
+
+            if predicates_path.suffix == ".yaml":
+                yaml = ruamel.yaml.YAML(typ="safe", pure=True)
+                predicates_dict = yaml.load(predicates_path.read_text())
+            else:
+                raise ValueError(
+                    f"Only supports reading from '.yaml' files currently. Got: '{predicates_path.suffix}'"
+                )
+
+            predicates = predicates_dict.pop("predicates")
+
+            # Remove the description if it exists - currently unused except for readability in the YAML
+            _ = predicates_dict.pop("description", None)
+
+            if predicates_dict:
+                raise ValueError(
+                    f"Unrecognized keys in configuration file: '{', '.join(predicates_dict.keys())}'"
+                )
+        else:
+            predicates = loaded_dict.pop("predicates")
+
         trigger = loaded_dict.pop("trigger")
         windows = loaded_dict.pop("windows")
 
