@@ -9,6 +9,10 @@ predicates:
   discharge_or_death:
     expr: or(discharge, death)
 
+patient_demographics:
+  eye_colour:
+    code: EYE_COLOR//BROWN
+
 trigger: admission
 
 windows:

@@ -33,6 +33,7 @@ class PlainPredicateConfig:
     value_max: float | None = None
     value_min_inclusive: bool | None = None
     value_max_inclusive: bool | None = None
+    static: bool = False
 
     def MEDS_eval_expr(self) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
@@ -770,17 +771,20 @@ class TaskExtractorConfig:
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
-                              value_max_inclusive=None),
+                              value_max_inclusive=None,
+                              static=False),
          'discharge': PlainPredicateConfig(code='discharge',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
-                              value_max_inclusive=None),
+                              value_max_inclusive=None,
+                              static=False),
          'death': PlainPredicateConfig(code='death',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
-                              value_max_inclusive=None)}
+                              value_max_inclusive=None,
+                              static=False)}
 
         >>> print(config.label_window) # doctest: +NORMALIZE_WHITESPACE
         target
@@ -803,7 +807,7 @@ class TaskExtractorConfig:
 
     predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
     trigger: EventConfig
-    windows: dict[str, WindowConfig]
+    windows: dict[str, WindowConfig] | None
     label_window: str | None = None
     index_timestamp_window: str | None = None
 
@@ -850,6 +854,7 @@ class TaskExtractorConfig:
                 )
 
             predicates = predicates_dict.pop("predicates")
+            patient_demographics = predicates_dict.pop("patient_demographics", None)
 
             # Remove the description if it exists - currently unused except for readability in the YAML
             _ = predicates_dict.pop("description", None)
@@ -860,6 +865,7 @@ class TaskExtractorConfig:
                 )
         else:
             predicates = loaded_dict.pop("predicates")
+            patient_demographics = loaded_dict.pop("patient_demographics", None)
 
         trigger = loaded_dict.pop("trigger")
         windows = loaded_dict.pop("windows", None)
@@ -875,6 +881,13 @@ class TaskExtractorConfig:
             n: DerivedPredicateConfig(**p) if "expr" in p else PlainPredicateConfig(**p)
             for n, p in predicates.items()
         }
+
+        if patient_demographics:
+            logger.info("Parsing patient demographics...")
+            patient_demographics = {
+                n: PlainPredicateConfig(**p, static=True) for n, p in patient_demographics.items()
+            }
+            predicates.update(patient_demographics)
 
         logger.info("Parsing trigger event...")
         trigger = EventConfig(trigger)
