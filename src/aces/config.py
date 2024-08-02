@@ -180,6 +180,7 @@ class DerivedPredicateConfig:
     """
 
     expr: str
+    static: bool = False
 
     def __post_init__(self):
         if not self.expr:

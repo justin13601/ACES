@@ -723,7 +723,13 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         special_predicates.append(cfg.trigger.predicate)
 
     if ANY_EVENT_COLUMN in special_predicates:
-        data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(PRED_CNT_TYPE))
+        data = data.with_columns(
+            pl.when(pl.col("timestamp").is_not_null())
+            .then(pl.lit(1))
+            .otherwise(pl.lit(None))
+            .alias(ANY_EVENT_COLUMN)
+            .cast(PRED_CNT_TYPE)
+        )
         logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
         predicate_cols.append(ANY_EVENT_COLUMN)
     if START_OF_RECORD_KEY in special_predicates:
