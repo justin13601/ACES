@@ -330,7 +330,7 @@ def extract_subtree(
                 pl.lit(child.name).alias("window_name"),
                 "timestamp_at_start",
                 "timestamp_at_end",
-                pl.col(LAST_EVENT_INDEX_COLUMN),
+                pl.col(EVENT_INDEX_COLUMN).alias(LAST_EVENT_INDEX_COLUMN),
                 *predicate_cols,
             ).alias(f"{child.name}_summary"),
         )

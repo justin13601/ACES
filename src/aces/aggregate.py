@@ -6,6 +6,7 @@ import polars as pl
 
 from .types import (
     EVENT_INDEX_COLUMN,
+    LAST_EVENT_INDEX_COLUMN,
     PRED_CNT_TYPE,
     TemporalWindowBounds,
     ToEventWindowBounds,
@@ -1003,7 +1004,7 @@ def boolean_expr_bound_sum(
             st_timestamp_expr.alias("timestamp_at_start"),
             end_timestamp_expr.alias("timestamp_at_end"),
             *(pl.col(c).cast(PRED_CNT_TYPE).fill_null(0).alias(c) for c in cols),
-            EVENT_INDEX_COLUMN,
+            pl.col(EVENT_INDEX_COLUMN).alias(LAST_EVENT_INDEX_COLUMN),
         )
 
     if mode == "bound_to_row" and offset > timedelta(0):
@@ -1040,5 +1041,5 @@ def boolean_expr_bound_sum(
         st_timestamp_expr.alias("timestamp_at_start"),
         end_timestamp_expr.alias("timestamp_at_end"),
         *(agg_offset_fn(c).cast(PRED_CNT_TYPE, strict=False).fill_null(0).alias(c) for c in cols),
-        EVENT_INDEX_COLUMN,
+        pl.col(EVENT_INDEX_COLUMN).alias(LAST_EVENT_INDEX_COLUMN),
     )
