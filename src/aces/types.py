@@ -13,7 +13,7 @@ import polars as pl
 PRED_CNT_TYPE = pl.Int64
 
 # The type used for event indexing
-EVENT_INDEX_TYPE = pl.Int64
+EVENT_INDEX_TYPE = pl.UInt64
 
 # The key used in the endpoint expression to indicate the window should be aggregated to the record start.
 START_OF_RECORD_KEY = "_RECORD_START"

@@ -639,9 +639,7 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
     predicate_cols += special_predicates
 
     # create a column for event_id
-    data = data.with_columns(pl.lit(1).alias(EVENT_INDEX_COLUMN))
     data = data.with_columns(
-        (pl.col(EVENT_INDEX_COLUMN).cum_sum().over("subject_id") - 1).cast(EVENT_INDEX_TYPE)
+        pl.int_range(pl.len()).over("subject_id").cast(EVENT_INDEX_TYPE).alias(EVENT_INDEX_COLUMN)
     )
-
     return data
