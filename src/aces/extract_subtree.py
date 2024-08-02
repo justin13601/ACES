@@ -8,7 +8,7 @@ from loguru import logger
 
 from .aggregate import aggregate_event_bound_window, aggregate_temporal_window
 from .constraints import check_constraints
-from .types import EVENT_INDEX_COLUMN
+from .types import EVENT_INDEX_COLUMN, LAST_EVENT_INDEX_COLUMN
 
 
 def extract_subtree(
@@ -330,7 +330,7 @@ def extract_subtree(
                 pl.lit(child.name).alias("window_name"),
                 "timestamp_at_start",
                 "timestamp_at_end",
-                pl.col(EVENT_INDEX_COLUMN),
+                pl.col(LAST_EVENT_INDEX_COLUMN),
                 *predicate_cols,
             ).alias(f"{child.name}_summary"),
         )
