@@ -51,12 +51,16 @@ class PlainPredicateConfig:
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) >
                (dyn int: 120)]])
+            >>> cfg = PlainPredicateConfig("BP//systolic", value_max=140, value_max_inclusive=True)
+            >>> expr = cfg.MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) <=
+               (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//diastolic")
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("code")) == (String(BP//diastolic))]
         """
-
         criteria = [pl.col("code") == self.code]
 
         if self.value_min is not None:
@@ -105,6 +109,17 @@ class PlainPredicateConfig:
             >>> expr = PlainPredicateConfig("BP//diastolic//atrial").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("BP")) == (String(diastolic//atrial))]
+            >>> expr = PlainPredicateConfig("BP//diastolic", None, None).ESGPT_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("BP")) == (String(diastolic))]
+            >>> expr = PlainPredicateConfig("BP//systolic", value_min=120).ESGPT_eval_expr()
+            Traceback (most recent call last):
+                ...
+            ValueError: Must specify a values column for ESGPT predicates with a value_min = 120
+            >>> expr = PlainPredicateConfig("BP//systolic", value_max=140).ESGPT_eval_expr()
+            Traceback (most recent call last):
+                ...
+            ValueError: Must specify a values column for ESGPT predicates with a value_max = 140
         """
         code_is_in_parts = "//" in self.code
 
@@ -177,6 +192,10 @@ class DerivedPredicateConfig:
         Traceback (most recent call last):
             ...
         ValueError: Derived predicate expression must start with 'and(' or 'or('. Got: 'PA + PB'
+        >>> pred = DerivedPredicateConfig("")
+        Traceback (most recent call last):
+            ...
+        ValueError: Derived predicates must have a non-empty expression field.
     """
 
     expr: str
@@ -481,7 +500,6 @@ class WindowConfig:
     @classmethod
     def _check_reference(cls, reference: str):
         """Checks to ensure referenced events are valid."""
-
         err_str = (
             "Window boundary reference must be either a valid alphanumeric/'_' string "
             "or a reference to another window's start or end event, formatted as a valid "
@@ -804,6 +822,27 @@ class TaskExtractorConfig:
             ├── input.start
             └── gap.end
                 └── target.end
+
+        >>> config_path = "/foo/non_existent_file.yaml"
+        >>> cfg = TaskExtractorConfig.load(config_path)
+        Traceback (most recent call last):
+            ...
+        FileNotFoundError: Cannot load missing configuration file /foo/non_existent_file.yaml!
+
+        >>> import tempfile
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as f:
+        ...     config_path = Path(f.name)
+        ...     cfg = TaskExtractorConfig.load(config_path)
+        Traceback (most recent call last):
+            ...
+        ValueError: Only supports reading from '.yaml' files currently. Got: '.txt'
+        >>> predicates_path = "/foo/non_existent_predicates.yaml"
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+        ...     config_path = Path(f.name)
+        ...     cfg = TaskExtractorConfig.load(config_path, predicates_path)
+        Traceback (most recent call last):
+            ...
+        FileNotFoundError: Cannot load missing predicates file /foo/non_existent_predicates.yaml!
     """
 
     predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
