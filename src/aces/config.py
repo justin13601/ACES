@@ -44,12 +44,12 @@ class PlainPredicateConfig:
         Examples:
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("value")) >=
-               (dyn int: 120)], [(col("value")) < (dyn int: 140)]])
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) >=
+               (dyn int: 120)], [(col("numerical_value")) < (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("value")) >
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) >
                (dyn int: 120)]])
             >>> cfg = PlainPredicateConfig("BP//diastolic")
             >>> expr = cfg.MEDS_eval_expr()
@@ -61,14 +61,14 @@ class PlainPredicateConfig:
 
         if self.value_min is not None:
             if self.value_min_inclusive:
-                criteria.append(pl.col("value") >= self.value_min)
+                criteria.append(pl.col("numerical_value") >= self.value_min)
             else:
-                criteria.append(pl.col("value") > self.value_min)
+                criteria.append(pl.col("numerical_value") > self.value_min)
         if self.value_max is not None:
             if self.value_max_inclusive:
-                criteria.append(pl.col("value") <= self.value_max)
+                criteria.append(pl.col("numerical_value") <= self.value_max)
             else:
-                criteria.append(pl.col("value") < self.value_max)
+                criteria.append(pl.col("numerical_value") < self.value_max)
 
         if len(criteria) == 1:
             return criteria[0]
@@ -792,7 +792,7 @@ class TaskExtractorConfig:
         >>> print(config.index_timestamp_window) # doctest: +NORMALIZE_WHITESPACE
         input
         >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
-        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)')}
+        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)', static=False)}
         >>> print(nx.write_network_text(config.predicates_DAG))
         ╟── death
         ╎   └─╼ death_or_discharge ╾ discharge
