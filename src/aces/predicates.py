@@ -35,25 +35,31 @@ def direct_load_plain_predicates(
     Example:
         >>> import tempfile
         >>> CSV_data = pl.DataFrame({
-        ...     "subject_id": [1, 1, 2],
-        ...     "timestamp": ["01/01/2021 00:00", "01/01/2021 12:00", "01/02/2021 00:00"],
-        ...     "is_admission": [1, 0, 1],
-        ...     "is_discharge": [0, 1, 0],
+        ...     "subject_id": [1, 1, 1, 1, 2, 2],
+        ...     "timestamp": [None, "01/01/2021 00:00", None, "01/01/2021 12:00", "01/02/2021 00:00", None],
+        ...     "is_admission": [0, 1, 0, 0, 1, 0],
+        ...     "is_discharge": [0, 0, 0, 1, 0, 0],
+        ...     "is_male": [1, 0, 0, 0, 0, 0],
+        ...     "is_female": [0, 0, 0, 0, 0, 1],
+        ...     "brown_eyes": [0, 0, 1, 0, 0, 0],
         ... })
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_parquet(data_path)
-        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], "%m/%d/%Y %H:%M")
-        shape: (3, 4)
-        ┌────────────┬─────────────────────┬──────────────┬──────────────┐
-        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
-        │ ---        ┆ ---                 ┆ ---          ┆ ---          │
-        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          │
-        ╞════════════╪═════════════════════╪══════════════╪══════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
-        └────────────┴─────────────────────┴──────────────┴──────────────┘
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge", "is_male",
+        ...          "is_female", "brown_eyes"], "%m/%d/%Y %H:%M")
+        shape: (5, 7)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┬─────────┬───────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge ┆ is_male ┆ is_female ┆ brown_eyes │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          ┆ ---     ┆ ---       ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          ┆ i64     ┆ i64       ┆ i64        │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╪═════════╪═══════════╪════════════╡
+        │ 1          ┆ null                ┆ 0            ┆ 0            ┆ 1       ┆ 0         ┆ 1          │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0         ┆ 0          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            ┆ 0       ┆ 0         ┆ 0          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0         ┆ 0          │
+        │ 2          ┆ null                ┆ 0            ┆ 0            ┆ 0       ┆ 1         ┆ 0          │
+        └────────────┴─────────────────────┴──────────────┴──────────────┴─────────┴───────────┴────────────┘
 
     If the timestamp column is already a timestamp, then the `ts_format` argument id not needed, but can be
     used without an error.
@@ -64,17 +70,20 @@ def direct_load_plain_predicates(
         ...         .with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
         ...         .write_parquet(data_path)
         ...     )
-        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], "%m/%d/%Y %H:%M")
-        shape: (3, 4)
-        ┌────────────┬─────────────────────┬──────────────┬──────────────┐
-        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
-        │ ---        ┆ ---                 ┆ ---          ┆ ---          │
-        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          │
-        ╞════════════╪═════════════════════╪══════════════╪══════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
-        └────────────┴─────────────────────┴──────────────┴──────────────┘
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge", "is_male",
+        ...          "is_female", "brown_eyes"], "%m/%d/%Y %H:%M")
+        shape: (5, 7)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┬─────────┬───────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge ┆ is_male ┆ is_female ┆ brown_eyes │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          ┆ ---     ┆ ---       ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          ┆ i64     ┆ i64       ┆ i64        │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╪═════════╪═══════════╪════════════╡
+        │ 1          ┆ null                ┆ 0            ┆ 0            ┆ 1       ┆ 0         ┆ 1          │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0         ┆ 0          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            ┆ 0       ┆ 0         ┆ 0          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0         ┆ 0          │
+        │ 2          ┆ null                ┆ 0            ┆ 0            ┆ 0       ┆ 1         ┆ 0          │
+        └────────────┴─────────────────────┴──────────────┴──────────────┴─────────┴───────────┴────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     (
@@ -82,45 +91,53 @@ def direct_load_plain_predicates(
         ...         .with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
         ...         .write_parquet(data_path)
         ...     )
-        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], None)
-        shape: (3, 4)
-        ┌────────────┬─────────────────────┬──────────────┬──────────────┐
-        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
-        │ ---        ┆ ---                 ┆ ---          ┆ ---          │
-        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          │
-        ╞════════════╪═════════════════════╪══════════════╪══════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
-        └────────────┴─────────────────────┴──────────────┴──────────────┘
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge", "is_male",
+        ...          "is_female", "brown_eyes"], None)
+        shape: (5, 7)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┬─────────┬───────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge ┆ is_male ┆ is_female ┆ brown_eyes │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          ┆ ---     ┆ ---       ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          ┆ i64     ┆ i64       ┆ i64        │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╪═════════╪═══════════╪════════════╡
+        │ 1          ┆ null                ┆ 0            ┆ 0            ┆ 1       ┆ 0         ┆ 1          │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0         ┆ 0          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            ┆ 0       ┆ 0         ┆ 0          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0         ┆ 0          │
+        │ 2          ┆ null                ┆ 0            ┆ 0            ┆ 0       ┆ 1         ┆ 0          │
+        └────────────┴─────────────────────┴──────────────┴──────────────┴─────────┴───────────┴────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
-        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge"], "%m/%d/%Y %H:%M")
-        shape: (3, 4)
-        ┌────────────┬─────────────────────┬──────────────┬──────────────┐
-        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge │
-        │ ---        ┆ ---                 ┆ ---          ┆ ---          │
-        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          │
-        ╞════════════╪═════════════════════╪══════════════╪══════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            │
-        └────────────┴─────────────────────┴──────────────┴──────────────┘
+        ...     direct_load_plain_predicates(data_path, ["is_admission", "is_discharge", "is_male",
+        ...          "is_female", "brown_eyes"], "%m/%d/%Y %H:%M")
+        shape: (5, 7)
+        ┌────────────┬─────────────────────┬──────────────┬──────────────┬─────────┬───────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge ┆ is_male ┆ is_female ┆ brown_eyes │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---          ┆ ---     ┆ ---       ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          ┆ i64     ┆ i64       ┆ i64        │
+        ╞════════════╪═════════════════════╪══════════════╪══════════════╪═════════╪═══════════╪════════════╡
+        │ 1          ┆ null                ┆ 0            ┆ 0            ┆ 1       ┆ 0         ┆ 1          │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0         ┆ 0          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            ┆ 0       ┆ 0         ┆ 0          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0         ┆ 0          │
+        │ 2          ┆ null                ┆ 0            ┆ 0            ┆ 0       ┆ 1         ┆ 0          │
+        └────────────┴─────────────────────┴──────────────┴──────────────┴─────────┴───────────┴────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
-        ...     direct_load_plain_predicates(data_path, ["is_discharge"], "%m/%d/%Y %H:%M")
-        shape: (3, 3)
-        ┌────────────┬─────────────────────┬──────────────┐
-        │ subject_id ┆ timestamp           ┆ is_discharge │
-        │ ---        ┆ ---                 ┆ ---          │
-        │ i64        ┆ datetime[μs]        ┆ i64          │
-        ╞════════════╪═════════════════════╪══════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 0            │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 1            │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 0            │
-        └────────────┴─────────────────────┴──────────────┘
+        ...     direct_load_plain_predicates(data_path, ["is_discharge", "brown_eyes"], "%m/%d/%Y %H:%M")
+        shape: (5, 4)
+        ┌────────────┬─────────────────────┬──────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ is_discharge ┆ brown_eyes │
+        │ ---        ┆ ---                 ┆ ---          ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64        │
+        ╞════════════╪═════════════════════╪══════════════╪════════════╡
+        │ 1          ┆ null                ┆ 0            ┆ 1          │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 0            ┆ 0          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 1            ┆ 0          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 0            ┆ 0          │
+        │ 2          ┆ null                ┆ 0            ┆ 0          │
+        └────────────┴─────────────────────┴──────────────┴────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     CSV_data.write_csv(data_path)
@@ -183,8 +200,7 @@ def direct_load_plain_predicates(
     if missing_columns:
         raise pl.ColumnNotFoundError(missing_columns)
 
-    data = data.select(columns).drop_nulls(subset=["subject_id", "timestamp"])
-
+    data = data.select(columns)
     ts_type = data.schema["timestamp"]
     if ts_type == pl.Utf8:
         if ts_format is None:
@@ -276,33 +292,31 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         >>> parquet_data = pl.DataFrame({
         ...     "patient_id": [1, 1, 1, 2, 3],
         ...     "timestamp": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 01:00", "1/1/1989 02:00", None],
-        ...     "code": ['admission', 'discharge', 'discharge', 'admission', "gender"],
+        ...     "code": ['admission', 'discharge', 'discharge', 'admission', "gender//male"],
         ... }).with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     parquet_data.write_parquet(data_path)
         ...     generate_plain_predicates_from_meds(
         ...         data_path,
-        ...         {"discharge": PlainPredicateConfig("discharge")}
+        ...         {"discharge": PlainPredicateConfig("discharge"),
+        ...             "male": PlainPredicateConfig("gender//male", static=True)}
         ...     )
-        shape: (3, 3)
-        ┌────────────┬─────────────────────┬───────────┐
-        │ subject_id ┆ timestamp           ┆ discharge │
-        │ ---        ┆ ---                 ┆ ---       │
-        │ i64        ┆ datetime[μs]        ┆ i64       │
-        ╞════════════╪═════════════════════╪═══════════╡
-        │ 1          ┆ 1989-01-01 00:00:00 ┆ 0         │
-        │ 1          ┆ 1989-01-01 01:00:00 ┆ 2         │
-        │ 2          ┆ 1989-01-01 02:00:00 ┆ 0         │
-        └────────────┴─────────────────────┴───────────┘
+        shape: (4, 4)
+        ┌────────────┬─────────────────────┬───────────┬──────┐
+        │ subject_id ┆ timestamp           ┆ discharge ┆ male │
+        │ ---        ┆ ---                 ┆ ---       ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ i64       ┆ i64  │
+        ╞════════════╪═════════════════════╪═══════════╪══════╡
+        │ 1          ┆ 1989-01-01 00:00:00 ┆ 0         ┆ 0    │
+        │ 1          ┆ 1989-01-01 01:00:00 ┆ 2         ┆ 0    │
+        │ 2          ┆ 1989-01-01 02:00:00 ┆ 0         ┆ 0    │
+        │ 3          ┆ null                ┆ 0         ┆ 1    │
+        └────────────┴─────────────────────┴───────────┴──────┘
     """
 
     logger.info("Loading MEDS data...")
-    data = (
-        pl.read_parquet(data_path)
-        .rename({"patient_id": "subject_id"})
-        .drop_nulls(subset=["subject_id", "timestamp"])
-    )
+    data = pl.read_parquet(data_path).rename({"patient_id": "subject_id"})
 
     if data.columns == ["subject_id", "events"]:
         data = unnest_meds(data)
@@ -324,6 +338,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
 
 
 def process_esgpt_data(
+    subjects_df: pl.DataFrame,
     events_df: pl.DataFrame,
     dynamic_measurements_df: pl.DataFrame,
     value_columns: dict[str, str],
@@ -342,6 +357,12 @@ def process_esgpt_data(
     Examples:
         >>> from datetime import datetime
         >>> from .config import PlainPredicateConfig
+        >>> subjects_df = pl.DataFrame({
+        ...    "subject_id": [1, 2],
+        ...    "MRN": ["A123", "B456"],
+        ...    "eye_colour": ["brown", "blue"],
+        ...    "dob": [datetime(1980, 1, 1), datetime(1990, 1, 1)],
+        ... })
         >>> events_df = pl.DataFrame({
         ...    "event_id": [1, 2, 3, 4],
         ...    "subject_id": [1, 1, 2, 2],
@@ -369,23 +390,26 @@ def process_esgpt_data(
         ...    "high_Potassium": "lab_val",
         ... }
         >>> predicates = {
-        ...    "is_admission": PlainPredicateConfig(code="event_type//adm"),
-        ...    "is_discharge": PlainPredicateConfig(code="event_type//dis"),
+        ...    "is_adm": PlainPredicateConfig(code="event_type//adm"),
+        ...    "is_dis": PlainPredicateConfig(code="event_type//dis"),
         ...    "high_HR": PlainPredicateConfig(code="HR", value_min=140),
         ...    "high_Potassium": PlainPredicateConfig(code="lab//K", value_min=5.0),
+        ...    "eye_colour": PlainPredicateConfig(code="eye_colour//brown", static=True),
         ... }
-        >>> process_esgpt_data(events_df, dynamic_measurements_df, value_columns, predicates)
-        shape: (4, 6)
-        ┌────────────┬─────────────────────┬──────────────┬──────────────┬─────────┬────────────────┐
-        │ subject_id ┆ timestamp           ┆ is_admission ┆ is_discharge ┆ high_HR ┆ high_Potassium │
-        │ ---        ┆ ---                 ┆ ---          ┆ ---          ┆ ---     ┆ ---            │
-        │ i64        ┆ datetime[μs]        ┆ i64          ┆ i64          ┆ i64     ┆ i64            │
-        ╞════════════╪═════════════════════╪══════════════╪══════════════╪═════════╪════════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1            ┆ 0            ┆ 1       ┆ 1              │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0            ┆ 1            ┆ 0       ┆ 0              │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1            ┆ 0            ┆ 0       ┆ 0              │
-        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0            ┆ 0            ┆ 1       ┆ 0              │
-        └────────────┴─────────────────────┴──────────────┴──────────────┴─────────┴────────────────┘
+        >>> process_esgpt_data(subjects_df, events_df, dynamic_measurements_df, value_columns, predicates)
+        shape: (6, 7)
+        ┌────────────┬─────────────────────┬────────┬────────┬─────────┬────────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ is_adm ┆ is_dis ┆ high_HR ┆ high_Potassium ┆ eye_colour │
+        │ ---        ┆ ---                 ┆ ---    ┆ ---    ┆ ---     ┆ ---            ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64    ┆ i64    ┆ i64     ┆ i64            ┆ i64        │
+        ╞════════════╪═════════════════════╪════════╪════════╪═════════╪════════════════╪════════════╡
+        │ 1          ┆ null                ┆ 0      ┆ 0      ┆ 0       ┆ 0              ┆ 1          │
+        │ 2          ┆ null                ┆ 0      ┆ 0      ┆ 0       ┆ 0              ┆ 0          │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1      ┆ 0      ┆ 1       ┆ 1              ┆ 0          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0      ┆ 1      ┆ 0       ┆ 0              ┆ 0          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1      ┆ 0      ┆ 0       ┆ 0              ┆ 0          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0      ┆ 0      ┆ 1       ┆ 0              ┆ 0          │
+        └────────────┴─────────────────────┴────────┴────────┴─────────┴────────────────┴────────────┘
     """
 
     logger.info("Generating plain predicate columns...")
@@ -394,6 +418,10 @@ def process_esgpt_data(
             events_df = events_df.with_columns(
                 plain_predicate.ESGPT_eval_expr().cast(PRED_CNT_TYPE).alias(name)
             )
+        elif plain_predicate.static:
+            subjects_df = subjects_df.with_columns(
+                plain_predicate.ESGPT_eval_expr().cast(PRED_CNT_TYPE).alias(name),
+            )
         else:
             values_column = value_columns[name]
             dynamic_measurements_df = dynamic_measurements_df.with_columns(
@@ -401,6 +429,8 @@ def process_esgpt_data(
             )
         logger.info(f"Added predicate column '{name}'.")
 
+    # clean up predicates_df
+    logger.info("Cleaning up predicates dataframe...")
     predicate_cols = list(predicates.keys())
 
     # aggregate dynamic_measurements_df by summing predicates (counts)
@@ -419,9 +449,20 @@ def process_esgpt_data(
     # join events_df and dynamic_measurements_df for the final predicates_df
     data = events_df.join(dynamic_measurements_df, on="event_id", how="left")
 
-    # clean up predicates_df
-    logger.info("Cleaning up predicates dataframe...")
-    return data.select(["subject_id", "timestamp"] + predicate_cols)
+    # return concatenated subjects_df and data
+    static_rows = subjects_df.select(
+        "subject_id",
+        pl.lit(None).alias("timestamp").cast(pl.Datetime),
+        *[pl.lit(0).alias(c).cast(PRED_CNT_TYPE) for c in predicate_cols if not predicates[c].static],
+        *[pl.col(c) for c in predicate_cols if predicates[c].static],
+    )
+    data = data.select(
+        "subject_id",
+        "timestamp",
+        *[pl.col(c) for c in predicate_cols if not predicates[c].static],
+        *[pl.lit(0).alias(c).cast(PRED_CNT_TYPE) for c in predicate_cols if predicates[c].static],
+    )
+    return pl.concat([static_rows, data])
 
 
 def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> pl.DataFrame:
@@ -457,6 +498,7 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
             "If you mean to use a MEDS dataset, please specify the 'MEDS' standard."
         ) from e
 
+    subjects_df = ESD.subjects_df
     events_df = ESD.events_df
     dynamic_measurements_df = ESD.dynamic_measurements_df
     config = ESD.config
@@ -469,7 +511,7 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
             measurement_name = plain_predicate.code.split("//")[0]
             value_columns[name] = config.measurement_configs[measurement_name].values_column
 
-    return process_esgpt_data(events_df, dynamic_measurements_df, value_columns, predicates)
+    return process_esgpt_data(subjects_df, events_df, dynamic_measurements_df, value_columns, predicates)
 
 
 def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.DataFrame:
@@ -491,16 +533,25 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         >>> import tempfile
         >>> from .config import PlainPredicateConfig, DerivedPredicateConfig, EventConfig, WindowConfig
         >>> data = pl.DataFrame({
-        ...     "subject_id": [1, 1, 2, 2],
-        ...     "timestamp": ["01/01/2021 00:00", "01/01/2021 12:00", "01/02/2021 00:00", "01/02/2021 12:00"],
-        ...     "adm":       [1, 0, 1, 0],
-        ...     "dis":       [0, 1, 0, 0],
-        ...     "death":     [0, 0, 0, 1],
+        ...     "subject_id": [1, 1, 1, 2, 2, 2],
+        ...     "timestamp": [
+        ...         None,
+        ...         "01/01/2021 00:00",
+        ...         "01/01/2021 12:00",
+        ...         None,
+        ...         "01/02/2021 00:00",
+        ...         "01/02/2021 12:00"],
+        ...     "adm":       [0, 1, 0, 0, 1, 0],
+        ...     "dis":       [0, 0, 1, 0, 0, 0],
+        ...     "death":     [0, 0, 0, 0, 0, 1],
+        ...     "male":      [1, 0, 0, 0, 0, 0],
+        ...     "female":    [0, 0, 0, 1, 0, 0],
         ... })
         >>> predicates = {
         ...     "adm": PlainPredicateConfig("adm"),
         ...     "dis": PlainPredicateConfig("dis"),
         ...     "death": PlainPredicateConfig("death"),
+        ...     "male": PlainPredicateConfig("male", static=True), # predicate match based on name for direct
         ...     "death_or_dis": DerivedPredicateConfig("or(death, dis)"),
         ... }
         >>> trigger = EventConfig("adm")
@@ -538,17 +589,19 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ...         "path": str(data_path), "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"
         ...     })
         ...     get_predicates_df(config, data_config)
-        shape: (4, 7)
-        ┌────────────┬─────────────────────┬─────┬─────┬───────┬──────────────┬────────────┐
-        │ subject_id ┆ timestamp           ┆ adm ┆ dis ┆ death ┆ death_or_dis ┆ _ANY_EVENT │
-        │ ---        ┆ ---                 ┆ --- ┆ --- ┆ ---   ┆ ---          ┆ ---        │
-        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64 ┆ i64   ┆ i64          ┆ i64        │
-        ╞════════════╪═════════════════════╪═════╪═════╪═══════╪══════════════╪════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1   ┆ 0     ┆ 1            ┆ 1          │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
-        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0   ┆ 1     ┆ 1            ┆ 1          │
-        └────────────┴─────────────────────┴─────┴─────┴───────┴──────────────┴────────────┘
+        shape: (6, 8)
+        ┌────────────┬─────────────────────┬─────┬─────┬───────┬──────┬──────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ dis ┆ death ┆ male ┆ death_or_dis ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ --- ┆ --- ┆ ---   ┆ ---  ┆ ---          ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64 ┆ i64   ┆ i64  ┆ i64          ┆ i64        │
+        ╞════════════╪═════════════════════╪═════╪═════╪═══════╪══════╪══════════════╪════════════╡
+        │ 1          ┆ null                ┆ 0   ┆ 0   ┆ 0     ┆ 1    ┆ 0            ┆ null       │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0    ┆ 0            ┆ 1          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1   ┆ 0     ┆ 0    ┆ 1            ┆ 1          │
+        │ 2          ┆ null                ┆ 0   ┆ 0   ┆ 0     ┆ 0    ┆ 0            ┆ null       │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0    ┆ 0            ┆ 1          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0   ┆ 1     ┆ 0    ┆ 1            ┆ 1          │
+        └────────────┴─────────────────────┴─────┴─────┴───────┴──────┴──────────────┴────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     (
@@ -558,19 +611,21 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ...     )
         ...     data_config = DictConfig({"path": str(data_path), "standard": "direct", "ts_format": None})
         ...     get_predicates_df(config, data_config)
-        shape: (4, 7)
-        ┌────────────┬─────────────────────┬─────┬─────┬───────┬──────────────┬────────────┐
-        │ subject_id ┆ timestamp           ┆ adm ┆ dis ┆ death ┆ death_or_dis ┆ _ANY_EVENT │
-        │ ---        ┆ ---                 ┆ --- ┆ --- ┆ ---   ┆ ---          ┆ ---        │
-        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64 ┆ i64   ┆ i64          ┆ i64        │
-        ╞════════════╪═════════════════════╪═════╪═════╪═══════╪══════════════╪════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1   ┆ 0     ┆ 1            ┆ 1          │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0            ┆ 1          │
-        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0   ┆ 1     ┆ 1            ┆ 1          │
-        └────────────┴─────────────────────┴─────┴─────┴───────┴──────────────┴────────────┘
+        shape: (6, 8)
+        ┌────────────┬─────────────────────┬─────┬─────┬───────┬──────┬──────────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ dis ┆ death ┆ male ┆ death_or_dis ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ --- ┆ --- ┆ ---   ┆ ---  ┆ ---          ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64 ┆ i64   ┆ i64  ┆ i64          ┆ i64        │
+        ╞════════════╪═════════════════════╪═════╪═════╪═══════╪══════╪══════════════╪════════════╡
+        │ 1          ┆ null                ┆ 0   ┆ 0   ┆ 0     ┆ 1    ┆ 0            ┆ null       │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0    ┆ 0            ┆ 1          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1   ┆ 0     ┆ 0    ┆ 1            ┆ 1          │
+        │ 2          ┆ null                ┆ 0   ┆ 0   ┆ 0     ┆ 0    ┆ 0            ┆ null       │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0   ┆ 0     ┆ 0    ┆ 0            ┆ 1          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0   ┆ 1     ┆ 0    ┆ 1            ┆ 1          │
+        └────────────┴─────────────────────┴─────┴─────┴───────┴──────┴──────────────┴────────────┘
         >>> any_event_trigger = EventConfig("_ANY_EVENT")
-        >>> adm_only_predicates = {"adm": PlainPredicateConfig("adm")}
+        >>> adm_only_predicates = {"adm": PlainPredicateConfig("adm"), "male": PlainPredicateConfig("male")}
         >>> st_end_windows = {
         ...     "input": WindowConfig(
         ...         start="end - 365d",
@@ -593,17 +648,19 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ...         "path": str(data_path), "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"
         ...     })
         ...     get_predicates_df(st_end_config, data_config)
-        shape: (4, 6)
-        ┌────────────┬─────────────────────┬─────┬────────────┬───────────────┬─────────────┐
-        │ subject_id ┆ timestamp           ┆ adm ┆ _ANY_EVENT ┆ _RECORD_START ┆ _RECORD_END │
-        │ ---        ┆ ---                 ┆ --- ┆ ---        ┆ ---           ┆ ---         │
-        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64        ┆ i64           ┆ i64         │
-        ╞════════════╪═════════════════════╪═════╪════════════╪═══════════════╪═════════════╡
-        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 1          ┆ 1             ┆ 0           │
-        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1          ┆ 0             ┆ 1           │
-        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 1          ┆ 1             ┆ 0           │
-        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 1          ┆ 0             ┆ 1           │
-        └────────────┴─────────────────────┴─────┴────────────┴───────────────┴─────────────┘
+        shape: (6, 7)
+        ┌────────────┬─────────────────────┬─────┬──────┬────────────┬───────────────┬─────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ male ┆ _ANY_EVENT ┆ _RECORD_START ┆ _RECORD_END │
+        │ ---        ┆ ---                 ┆ --- ┆ ---  ┆ ---        ┆ ---           ┆ ---         │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64  ┆ i64        ┆ i64           ┆ i64         │
+        ╞════════════╪═════════════════════╪═════╪══════╪════════════╪═══════════════╪═════════════╡
+        │ 1          ┆ null                ┆ 0   ┆ 1    ┆ null       ┆ null          ┆ null        │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 0    ┆ 1          ┆ 1             ┆ 0           │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 0    ┆ 1          ┆ 0             ┆ 1           │
+        │ 2          ┆ null                ┆ 0   ┆ 0    ┆ null       ┆ null          ┆ null        │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0    ┆ 1          ┆ 1             ┆ 0           │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0    ┆ 1          ┆ 0             ┆ 1           │
+        └────────────┴─────────────────────┴─────┴──────┴────────────┴───────────────┴─────────────┘
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     data.write_csv(data_path)
@@ -640,7 +697,7 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         logger.info(f"Added predicate column '{name}'.")
         predicate_cols.append(name)
 
-    data = data.sort(by=["subject_id", "timestamp"])
+    data = data.sort(by=["subject_id", "timestamp"], nulls_last=False)
 
     # add special predicates:
     # a column of 1s representing any predicate
@@ -666,7 +723,13 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         special_predicates.append(cfg.trigger.predicate)
 
     if ANY_EVENT_COLUMN in special_predicates:
-        data = data.with_columns(pl.lit(1).alias(ANY_EVENT_COLUMN).cast(PRED_CNT_TYPE))
+        data = data.with_columns(
+            pl.when(pl.col("timestamp").is_not_null())
+            .then(pl.lit(1))
+            .otherwise(pl.lit(None))
+            .alias(ANY_EVENT_COLUMN)
+            .cast(PRED_CNT_TYPE)
+        )
         logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
         predicate_cols.append(ANY_EVENT_COLUMN)
     if START_OF_RECORD_KEY in special_predicates:

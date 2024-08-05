@@ -33,6 +33,7 @@ class PlainPredicateConfig:
     value_max: float | None = None
     value_min_inclusive: bool | None = None
     value_max_inclusive: bool | None = None
+    static: bool = False
 
     def MEDS_eval_expr(self) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
@@ -43,31 +44,35 @@ class PlainPredicateConfig:
         Examples:
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("value")) >=
-               (dyn int: 120)], [(col("value")) < (dyn int: 140)]])
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) >=
+               (dyn int: 120)], [(col("numerical_value")) < (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("value")) >
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) >
                (dyn int: 120)]])
+            >>> cfg = PlainPredicateConfig("BP//systolic", value_max=140, value_max_inclusive=True)
+            >>> expr = cfg.MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) <=
+               (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//diastolic")
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("code")) == (String(BP//diastolic))]
         """
-
         criteria = [pl.col("code") == self.code]
 
         if self.value_min is not None:
             if self.value_min_inclusive:
-                criteria.append(pl.col("value") >= self.value_min)
+                criteria.append(pl.col("numerical_value") >= self.value_min)
             else:
-                criteria.append(pl.col("value") > self.value_min)
+                criteria.append(pl.col("numerical_value") > self.value_min)
         if self.value_max is not None:
             if self.value_max_inclusive:
-                criteria.append(pl.col("value") <= self.value_max)
+                criteria.append(pl.col("numerical_value") <= self.value_max)
             else:
-                criteria.append(pl.col("value") < self.value_max)
+                criteria.append(pl.col("numerical_value") < self.value_max)
 
         if len(criteria) == 1:
             return criteria[0]
@@ -95,6 +100,11 @@ class PlainPredicateConfig:
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("BP")) == (String(systolic))].all_horizontal([[(col("blood_pressure_value")) >
                (dyn int: 120)]])
+            >>> cfg = PlainPredicateConfig("BP//systolic", value_max=140, value_max_inclusive=True)
+            >>> expr = cfg.ESGPT_eval_expr("blood_pressure_value")
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("BP")) == (String(systolic))].all_horizontal([[(col("blood_pressure_value")) <=
+               (dyn int: 140)]])
             >>> expr = PlainPredicateConfig("BP//diastolic").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("BP")) == (String(diastolic))]
@@ -104,6 +114,20 @@ class PlainPredicateConfig:
             >>> expr = PlainPredicateConfig("BP//diastolic//atrial").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("BP")) == (String(diastolic//atrial))]
+            >>> expr = PlainPredicateConfig("BP//diastolic", None, None).ESGPT_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("BP")) == (String(diastolic))]
+            >>> expr = PlainPredicateConfig("BP").ESGPT_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            col("BP").is_not_null()
+            >>> expr = PlainPredicateConfig("BP//systolic", value_min=120).ESGPT_eval_expr()
+            Traceback (most recent call last):
+                ...
+            ValueError: Must specify a values column for ESGPT predicates with a value_min = 120
+            >>> expr = PlainPredicateConfig("BP//systolic", value_max=140).ESGPT_eval_expr()
+            Traceback (most recent call last):
+                ...
+            ValueError: Must specify a values column for ESGPT predicates with a value_max = 140
         """
         code_is_in_parts = "//" in self.code
 
@@ -119,7 +143,7 @@ class PlainPredicateConfig:
             else:
                 criteria = [pl.col(measurement_name) == code]
         elif (self.value_min is None) and (self.value_max is None):
-            return pl.col(code).is_not_null()
+            return pl.col(self.code).is_not_null()
         else:
             values_column = self.code
             criteria = []
@@ -176,9 +200,14 @@ class DerivedPredicateConfig:
         Traceback (most recent call last):
             ...
         ValueError: Derived predicate expression must start with 'and(' or 'or('. Got: 'PA + PB'
+        >>> pred = DerivedPredicateConfig("")
+        Traceback (most recent call last):
+            ...
+        ValueError: Derived predicates must have a non-empty expression field.
     """
 
     expr: str
+    static: bool = False
 
     def __post_init__(self):
         if not self.expr:
@@ -348,6 +377,23 @@ class WindowConfig:
                              offset=datetime.timedelta(0))
         >>> gap_window.root_node
         'start'
+        >>> gap_window = WindowConfig(
+        ...     start="input.end",
+        ...     end="start + 0h",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": "(None, 0)", "death": "(None, 0)"}
+        ... )
+        >>> gap_window.referenced_event
+        ('input', 'end')
+        >>> sorted(gap_window.referenced_predicates)
+        ['death', 'discharge']
+        >>> gap_window.start_endpoint_expr is None
+        True
+        >>> gap_window.end_endpoint_expr is None # doctest: +NORMALIZE_WHITESPACE
+        True
+        >>> gap_window.root_node
+        'start'
         >>> target_window = WindowConfig(
         ...     start="gap.end",
         ...     end="start -> discharge_or_death",
@@ -368,6 +414,26 @@ class WindowConfig:
                             offset=datetime.timedelta(0))
         >>> target_window.root_node
         'start'
+        >>> target_window = WindowConfig(
+        ...     start="end",
+        ...     end="gap.end <- discharge_or_death",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={}
+        ... )
+        >>> target_window.referenced_event
+        ('gap', 'end')
+        >>> sorted(target_window.referenced_predicates)
+        ['discharge_or_death']
+        >>> target_window.start_endpoint_expr is None
+        True
+        >>> target_window.end_endpoint_expr # doctest: +NORMALIZE_WHITESPACE
+        ToEventWindowBounds(left_inclusive=False,
+                            end_event='-discharge_or_death',
+                            right_inclusive=False,
+                            offset=datetime.timedelta(0))
+        >>> target_window.root_node
+        'end'
         >>> invalid_window = WindowConfig(
         ...     start="gap.end gap.start",
         ...     end="start -> discharge_or_death",
@@ -381,6 +447,30 @@ class WindowConfig:
             another window's start or end event, formatted as a valid alphanumeric/'_' string, followed by
             '.start' or '.end'.
             Got: 'gap.end gap.start'
+        >>> invalid_window = WindowConfig(
+        ...     start="input",
+        ...     end="start window -> discharge_or_death",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": "(None, 0)", "death": "(None, 0)"}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Window boundary reference must be either a valid alphanumeric/'_' string or a reference
+        to another window's start or end event, formatted as a valid alphanumeric/'_' string, followed by
+        '.start' or '.end'. Got: 'start window'
+        >>> invalid_window = WindowConfig(
+        ...     start="input",
+        ...     end="window.foo -> discharge_or_death",
+        ...     start_inclusive=False,
+        ...     end_inclusive=True,
+        ...     has={"discharge": "(None, 0)", "death": "(None, 0)"}
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Window boundary reference must be either a valid alphanumeric/'_' string or a reference
+        to another window's start or end event, formatted as a valid alphanumeric/'_' string, followed by
+        '.start' or '.end'. Got: 'window.foo'
         >>> invalid_window = WindowConfig(
         ...     start=None, end=None, start_inclusive=True, end_inclusive=True, has={}
         ... )
@@ -479,7 +569,6 @@ class WindowConfig:
     @classmethod
     def _check_reference(cls, reference: str):
         """Checks to ensure referenced events are valid."""
-
         err_str = (
             "Window boundary reference must be either a valid alphanumeric/'_' string "
             "or a reference to another window's start or end event, formatted as a valid "
@@ -770,24 +859,27 @@ class TaskExtractorConfig:
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
-                              value_max_inclusive=None),
+                              value_max_inclusive=None,
+                              static=False),
          'discharge': PlainPredicateConfig(code='discharge',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
-                              value_max_inclusive=None),
+                              value_max_inclusive=None,
+                              static=False),
          'death': PlainPredicateConfig(code='death',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
-                              value_max_inclusive=None)}
+                              value_max_inclusive=None,
+                              static=False)}
 
         >>> print(config.label_window) # doctest: +NORMALIZE_WHITESPACE
         target
         >>> print(config.index_timestamp_window) # doctest: +NORMALIZE_WHITESPACE
         input
         >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
-        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)')}
+        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)', static=False)}
         >>> print(nx.write_network_text(config.predicates_DAG))
         ╟── death
         ╎   └─╼ death_or_discharge ╾ discharge
@@ -799,16 +891,134 @@ class TaskExtractorConfig:
             ├── input.start
             └── gap.end
                 └── target.end
+
+        >>> config_path = "/foo/non_existent_file.yaml"
+        >>> cfg = TaskExtractorConfig.load(config_path)
+        Traceback (most recent call last):
+            ...
+        FileNotFoundError: Cannot load missing configuration file /foo/non_existent_file.yaml!
+
+        >>> import tempfile
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as f:
+        ...     config_path = Path(f.name)
+        ...     cfg = TaskExtractorConfig.load(config_path)
+        Traceback (most recent call last):
+            ...
+        ValueError: Only supports reading from '.yaml'. Got: '.txt' in ....txt'.
+        >>> predicates_path = "/foo/non_existent_predicates.yaml"
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+        ...     config_path = Path(f.name)
+        ...     cfg = TaskExtractorConfig.load(config_path, predicates_path)
+        Traceback (most recent call last):
+            ...
+        FileNotFoundError: Cannot load missing predicates file /foo/non_existent_predicates.yaml!
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as f:
+        ...     predicates_path = Path(f.name)
+        ...     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f2:
+        ...         config_path = Path(f2.name)
+        ...         cfg = TaskExtractorConfig.load(config_path, predicates_path)
+        Traceback (most recent call last):
+            ...
+        ValueError: Only supports reading from '.yaml'. Got: '.txt' in ....txt'.
+        >>> import yaml
+        >>> data = {
+        ...     'predicates': {},
+        ...     'trigger': {},
+        ...     'foo': {}
+        ... }
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+        ...     config_path = Path(f.name)
+        ...     yaml.dump(data, f)
+        ...     cfg = TaskExtractorConfig.load(config_path)
+        Traceback (most recent call last):
+            ...
+        ValueError: Unrecognized keys in configuration file: 'foo'
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+        ...     predicates_path = Path(f.name)
+        ...     yaml.dump(data, f)
+        ...     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f2:
+        ...         config_path = Path(f2.name)
+        ...         cfg = TaskExtractorConfig.load(config_path, predicates_path)
+        Traceback (most recent call last):
+            ...
+        ValueError: Unrecognized keys in configuration file: 'foo, trigger'
+
+        >>> predicates = {"foo bar": PlainPredicateConfig("foo")}
+        >>> trigger = EventConfig("foo")
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
+        Traceback (most recent call last):
+            ...
+        ValueError: Predicate name 'foo bar' is invalid; must be composed of alphanumeric or '_' characters.
+        >>> predicates = {"foo": str("foo")}
+        >>> trigger = EventConfig("foo")
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
+        ... # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid predicate configuration for 'foo': foo. Must be either a PlainPredicateConfig or
+        DerivedPredicateConfig object. Got: <class 'str'>
+        >>> predicates = {
+        ...     "foo": PlainPredicateConfig("foo"),
+        ...     "foobar": DerivedPredicateConfig("or(foo, bar)"),
+        ... }
+        >>> trigger = EventConfig("foo")
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
+        Traceback (most recent call last):
+            ...
+        KeyError: "Missing 1 relationships:\\nDerived predicate 'foobar' references undefined predicate 'bar'"
+
+        >>> predicates = {"foo": PlainPredicateConfig("foo")}
+        >>> trigger = EventConfig("foo")
+        >>> windows = {"foo bar": WindowConfig("gap.end", "start + 24h", True, True)}
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        Traceback (most recent call last):
+            ...
+        ValueError: Window name 'foo bar' is invalid; must be composed of alphanumeric or '_' characters.
+        >>> windows = {"foo": WindowConfig("gap.end", "start + 24h", True, True, {}, "bar")}
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        Traceback (most recent call last):
+            ...
+        ValueError: Label must be one of the defined predicates. Got: bar for window 'foo'
+        >>> windows = {"foo": WindowConfig("gap.end", "start + 24h", True, True, {}, "foo", "bar")}
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        Traceback (most recent call last):
+            ...
+        ValueError: Index timestamp must be either 'start' or 'end'. Got: bar for window 'foo'
+        >>> windows = {
+        ...     "foo": WindowConfig("gap.end", "start + 24h", True, True, {}, "foo"),
+        ...     "bar": WindowConfig("gap.end", "start + 24h", True, True, {}, "foo")
+        ... }
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        Traceback (most recent call last):
+            ...
+        ValueError: Only one window can be labeled, found 2 labeled windows: foo, bar
+        >>> windows = {
+        ...     "foo": WindowConfig("gap.end", "start + 24h", True, True, {}, "foo", "start"),
+        ...     "bar": WindowConfig("gap.end", "start + 24h", True, True, {}, index_timestamp="start")
+        ... }
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        ... # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: Only the 'start'/'end' of one window can be used as the index timestamp, found
+        2 windows with index_timestamp: foo, bar
+
+        >>> predicates = {"foo": PlainPredicateConfig("foo")}
+        >>> trigger = EventConfig("bar")
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
+        Traceback (most recent call last):
+            ...
+        KeyError: "Trigger event predicate 'bar' not found in predicates: foo"
     """
 
     predicates: dict[str, PlainPredicateConfig | DerivedPredicateConfig]
     trigger: EventConfig
-    windows: dict[str, WindowConfig]
+    windows: dict[str, WindowConfig] | None
     label_window: str | None = None
     index_timestamp_window: str | None = None
 
     @classmethod
-    def load(cls, config_path: str | Path) -> TaskExtractorConfig:
+    def load(cls, config_path: str | Path, predicates_path: str | Path = None) -> TaskExtractorConfig:
         """Load a configuration file from the given path and return it as a dict.
 
         Args:
@@ -829,12 +1039,43 @@ class TaskExtractorConfig:
             loaded_dict = yaml.load(config_path.read_text())
         else:
             raise ValueError(
-                f"Only supports reading from '.yaml' files currently. Got: '{config_path.suffix}'"
+                f"Only supports reading from '.yaml'. Got: '{config_path.suffix}' in '{config_path.name}'."
             )
 
-        predicates = loaded_dict.pop("predicates")
+        if predicates_path:
+            if isinstance(predicates_path, str):
+                predicates_path = Path(predicates_path)
+
+            if not predicates_path.is_file():
+                raise FileNotFoundError(
+                    f"Cannot load missing predicates file {str(predicates_path.resolve())}!"
+                )
+
+            if predicates_path.suffix == ".yaml":
+                yaml = ruamel.yaml.YAML(typ="safe", pure=True)
+                predicates_dict = yaml.load(predicates_path.read_text())
+            else:
+                raise ValueError(
+                    f"Only supports reading from '.yaml'. Got: '{predicates_path.suffix}' in "
+                    f"'{predicates_path.name}'."
+                )
+
+            predicates = predicates_dict.pop("predicates")
+            patient_demographics = predicates_dict.pop("patient_demographics", None)
+
+            # Remove the description if it exists - currently unused except for readability in the YAML
+            _ = predicates_dict.pop("description", None)
+
+            if predicates_dict:
+                raise ValueError(
+                    f"Unrecognized keys in configuration file: '{', '.join(predicates_dict.keys())}'"
+                )
+        else:
+            predicates = loaded_dict.pop("predicates")
+            patient_demographics = loaded_dict.pop("patient_demographics", None)
+
         trigger = loaded_dict.pop("trigger")
-        windows = loaded_dict.pop("windows")
+        windows = loaded_dict.pop("windows", None)
 
         # Remove the description if it exists - currently unused except for readability in the YAML
         _ = loaded_dict.pop("description", None)
@@ -848,11 +1089,24 @@ class TaskExtractorConfig:
             for n, p in predicates.items()
         }
 
+        if patient_demographics:
+            logger.info("Parsing patient demographics...")
+            patient_demographics = {
+                n: PlainPredicateConfig(**p, static=True) for n, p in patient_demographics.items()
+            }
+            predicates.update(patient_demographics)
+
         logger.info("Parsing trigger event...")
         trigger = EventConfig(trigger)
 
         logger.info("Parsing windows...")
-        windows = {n: WindowConfig(**w) for n, w in windows.items()}
+        if windows is None:
+            windows = {}
+            logger.warning(
+                "No windows specified in configuration file. Extracting only matching trigger events."
+            )
+        else:
+            windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
         return cls(predicates=predicates, trigger=trigger, windows=windows)
 
