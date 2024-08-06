@@ -241,6 +241,31 @@ def extract_subtree(
         ╞═════════════════════╪═════════════════════╪══════════════╪══════════════╪══════════╪═════════════╡
         │ 1983-12-01 22:02:00 ┆ 1988-12-06 15:17:00 ┆ 1            ┆ 1            ┆ 0        ┆ 0           │
         └─────────────────────┴─────────────────────┴──────────────┴──────────────┴──────────┴─────────────┘
+        >>> # Testing duplicate rows in output when triggered on _ANY_EVENT
+        >>> predicates_df2 = pl.DataFrame({
+        ...     "subject_id": [239684, 239684, 1195293],
+        ...     "timestamp": [
+        ...         # Subject 239684
+        ...         datetime(1980, 12, 28, 0, 0)
+        ...         datetime(2010, 5, 11, 18, 57, 18)
+        ...         # Subject 1195293
+        ...         datetime(2010, 6, 20, 20, 41, 33)
+        ...     ],
+        ...     "_ANY_EVENT":   [1, 1, 1],
+        ... })
+        >>> subtreee_anchor_realizations2 = (
+        ...     predicates_df.filter(pl.col("_ANY_EVENT") > 0)
+        ...     .rename({"timestamp": "subtree_anchor_timestamp"})
+        ... )
+        >>> root_any = Node("any")
+        >>> pre_node = Node("pre") # This sets the node's name.
+        >>> pre_node.endpoint_expr = (True, "-_RECORD_START", False)
+        >>> pre_node.constraints = {}
+        >>> pre_node.parent = root_any
+        >>> post_node = Node("post") # This sets the node's name.
+        >>> post_node.endpoint_expr = (True, "_RECORD_END", True)
+        >>> post_node.constraints = {}
+        >>> post_node.parent = root_any
     """
     recursive_results = []
     predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
