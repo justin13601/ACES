@@ -1096,21 +1096,21 @@ class TaskExtractorConfig:
             raise ValueError(f"Unrecognized keys in configuration file: '{', '.join(loaded_dict.keys())}'")
 
         logger.info("Parsing predicates...")
-        predicates = {}
+        predicate_objs = {}
         for n, p in predicates.items():
             if "expr" in p:
-                predicates[n] = DerivedPredicateConfig(**p)
+                predicate_objs[n] = DerivedPredicateConfig(**p)
             else:
                 config_data = {k: v for k, v in p.items() if k in PlainPredicateConfig.__dataclass_fields__}
                 other_cols = {k: v for k, v in p.items() if k not in config_data.keys()}
-                predicates[n] = PlainPredicateConfig(**p, other_cols=other_cols)
+                predicate_objs[n] = PlainPredicateConfig(**config_data, other_cols=other_cols)
 
         if patient_demographics:
             logger.info("Parsing patient demographics...")
             patient_demographics = {
                 n: PlainPredicateConfig(**p, static=True) for n, p in patient_demographics.items()
             }
-            predicates.update(patient_demographics)
+            predicate_objs.update(patient_demographics)
 
         logger.info("Parsing trigger event...")
         trigger = EventConfig(trigger)
@@ -1124,7 +1124,9 @@ class TaskExtractorConfig:
         else:
             windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
-        return cls(predicates=predicates, trigger=trigger, windows=windows)
+        print(predicate_objs)
+
+        return cls(predicates=predicate_objs, trigger=trigger, windows=windows)
 
     def save(self, config_path: str | Path, do_overwrite: bool = False):
         """Load a configuration file from the given path and return it as a dict.
