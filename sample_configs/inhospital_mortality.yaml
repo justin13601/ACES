@@ -4,7 +4,7 @@ predicates:
     code:
       regex:
       any: [event_type//ADMISSION, event_type//EMERGENCY, event_type//ELECTIVE]
-    other_col: foo
+    random_col: foo
   discharge:
     code: event_type//DISCHARGE
   death:

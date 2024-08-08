@@ -34,6 +34,7 @@ class PlainPredicateConfig:
     value_min_inclusive: bool | None = None
     value_max_inclusive: bool | None = None
     static: bool = False
+    other_cols: dict[str, str] = field(default_factory=dict)
 
     def MEDS_eval_expr(self) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
@@ -60,6 +61,11 @@ class PlainPredicateConfig:
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("code")) == (String(BP//diastolic))]
+            >>> cfg = PlainPredicateConfig("BP//diastolic", other_cols={"chamber": "atrial"})
+            >>> expr = cfg.MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("code")) == (String(BP//diastolic))].all_horizontal([[(col("chamber")) ==
+               (String(atrial))]])
         """
         criteria = [pl.col("code") == self.code]
 
@@ -73,6 +79,9 @@ class PlainPredicateConfig:
                 criteria.append(pl.col("numerical_value") <= self.value_max)
             else:
                 criteria.append(pl.col("numerical_value") < self.value_max)
+
+        if self.other_cols:
+            criteria.extend([pl.col(col) == value for col, value in self.other_cols.items()])
 
         if len(criteria) == 1:
             return criteria[0]
@@ -860,19 +869,22 @@ class TaskExtractorConfig:
                               value_max=None,
                               value_min_inclusive=None,
                               value_max_inclusive=None,
-                              static=False),
+                              static=False,
+                              other_cols={}),
          'discharge': PlainPredicateConfig(code='discharge',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
                               value_max_inclusive=None,
-                              static=False),
+                              static=False,
+                              other_cols={}),
          'death': PlainPredicateConfig(code='death',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
                               value_max_inclusive=None,
-                              static=False)}
+                              static=False,
+                              other_cols={})}
 
         >>> print(config.label_window) # doctest: +NORMALIZE_WHITESPACE
         target
@@ -1084,10 +1096,14 @@ class TaskExtractorConfig:
             raise ValueError(f"Unrecognized keys in configuration file: '{', '.join(loaded_dict.keys())}'")
 
         logger.info("Parsing predicates...")
-        predicates = {
-            n: DerivedPredicateConfig(**p) if "expr" in p else PlainPredicateConfig(**p)
-            for n, p in predicates.items()
-        }
+        predicates = {}
+        for n, p in predicates.items():
+            if "expr" in p:
+                predicates[n] = DerivedPredicateConfig(**p)
+            else:
+                config_data = {k: v for k, v in p.items() if k in PlainPredicateConfig.__dataclass_fields__}
+                other_cols = {k: v for k, v in p.items() if k not in config_data.keys()}
+                predicates[n] = PlainPredicateConfig(**p, other_cols=other_cols)
 
         if patient_demographics:
             logger.info("Parsing patient demographics...")
