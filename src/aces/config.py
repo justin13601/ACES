@@ -129,6 +129,9 @@ class PlainPredicateConfig:
             >>> expr = PlainPredicateConfig("BP").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             col("BP").is_not_null()
+            >>> expr = PlainPredicateConfig("BP//systole", other_cols={"chamber": "atrial"}).ESGPT_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("BP")) == (String(systole))].all_horizontal([[(col("chamber")) == (String(atrial))]])
             >>> expr = PlainPredicateConfig("BP//systolic", value_min=120).ESGPT_eval_expr()
             Traceback (most recent call last):
                 ...
@@ -175,6 +178,9 @@ class PlainPredicateConfig:
                 criteria.append(pl.col(values_column) <= self.value_max)
             else:
                 criteria.append(pl.col(values_column) < self.value_max)
+
+        if self.other_cols:
+            criteria.extend([pl.col(col) == value for col, value in self.other_cols.items()])
 
         if len(criteria) == 1:
             return criteria[0]
