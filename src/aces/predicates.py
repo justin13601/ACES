@@ -324,6 +324,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
     for name, plain_predicate in predicates.items():
+        data = data.with_columns(data["code"].cast(pl.Utf8).alias("code"))  # may remove after MEDS v0.3
         data = data.with_columns(plain_predicate.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name))
         logger.info(f"Added predicate column '{name}'.")
 

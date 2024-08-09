@@ -1,7 +1,8 @@
 # Task: 24-hour In-hospital Mortality Prediction
 predicates:
   admission:
-    code: event_type//ADMISSION
+    code:
+      regex: ^event_type.*
   discharge:
     code: event_type//DISCHARGE
   death:
