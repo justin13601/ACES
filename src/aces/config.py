@@ -28,7 +28,7 @@ from .utils import parse_timedelta
 
 @dataclasses.dataclass
 class PlainPredicateConfig:
-    code: str
+    code: str | dict
     value_min: float | None = None
     value_max: float | None = None
     value_min_inclusive: bool | None = None
@@ -66,19 +66,93 @@ class PlainPredicateConfig:
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("code")) == (String(BP//diastolic))].all_horizontal([[(col("chamber")) ==
                (String(atrial))]])
-        """
-        criteria = [pl.col("code") == self.code]
 
-        if self.value_min is not None:
-            if self.value_min_inclusive:
-                criteria.append(pl.col("numerical_value") >= self.value_min)
+            >>> cfg = PlainPredicateConfig(code={'regex': None, 'any': None, 'all': None})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Only one of 'regex', 'any', or 'all' can be specified in the code field!
+            Got: ['regex', 'any', 'all'].
+            >>> cfg = PlainPredicateConfig(code={'foo': None})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Invalid specification in the code field! Got: {'foo': None}.
+            Expected one of 'regex', 'any', or 'all'.
+            >>> cfg = PlainPredicateConfig(code={'regex': ''})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Invalid specification in the code field! Got: {'regex': ''}.
+            Expected a non-empty string for 'regex'.
+            >>> cfg = PlainPredicateConfig(code={'all': []})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Invalid specification in the code field! Got: {'all': []}.
+            Expected a list of strings for 'all'.
+
+            >>> cfg = PlainPredicateConfig(code={'regex': '^foo.*'})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            col("code").str.contains([String(^foo.*)])
+            >>> cfg = PlainPredicateConfig(code={'all': ['foo', 'bar']})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("code")) == (String(foo))].all_horizontal([[(col("code")) == (String(bar))]])
+            >>> cfg = PlainPredicateConfig(code={'any': ['foo', 'bar']})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("code")) == (String(foo))].any_horizontal([[(col("code")) == (String(bar))]])
+        """
+        criteria = []
+        if isinstance(self.code, dict):
+            if len(self.code) > 1:
+                raise ValueError(
+                    "Only one of 'regex', 'any', or 'all' can be specified in the code field! "
+                    f"Got: {list(self.code.keys())}."
+                )
+
+            if "regex" in self.code:
+                if not self.code["regex"] or not isinstance(self.code["regex"], str):
+                    raise ValueError(
+                        "Invalid specification in the code field! "
+                        f"Got: {self.code}. "
+                        "Expected a non-empty string for 'regex'."
+                    )
+                criteria.append(pl.col("code").str.contains(self.code["regex"]))
+            elif "any" in self.code or "all" in self.code:  # 'all' is redundant? it shouldn't be possible...?
+                logic = list(self.code.keys())[0]
+                if not self.code[logic] or not isinstance(self.code[logic], list):
+                    raise ValueError(
+                        "Invalid specification in the code field! "
+                        f"Got: {self.code}. "
+                        f"Expected a list of strings for '{logic}'."
+                    )
+                criteria.append(
+                    pl.all_horizontal([pl.col("code") == code for code in self.code[logic]])
+                    if logic == "all"
+                    else pl.any_horizontal([pl.col("code") == code for code in self.code[logic]])
+                )
             else:
-                criteria.append(pl.col("numerical_value") > self.value_min)
-        if self.value_max is not None:
-            if self.value_max_inclusive:
-                criteria.append(pl.col("numerical_value") <= self.value_max)
-            else:
-                criteria.append(pl.col("numerical_value") < self.value_max)
+                raise ValueError(
+                    "Invalid specification in the code field! "
+                    f"Got: {self.code}. "
+                    "Expected one of 'regex', 'any', or 'all'."
+                )
+        else:
+            criteria.append(pl.col("code") == self.code)
+
+            if self.value_min is not None:
+                if self.value_min_inclusive:
+                    criteria.append(pl.col("numerical_value") >= self.value_min)
+                else:
+                    criteria.append(pl.col("numerical_value") > self.value_min)
+            if self.value_max is not None:
+                if self.value_max_inclusive:
+                    criteria.append(pl.col("numerical_value") <= self.value_max)
+                else:
+                    criteria.append(pl.col("numerical_value") < self.value_max)
 
         if self.other_cols:
             criteria.extend([pl.col(col) == value for col, value in self.other_cols.items()])

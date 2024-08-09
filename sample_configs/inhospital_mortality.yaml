@@ -2,9 +2,7 @@
 predicates:
   admission:
     code:
-      regex:
-      any: [event_type//ADMISSION, event_type//EMERGENCY, event_type//ELECTIVE]
-      all:
+      regex: ^event_type.*
   discharge:
     code: event_type//DISCHARGE
   death:
