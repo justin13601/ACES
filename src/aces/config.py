@@ -99,10 +99,6 @@ class PlainPredicateConfig:
             >>> cfg = PlainPredicateConfig(code={'any': ['foo', 'bar']})
             >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(foo))].all_horizontal([[(col("code")) == (String(bar))]])
-            >>> cfg = PlainPredicateConfig(code={'any': ['foo', 'bar']})
-            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
-            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             col("code").is_in([Series])
         """
         criteria = []
