@@ -98,3 +98,70 @@ def check_constraints(
         should_drop = should_drop | drop_expr
 
     return summary_df.filter(~should_drop)
+
+
+def check_static_variables(patient_demographics: list[str], predicates_df: pl.DataFrame) -> pl.DataFrame:
+    """Checks the constraints on the counts of predicates in the summary dataframe.
+
+    Args:
+        patient_demographics: List of columns representing static patient demographics.
+        predicates_df: Dataframe containing a row for each event with patient demographics and timestamps.
+
+    Returns: A filtered dataframe containing only the rows that satisfy the patient demographics.
+
+    Raises:
+        ValueError: If the static predicate used by constraint is not in the predicates dataframe.
+
+    Examples:
+        >>> from datetime import datetime
+        >>> predicates_df = pl.DataFrame({
+        ...     "subject_id": [1, 1, 1, 1, 1, 2, 2, 2],
+        ...     "timestamp": [
+        ...         # Subject 1
+        ...         None,
+        ...         datetime(year=1989, month=12, day=1, hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=2, hour=5,  minute=17),
+        ...         datetime(year=1989, month=12, day=2, hour=12, minute=3),
+        ...         datetime(year=1989, month=12, day=6, hour=11, minute=0),
+        ...         # Subject 2
+        ...         None,
+        ...         datetime(year=1989, month=12, day=1, hour=13, minute=14),
+        ...         datetime(year=1989, month=12, day=3, hour=15, minute=17),
+        ...     ],
+        ...     "is_A": [0, 1, 4, 1, 0, 3, 3,  3],
+        ...     "is_B": [0, 0, 2, 0, 0, 2, 10, 2],
+        ...     "is_C": [0, 1, 1, 1, 0, 0, 1,  1],
+        ...     "male": [1, 0, 0, 0, 0, 0, 0,  0]
+        ... })
+
+        >>> check_static_variables(['male'], predicates_df)
+        shape: (4, 5)
+        ┌────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1    ┆ 0    ┆ 1    │
+        │ 1          ┆ 1989-12-02 05:17:00 ┆ 4    ┆ 2    ┆ 1    │
+        │ 1          ┆ 1989-12-02 12:03:00 ┆ 1    ┆ 0    ┆ 1    │
+        │ 1          ┆ 1989-12-06 11:00:00 ┆ 0    ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴──────┴──────┴──────┘
+    """
+    for demographic in patient_demographics:
+        if demographic not in predicates_df.columns:
+            raise ValueError(f"Static predicate '{demographic}' not found in the predicates dataframe.")
+
+        keep_expr = ((pl.col("timestamp").is_null()) & (pl.col(demographic) == 1)).alias("keep_expr")
+
+        exclude_expr = ~keep_expr
+        exclude_count = predicates_df.filter(exclude_expr).shape[0]
+
+        logger.info(f"Excluding {exclude_count:,} rows due to the '{demographic}' criteria.")
+
+        predicates_df = predicates_df.filter(
+            pl.col("subject_id").is_in(predicates_df.filter(keep_expr).select("subject_id").unique())
+        )
+
+    return predicates_df.drop_nulls(subset=["timestamp"]).drop(
+        *[x for x in patient_demographics if x in predicates_df.columns]
+    )

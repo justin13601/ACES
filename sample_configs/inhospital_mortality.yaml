@@ -1,13 +1,18 @@
 # Task: 24-hour In-hospital Mortality Prediction
 predicates:
   admission:
-    code: event_type//ADMISSION
+    code:
+      any: ["event_type//ADMISSION", "event_type//DISCHARGE"]
   discharge:
     code: event_type//DISCHARGE
   death:
     code: event_type//DEATH
   discharge_or_death:
     expr: or(discharge, death)
+
+patient_demographics:
+  male:
+    code: SEX//male
 
 trigger: admission
 

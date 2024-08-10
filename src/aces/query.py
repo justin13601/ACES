@@ -9,7 +9,7 @@ from bigtree import preorder_iter
 from loguru import logger
 
 from .config import TaskExtractorConfig
-from .constraints import check_constraints
+from .constraints import check_constraints, check_static_variables
 from .extract_subtree import extract_subtree
 from .utils import log_tree
 
@@ -56,6 +56,19 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     log_tree(cfg.window_tree)
 
     logger.info("Beginning query...")
+
+    static_variables = [pred for pred in cfg.predicates if cfg.predicates[pred].static]
+    if static_variables:
+        logger.info("Static variable criteria specified, filtering patient demographics...")
+        predicates_df = check_static_variables(static_variables, predicates_df)
+    else:
+        logger.info("No static variable criteria specified, removing all rows with null timestamps...")
+        predicates_df = predicates_df.drop_nulls(subset=["subject_id", "timestamp"])
+
+    if predicates_df.is_empty():
+        logger.warning("No valid rows found after filtering patient demographics. Exiting.")
+        return pl.DataFrame()
+
     logger.info("Identifying possible trigger nodes based on the specified trigger event...")
     prospective_root_anchors = check_constraints({cfg.trigger.predicate: (1, None)}, predicates_df).select(
         "subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp")
