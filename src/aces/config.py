@@ -1173,7 +1173,7 @@ class TaskExtractorConfig:
                 predicate_objs[n] = DerivedPredicateConfig(**p)
             else:
                 config_data = {k: v for k, v in p.items() if k in PlainPredicateConfig.__dataclass_fields__}
-                other_cols = {k: v for k, v in p.items() if k not in config_data.keys()}
+                other_cols = {k: v for k, v in p.items() if k not in config_data}
                 predicate_objs[n] = PlainPredicateConfig(**config_data, other_cols=other_cols)
 
         if patient_demographics:
