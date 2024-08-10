@@ -2,7 +2,7 @@
 predicates:
   admission:
     code:
-      regex: ^event_type.*
+      any: ["event_type//ADMISSION", "event_type//DISCHARGE"]
   discharge:
     code: event_type//DISCHARGE
   death:

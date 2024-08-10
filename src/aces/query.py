@@ -65,6 +65,10 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         logger.info("No static variable criteria specified, removing all rows with null timestamps...")
         predicates_df = predicates_df.drop_nulls(subset=["subject_id", "timestamp"])
 
+    if predicates_df.is_empty():
+        logger.warning("No valid rows found after filtering patient demographics. Exiting.")
+        return pl.DataFrame()
+
     logger.info("Identifying possible trigger nodes based on the specified trigger event...")
     prospective_root_anchors = check_constraints({cfg.trigger.predicate: (1, None)}, predicates_df).select(
         "subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp")
