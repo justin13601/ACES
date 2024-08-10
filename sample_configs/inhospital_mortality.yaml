@@ -1,7 +1,8 @@
 # Task: 24-hour In-hospital Mortality Prediction
 predicates:
   admission:
-    code: event_type//ADMISSION
+    code:
+      any: ["event_type//ADMISSION", "event_type//DISCHARGE"]
   discharge:
     code: event_type//DISCHARGE
   death:

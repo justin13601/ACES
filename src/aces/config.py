@@ -28,12 +28,13 @@ from .utils import parse_timedelta
 
 @dataclasses.dataclass
 class PlainPredicateConfig:
-    code: str
+    code: str | dict
     value_min: float | None = None
     value_max: float | None = None
     value_min_inclusive: bool | None = None
     value_max_inclusive: bool | None = None
     static: bool = False
+    other_cols: dict[str, str] = field(default_factory=dict)
 
     def MEDS_eval_expr(self) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
@@ -60,19 +61,92 @@ class PlainPredicateConfig:
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("code")) == (String(BP//diastolic))]
-        """
-        criteria = [pl.col("code") == self.code]
+            >>> cfg = PlainPredicateConfig("BP//diastolic", other_cols={"chamber": "atrial"})
+            >>> expr = cfg.MEDS_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("code")) == (String(BP//diastolic))].all_horizontal([[(col("chamber")) ==
+               (String(atrial))]])
 
-        if self.value_min is not None:
-            if self.value_min_inclusive:
-                criteria.append(pl.col("numerical_value") >= self.value_min)
+            >>> cfg = PlainPredicateConfig(code={'regex': None, 'any': None})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Only one of 'regex' or 'any' can be specified in the code field!
+            Got: ['regex', 'any'].
+            >>> cfg = PlainPredicateConfig(code={'foo': None})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Invalid specification in the code field! Got: {'foo': None}.
+            Expected one of 'regex', 'any'.
+            >>> cfg = PlainPredicateConfig(code={'regex': ''})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Invalid specification in the code field! Got: {'regex': ''}.
+            Expected a non-empty string for 'regex'.
+            >>> cfg = PlainPredicateConfig(code={'any': []})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Invalid specification in the code field! Got: {'any': []}.
+            Expected a list of strings for 'any'.
+
+            >>> cfg = PlainPredicateConfig(code={'regex': '^foo.*'})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            col("code").str.contains([String(^foo.*)])
+            >>> cfg = PlainPredicateConfig(code={'any': ['foo', 'bar']})
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            col("code").is_in([Series])
+        """
+        criteria = []
+        if isinstance(self.code, dict):
+            if len(self.code) > 1:
+                raise ValueError(
+                    "Only one of 'regex' or 'any' can be specified in the code field! "
+                    f"Got: {list(self.code.keys())}."
+                )
+
+            if "regex" in self.code:
+                if not self.code["regex"] or not isinstance(self.code["regex"], str):
+                    raise ValueError(
+                        "Invalid specification in the code field! "
+                        f"Got: {self.code}. "
+                        "Expected a non-empty string for 'regex'."
+                    )
+                criteria.append(pl.col("code").str.contains(self.code["regex"]))
+            elif "any" in self.code:
+                if not self.code["any"] or not isinstance(self.code["any"], list):
+                    raise ValueError(
+                        "Invalid specification in the code field! "
+                        f"Got: {self.code}. "
+                        f"Expected a list of strings for 'any'."
+                    )
+                criteria.append(pl.Expr.is_in(pl.col("code"), self.code["any"]))
             else:
-                criteria.append(pl.col("numerical_value") > self.value_min)
-        if self.value_max is not None:
-            if self.value_max_inclusive:
-                criteria.append(pl.col("numerical_value") <= self.value_max)
-            else:
-                criteria.append(pl.col("numerical_value") < self.value_max)
+                raise ValueError(
+                    "Invalid specification in the code field! "
+                    f"Got: {self.code}. "
+                    "Expected one of 'regex', 'any'."
+                )
+        else:
+            criteria.append(pl.col("code") == self.code)
+
+            if self.value_min is not None:
+                if self.value_min_inclusive:
+                    criteria.append(pl.col("numerical_value") >= self.value_min)
+                else:
+                    criteria.append(pl.col("numerical_value") > self.value_min)
+            if self.value_max is not None:
+                if self.value_max_inclusive:
+                    criteria.append(pl.col("numerical_value") <= self.value_max)
+                else:
+                    criteria.append(pl.col("numerical_value") < self.value_max)
+
+        if self.other_cols:
+            criteria.extend([pl.col(col) == value for col, value in self.other_cols.items()])
 
         if len(criteria) == 1:
             return criteria[0]
@@ -120,6 +194,9 @@ class PlainPredicateConfig:
             >>> expr = PlainPredicateConfig("BP").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             col("BP").is_not_null()
+            >>> expr = PlainPredicateConfig("BP//systole", other_cols={"chamber": "atrial"}).ESGPT_eval_expr()
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            [(col("BP")) == (String(systole))].all_horizontal([[(col("chamber")) == (String(atrial))]])
             >>> expr = PlainPredicateConfig("BP//systolic", value_min=120).ESGPT_eval_expr()
             Traceback (most recent call last):
                 ...
@@ -166,6 +243,9 @@ class PlainPredicateConfig:
                 criteria.append(pl.col(values_column) <= self.value_max)
             else:
                 criteria.append(pl.col(values_column) < self.value_max)
+
+        if self.other_cols:
+            criteria.extend([pl.col(col) == value for col, value in self.other_cols.items()])
 
         if len(criteria) == 1:
             return criteria[0]
@@ -860,19 +940,22 @@ class TaskExtractorConfig:
                               value_max=None,
                               value_min_inclusive=None,
                               value_max_inclusive=None,
-                              static=False),
+                              static=False,
+                              other_cols={}),
          'discharge': PlainPredicateConfig(code='discharge',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
                               value_max_inclusive=None,
-                              static=False),
+                              static=False,
+                              other_cols={}),
          'death': PlainPredicateConfig(code='death',
                               value_min=None,
                               value_max=None,
                               value_min_inclusive=None,
                               value_max_inclusive=None,
-                              static=False)}
+                              static=False,
+                              other_cols={})}
 
         >>> print(config.label_window) # doctest: +NORMALIZE_WHITESPACE
         target
@@ -1084,17 +1167,21 @@ class TaskExtractorConfig:
             raise ValueError(f"Unrecognized keys in configuration file: '{', '.join(loaded_dict.keys())}'")
 
         logger.info("Parsing predicates...")
-        predicates = {
-            n: DerivedPredicateConfig(**p) if "expr" in p else PlainPredicateConfig(**p)
-            for n, p in predicates.items()
-        }
+        predicate_objs = {}
+        for n, p in predicates.items():
+            if "expr" in p:
+                predicate_objs[n] = DerivedPredicateConfig(**p)
+            else:
+                config_data = {k: v for k, v in p.items() if k in PlainPredicateConfig.__dataclass_fields__}
+                other_cols = {k: v for k, v in p.items() if k not in config_data}
+                predicate_objs[n] = PlainPredicateConfig(**config_data, other_cols=other_cols)
 
         if patient_demographics:
             logger.info("Parsing patient demographics...")
             patient_demographics = {
                 n: PlainPredicateConfig(**p, static=True) for n, p in patient_demographics.items()
             }
-            predicates.update(patient_demographics)
+            predicate_objs.update(patient_demographics)
 
         logger.info("Parsing trigger event...")
         trigger = EventConfig(trigger)
@@ -1108,7 +1195,9 @@ class TaskExtractorConfig:
         else:
             windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
-        return cls(predicates=predicates, trigger=trigger, windows=windows)
+        print(predicate_objs)
+
+        return cls(predicates=predicate_objs, trigger=trigger, windows=windows)
 
     def save(self, config_path: str | Path, do_overwrite: bool = False):
         """Load a configuration file from the given path and return it as a dict.
