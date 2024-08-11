@@ -22,6 +22,7 @@ dependencies = [
     "pytimeparse == 1.1.*",
     "networkx == 3.3.*",
     "pyarrow == 16.1.*",
+    "meds == 0.3",
 ]
 
 [project.scripts]
