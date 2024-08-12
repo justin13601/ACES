@@ -63,7 +63,7 @@ pip install es-aces
 ## Instructions for Use
 
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or [here](https://eventstreamaces.readthedocs.io/en/latest/configuration.html) for details regarding the configuration language.
-2. **Get Predicates DataFrame**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard so you can leverage ACES to automatically create the predicates dataframe. You can also create your own predicates dataframe directly (more information below and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
+2. **Get Predicates DataFrame**: Process your dataset according to the instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) (single-nested or un-nested) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard so you can leverage ACES to automatically create the predicates dataframe. You can also create your own predicates dataframe directly (more information below and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
 3. **Execute Query**: A query may be executed using either the command-line interface or by importing the package in Python:
 
 ### Command-Line Interface:
@@ -256,7 +256,7 @@ There are also a few special predicates that you can use. These *do not* need to
 
 ### Trigger Event
 
-The trigger event is a simple field with a value of a predicate name. For each trigger event, a predication by a model can be made. For instance, in the following example, the trigger event is an admission. Therefore, in your task, a prediction by a model can be made for each valid admission (after extraction according to other task specifications).
+The trigger event is a simple field with a value of a predicate name. For each trigger event, a predication by a model can be made. For instance, in the following example, the trigger event is an admission. Therefore, in your task, a prediction by a model can be made for each valid admission (after extraction according to other task specifications). You can also simply filter to a cohort of one event (ie., just a trigger event) should you not have any further criteria in your task.
 
 ```yaml
 predicates:
