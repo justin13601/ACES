@@ -298,7 +298,7 @@ The `has` field specifies constraints relating to predicates within the window. 
 
 ### Static Data
 
-Support for static data depends on your data standard and those variables are expressed. For instance, in MEDS, it is feasible to express static data as a predicate, and thus criteria can be set normally. However, this is not yet incorporated for ESGPT. If a predicates dataframe is directly used, you may create a predicate column that specifies your static variable.
+Static data is now supported. In MEDS, static variables are simply stored in rows with `null` timestamps. In ESGPT, static variables are stored in a separate `subjects_df` table. In either case, it is feasible to express static variables as a predicate and apply the associated criteria normally using the `patient_demographics` heading of a configuration file. Please see [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/examples.html) and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html) for examples and details.
 
 ### Complementary Tools
 
