@@ -85,7 +85,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
     schema = df.schema
     if "prediction_time" not in schema:
         logger.warning(
-            "Output DataFrame is missing a 'prediction_time' column. If this not intentional, add a "
+            "Output DataFrame is missing a 'prediction_time' column. If this is not intentional, add a "
             "'index_timestamp' (yes, it should be different) key to the task configuration identifying "
             "which window's start or end time to use as the prediction time."
         )

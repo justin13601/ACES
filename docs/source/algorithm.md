@@ -335,6 +335,13 @@ will be created to serve as an index for the output cohort. This timestamp can b
 start or end timestamp of any desired window; however, it should represent the timestamp at which point a
 prediction can be made (ie., at the end of the `input` windows).
 
+##### Matching Input Schemas
+
+For queries on MEDS-formatted dataset, ACES will automatically typecast columns and filter dataframes
+appropriately to match the
+[label schema](https://github.com/Medical-Event-Data-Standard/meds/blob/main/src/meds/schema.py#L68) defined
+in MEDS v0.3.
+
 ##### Re-order & Return
 
 Finally, given this dataframe, the algorithm will sort the columns by placing `subject_id`, `index_timestamp`,
