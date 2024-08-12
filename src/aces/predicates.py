@@ -291,9 +291,9 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         >>> from .config import PlainPredicateConfig
         >>> parquet_data = pl.DataFrame({
         ...     "patient_id": [1, 1, 1, 2, 3],
-        ...     "timestamp": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 01:00", "1/1/1989 02:00", None],
+        ...     "time": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 01:00", "1/1/1989 02:00", None],
         ...     "code": ['admission', 'discharge', 'discharge', 'admission', "gender//male"],
-        ... }).with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
+        ... }).with_columns(pl.col("time").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
         ...     data_path = Path(f.name)
         ...     parquet_data.write_parquet(data_path)
@@ -316,7 +316,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
     """
 
     logger.info("Loading MEDS data...")
-    data = pl.read_parquet(data_path).rename({"patient_id": "subject_id"})
+    data = pl.read_parquet(data_path).rename({"patient_id": "subject_id", "time": "timestamp"})
 
     if data.columns == ["subject_id", "events"]:
         data = unnest_meds(data)

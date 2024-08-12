@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-import glob
 import os
 import re
 import sys
+from pathlib import Path
 
 
 def expand_shards(*shards: str) -> str:
@@ -23,7 +23,6 @@ def expand_shards(*shards: str) -> str:
     Examples:
         >>> import polars as pl
         >>> import tempfile
-        >>> from pathlib import Path
 
         >>> expand_shards("train/4", "val/IID/1", "val/prospective/1")
         'train/0,train/1,train/2,train/3,val/IID/0,val/prospective/0'
@@ -32,26 +31,32 @@ def expand_shards(*shards: str) -> str:
 
         >>> parquet_data = pl.DataFrame({
         ...     "patient_id": [1, 1, 1, 2, 3],
-        ...     "timestamp": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 01:00", "1/1/1989 02:00", None],
+        ...     "time": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 01:00", "1/1/1989 02:00", None],
         ...     "code": ['admission', 'discharge', 'discharge', 'admission', "gender"],
-        ... }).with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
+        ... }).with_columns(pl.col("time").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
 
         >>> with tempfile.TemporaryDirectory() as tmpdirname:
         ...     for i in range(4):
-        ...         with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
-        ...             data_path = Path(tmpdirname + f"/file_{i}")
-        ...             parquet_data.write_parquet(data_path)
+        ...         if i in (0, 2):
+        ...             data_path = Path(tmpdirname) / f"evens/0/file_{i}.parquet"
+        ...             data_path.parent.mkdir(parents=True, exist_ok=True)
+        ...         else:
+        ...             data_path = Path(tmpdirname) / f"{i}.parquet"
+        ...         parquet_data.write_parquet(data_path)
+        ...     json_fp = Path(tmpdirname) / "4.json"
+        ...     _ = json_fp.write_text('["foo"]')
         ...     result = expand_shards(tmpdirname)
-        ...     ','.join(sorted(os.path.basename(f) for f in result.split(',')))
-        'file_0,file_1,file_2,file_3'
+        ...     sorted(result.split(","))
+        ['1', '3', 'evens/0/file_0', 'evens/0/file_2']
     """
 
     result = []
     for arg in shards:
         if os.path.isdir(arg):
-            # If the argument is a directory, list all files in the directory
-            files = glob.glob(os.path.join(arg, "*"))
-            result.extend(files)
+            # If the argument is a directory, take all parquet files in any subdirs of the directory
+            result.extend(
+                str(x.relative_to(Path(arg)).with_suffix("")) for x in Path(arg).glob("**/*.parquet")
+            )
         else:
             # Otherwise, treat it as a shard prefix and number of shards
             match = re.match(r"(.+)([/_])(\d+)$", arg)
