@@ -1,6 +1,6 @@
 [project]
 name = "es-aces"
-dynamic = ["version"]
+version = "0.3.0"
 authors = [
   { name="Justin Xu", email="justin13601@hotmail.com" },
   { name="Matthew McDermott", email="mattmcdermott8@gmail.com" },
@@ -32,8 +32,6 @@ expand_shards = "aces.expand_shards:main"
 [build-system]
 requires = ["setuptools>=64", "setuptools-scm>=8.0", "wheel"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools_scm]
 
 [project.optional-dependencies]
 dev = [
