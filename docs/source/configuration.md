@@ -44,8 +44,11 @@ ______________________________________________________________________
 
 These configs consist of the following four fields:
 
-- `code`: The string value for the categorical code object that is relevant for this predicate. An
+- `code`: The string expression for the code object that is relevant for this predicate. An
   observation will only satisfy this predicate if there is an occurrence of this code in the observation.
+  The field can additionally be a dictionary with either a `regex` key and the value being a regular
+  expression (satisfied if the regular expression evaluates to True), or a `any` key and the value being a
+  list of strings (satisfied if there is an occurrence for any code in the list).
 - `value_min`: If specified, an observation will only satisfy this predicate if the occurrence of the
   underlying `code` with a reported numerical value that is either greater than or greater than or equal to
   `value_min` (with these options being decided on the basis of `value_min_inclusive`, where

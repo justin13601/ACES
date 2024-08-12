@@ -209,7 +209,7 @@ aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data.path="baz.p
 
 #### Multiple Shards
 
-A MEDS dataset can have multiple shards, each stored as a `.parquet` file containing subsets of the full dataset. We can make use of Hydra's launchers and multi-run (`-m`) capabilities to start an extraction job for each shard (`data=sharded`), either in series or in parallel (e.g., using `joblib`, or `submitit` for Slurm). To load data with multiple shards, a data root needs to be provided, along with an expression containing a comma-delimited list of files for each shard. We provide a function `expand_shards` to do this, which accepts a sequence representing `<shards_location>/<number_of_shards>`.
+A MEDS dataset can have multiple shards, each stored as a `.parquet` file containing subsets of the full dataset. We can make use of Hydra's launchers and multi-run (`-m`) capabilities to start an extraction job for each shard (`data=sharded`), either in series or in parallel (e.g., using `joblib`, or `submitit` for Slurm). To load data with multiple shards, a data root needs to be provided, along with an expression containing a comma-delimited list of files for each shard. We provide a function `expand_shards` to do this, which accepts a sequence representing `<shards_location>/<number_of_shards>`. It also accepts a file directory, where all `.parquet` files in its directory and subdirectories will be included.
 
 ```bash
 aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data=sharded data.root="baz/" "data.shard=$(expand_shards qux/#)" -m
@@ -255,6 +255,15 @@ For example, to query an in-hospital mortality task on the sample data (both the
 >>> predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)
 
 >>> query.query(cfg=cfg, predicates_df=predicates_df)
+```
+
+For more complex tasks involving a large number of predicates, a separate predicates-only "database" file can
+be created and passed into `TaskExtractorConfig.load()`. Only referenced predicates will have a predicate
+column computed and evaluated, so one could create a dataset-specific deposit file with many predicates and
+reference as needed to ensure the cleanliness of the dataset-agnostic task criteria file.
+
+```python
+>>> cfg = config.TaskExtractorConfig.load(config_path="criteria.yaml", predicates_path="predicates.yaml")
 ```
 
 ______________________________________________________________________

@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://www.python.org/downloads/release/python-3100/"><img alt="Python" src="https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white"></a>
-  <a href="https://pypi.org/project/es-aces/"><img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.2.5-orange?logoColor=orange"></a>
+  <a href="https://pypi.org/project/es-aces/"><img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.3.0-orange?logoColor=orange"></a>
   <a href="https://hydra.cc/"><img alt="Hydra" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd"></a>
   <a href="https://codecov.io/gh/justin13601/ACES"><img alt="Codecov" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV"></a>
   <a href="https://github.com/justin13601/ACES/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg"></a>
@@ -63,7 +63,7 @@ pip install es-aces
 ## Instructions for Use
 
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or [here](https://eventstreamaces.readthedocs.io/en/latest/configuration.html) for details regarding the configuration language.
-2. **Get Predicates DataFrame**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard so you can leverage ACES to automatically create the predicates dataframe. You can also create your own predicates dataframe directly (more information below and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
+2. **Get Predicates DataFrame**: Process your dataset according to the instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) (single-nested or un-nested) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard so you can leverage ACES to automatically create the predicates dataframe. You can also create your own predicates dataframe directly (more information below and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
 3. **Execute Query**: A query may be executed using either the command-line interface or by importing the package in Python:
 
 ### Command-Line Interface:
@@ -256,7 +256,7 @@ There are also a few special predicates that you can use. These *do not* need to
 
 ### Trigger Event
 
-The trigger event is a simple field with a value of a predicate name. For each trigger event, a predication by a model can be made. For instance, in the following example, the trigger event is an admission. Therefore, in your task, a prediction by a model can be made for each valid admission (after extraction according to other task specifications).
+The trigger event is a simple field with a value of a predicate name. For each trigger event, a predication by a model can be made. For instance, in the following example, the trigger event is an admission. Therefore, in your task, a prediction by a model can be made for each valid admission (after extraction according to other task specifications). You can also simply filter to a cohort of one event (ie., just a trigger event) should you not have any further criteria in your task.
 
 ```yaml
 predicates:
@@ -298,7 +298,7 @@ The `has` field specifies constraints relating to predicates within the window. 
 
 ### Static Data
 
-Support for static data depends on your data standard and those variables are expressed. For instance, in MEDS, it is feasible to express static data as a predicate, and thus criteria can be set normally. However, this is not yet incorporated for ESGPT. If a predicates dataframe is directly used, you may create a predicate column that specifies your static variable.
+Static data is now supported. In MEDS, static variables are simply stored in rows with `null` timestamps. In ESGPT, static variables are stored in a separate `subjects_df` table. In either case, it is feasible to express static variables as a predicate and apply the associated criteria normally using the `patient_demographics` heading of a configuration file. Please see [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/examples.html) and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html) for examples and details.
 
 ### Complementary Tools
 
