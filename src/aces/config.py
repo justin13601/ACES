@@ -1166,9 +1166,25 @@ class TaskExtractorConfig:
         if loaded_dict:
             raise ValueError(f"Unrecognized keys in configuration file: '{', '.join(loaded_dict.keys())}'")
 
+        logger.info("Parsing windows...")
+        if windows is None:
+            windows = {}
+            logger.warning(
+                "No windows specified in configuration file. Extracting only matching trigger events."
+            )
+        else:
+            windows = {n: WindowConfig(**w) for n, w in windows.items()}
+
+        logger.info("Parsing trigger event...")
+        trigger = EventConfig(trigger)
+
+        referenced_predicates = {pred for w in windows.values() for pred in w.referenced_predicates}
+        referenced_predicates.add(trigger.predicate)
+
         logger.info("Parsing predicates...")
+        predicates_to_parse = {k: v for k, v in predicates.items() if k in referenced_predicates}
         predicate_objs = {}
-        for n, p in predicates.items():
+        for n, p in predicates_to_parse.items():
             if "expr" in p:
                 predicate_objs[n] = DerivedPredicateConfig(**p)
             else:
@@ -1182,20 +1198,6 @@ class TaskExtractorConfig:
                 n: PlainPredicateConfig(**p, static=True) for n, p in patient_demographics.items()
             }
             predicate_objs.update(patient_demographics)
-
-        logger.info("Parsing trigger event...")
-        trigger = EventConfig(trigger)
-
-        logger.info("Parsing windows...")
-        if windows is None:
-            windows = {}
-            logger.warning(
-                "No windows specified in configuration file. Extracting only matching trigger events."
-            )
-        else:
-            windows = {n: WindowConfig(**w) for n, w in windows.items()}
-
-        print(predicate_objs)
 
         return cls(predicates=predicate_objs, trigger=trigger, windows=windows)
 
