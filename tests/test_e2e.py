@@ -4,13 +4,13 @@ import rootutils
 
 root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
 
-import subprocess
 import tempfile
 from pathlib import Path
 
 import polars as pl
 from loguru import logger
-from polars.testing import assert_frame_equal
+
+from .utils import assert_df_equal, run_command
 
 pl.enable_string_cache()
 
@@ -186,44 +186,7 @@ EXPECTED_OUTPUT = {
 }
 
 
-def run_command(script: str, hydra_kwargs: dict[str, str], test_name: str, expected_returncode: int = 0):
-    command_parts = [script] + [f"{k}={v}" for k, v in hydra_kwargs.items()]
-    command_out = subprocess.run(" ".join(command_parts), shell=True, capture_output=True)
-    stderr = command_out.stderr.decode()
-    stdout = command_out.stdout.decode()
-    if command_out.returncode != expected_returncode:
-        raise AssertionError(
-            f"{test_name} returned {command_out.returncode} (expected {expected_returncode})!\n"
-            f"stdout:\n{stdout}\nstderr:\n{stderr}"
-        )
-    return stderr, stdout
-
-
-def assert_df_equal(want: pl.DataFrame, got: pl.DataFrame, msg: str = None, **kwargs):
-    try:
-        assert_frame_equal(want, got, **kwargs)
-    except AssertionError as e:
-        pl.Config.set_tbl_rows(-1)
-        print(f"DFs are not equal: {msg}\nWant:")
-        print(want)
-        print("Got:")
-        print(got)
-        raise AssertionError(f"{msg}\n{e}") from e
-
-
 def test_e2e():
-    # Testing expand_shards
-    es_stderr, es_stdout = run_command("expand_shards train/3 tuning/1", {}, "expand_shards")
-    assert (
-        es_stdout == "train/0,train/1,train/2,tuning/0\n"
-    ), f"Expected 'train/0,train/1,train/2,tuning/0' but got '{es_stdout}'"
-
-    # Running with the empty directory
-    help_stderr, help_stdout = run_command("aces-cli", {}, "help", expected_returncode=1)
-    assert (
-        "Usage: aces-cli [OPTIONS]" in help_stdout
-    ), f"Expected help message not found in stdout. Got {help_stdout}"
-
     with tempfile.TemporaryDirectory() as d:
         data_dir = Path(d) / "sample_data"
         configs_dir = Path(d) / "sample_configs"
