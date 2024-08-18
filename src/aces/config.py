@@ -1110,6 +1110,65 @@ class TaskExtractorConfig:
         Raises:
             FileNotFoundError: If the file does not exist.
             ValueError: If the file is not a ".yaml" file.
+
+        Examples:
+            >>> import tempfile
+            >>> yaml = ruamel.yaml.YAML(typ="safe", pure=True)
+            >>> config_dict = {
+            ...     "metadata": {'description': 'A test configuration file'},
+            ...     "description": 'this is a test',
+            ...     "predicates": {"admission": {"code": "admission"}},
+            ...     "trigger": "admission",
+            ...     "windows": {
+            ...         "start": {
+            ...             "start": None, "end": "trigger + 24h", "start_inclusive": True,
+            ...             "end_inclusive": True,
+            ...         }
+            ...     },
+            ... }
+            >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+            ...     config_path = Path(f.name)
+            ...     yaml.dump(config_dict, f)
+            ...     cfg = TaskExtractorConfig.load(config_path)
+            >>> cfg # doctest: +NORMALIZE_WHITESPACE
+            TaskExtractorConfig(predicates={'admission': PlainPredicateConfig(code='admission',
+                                                           value_min=None, value_max=None,
+                                                           value_min_inclusive=None, value_max_inclusive=None,
+                                                           static=False, other_cols={})},
+                                trigger=EventConfig(predicate='admission'),
+                                windows={'start': WindowConfig(start=None, end='trigger + 24h',
+                                                    start_inclusive=True, end_inclusive=True, has={},
+                                                    label=None, index_timestamp=None)},
+                                label_window=None, index_timestamp_window=None)
+            >>> predicates_dict = {
+            ...     "metadata": {'description': 'A test predicates file'},
+            ...     "description": 'this is a test',
+            ...     "patient_demographics": {"brown_eyes": {"code": "eye_color//BR"}},
+            ...     "predicates": {"admission": {"code": "admission"}},
+            ... }
+            >>> no_predicates_config = {k: v for k, v in config_dict.items() if k != "predicates"}
+            >>> with (tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as config_fp,
+            ...      tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as pred_fp):
+            ...     config_path = Path(config_fp.name)
+            ...     pred_path = Path(pred_fp.name)
+            ...     yaml.dump(no_predicates_config, config_fp)
+            ...     yaml.dump(predicates_dict, pred_fp)
+            ...     cfg = TaskExtractorConfig.load(config_path, pred_path)
+            >>> cfg # doctest: +NORMALIZE_WHITESPACE
+            TaskExtractorConfig(predicates={'admission': PlainPredicateConfig(code='admission',
+                                                           value_min=None, value_max=None,
+                                                           value_min_inclusive=None, value_max_inclusive=None,
+                                                           static=False, other_cols={}),
+                                            'brown_eyes': PlainPredicateConfig(code='eye_color//BR',
+                                                            value_min=None, value_max=None,
+                                                            value_min_inclusive=None,
+                                                            value_max_inclusive=None, static=True,
+                                                            other_cols={})},
+                                trigger=EventConfig(predicate='admission'),
+                                windows={'start': WindowConfig(start=None, end='trigger + 24h',
+                                                    start_inclusive=True, end_inclusive=True, has={},
+                                                    label=None, index_timestamp=None)},
+                                label_window=None, index_timestamp_window=None)
         """
         if isinstance(config_path, str):
             config_path = Path(config_path)
@@ -1146,8 +1205,10 @@ class TaskExtractorConfig:
             predicates = predicates_dict.pop("predicates")
             patient_demographics = predicates_dict.pop("patient_demographics", None)
 
-            # Remove the description if it exists - currently unused except for readability in the YAML
+            # Remove the description or metadata keys if they exist - currently unused except for readability
+            # in the YAML
             _ = predicates_dict.pop("description", None)
+            _ = predicates_dict.pop("metadata", None)
 
             if predicates_dict:
                 raise ValueError(
@@ -1160,8 +1221,10 @@ class TaskExtractorConfig:
         trigger = loaded_dict.pop("trigger")
         windows = loaded_dict.pop("windows", None)
 
-        # Remove the description if it exists - currently unused except for readability in the YAML
+        # Remove the description or metadata keys if they exist - currently unused except for readability
+        # in the YAML
         _ = loaded_dict.pop("description", None)
+        _ = loaded_dict.pop("metadata", None)
 
         if loaded_dict:
             raise ValueError(f"Unrecognized keys in configuration file: '{', '.join(loaded_dict.keys())}'")
