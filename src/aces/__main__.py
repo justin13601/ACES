@@ -153,16 +153,27 @@ def main(cfg: DictConfig):
 
     # query results
     result = query.query(task_cfg, predicates_df)
+    result_is_empty = len(result) == 0
 
     # save results to parquet
     os.makedirs(os.path.dirname(cfg.output_filepath), exist_ok=True)
 
     if cfg.data.standard.lower() == "meds":
-        result = result.rename({"subject_id": "patient_id"})
-        if "index_timestamp" in result.columns:
-            result = result.rename({"index_timestamp": "prediction_time"})
-        if "label" in result.columns:
-            result = result.rename({"label": "boolean_value"})
+        for in_col, out_col in [
+            ("subject_id", "patient_id"),
+            ("index_timestamp", "prediction_time"),
+            ("label", "boolean_value"),
+        ]:
+            if in_col in result.columns:
+                result = result.rename({in_col: out_col})
+        if "patient_id" not in result.columns:
+            if not result_is_empty:
+                raise ValueError("Output dataframe is missing a 'patient_id' column.")
+            else:
+                logger.warning("Output dataframe is empty; adding an empty patient ID column.")
+                result = result.with_columns(pl.lit(None, dtype=pl.Int64).alias("patient_id"))
+                result = result.head(0)
+
         result = get_and_validate_label_schema(result)
         pq.write_table(result, cfg.output_filepath)
     else:

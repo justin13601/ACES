@@ -1180,6 +1180,15 @@ class TaskExtractorConfig:
 
         referenced_predicates = {pred for w in windows.values() for pred in w.referenced_predicates}
         referenced_predicates.add(trigger.predicate)
+        current_predicates = set(referenced_predicates)
+        special_predicates = {ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY}
+        for pred in current_predicates - special_predicates:
+            if pred not in predicates:
+                raise KeyError(
+                    f"Something referenced predicate {pred} that wasn't defined in the configuration."
+                )
+            if "expr" in predicates[pred]:
+                referenced_predicates.update(DerivedPredicateConfig(**predicates[pred]).input_predicates)
 
         logger.info("Parsing predicates...")
         predicates_to_parse = {k: v for k, v in predicates.items() if k in referenced_predicates}
