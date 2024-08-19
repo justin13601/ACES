@@ -29,6 +29,8 @@ dependencies = [
     "meds == 0.3",
 ]
 
+[tool.setuptools_scm]
+
 [project.scripts]
 aces-cli = "aces.__main__:main"
 expand_shards = "aces.expand_shards:main"
