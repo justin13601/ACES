@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://www.python.org/downloads/release/python-3100/"><img alt="Python" src="https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white"></a>
-  <a href="https://pypi.org/project/es-aces/"><img alt="PyPI" src="https://img.shields.io/badge/PyPI-v0.3.0-orange?logoColor=orange"></a>
+  <a href="https://pypi.org/project/es-aces/"><img alt="PyPI" src="https://img.shields.io/pypi/v/es-aces"></a>
   <a href="https://hydra.cc/"><img alt="Hydra" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd"></a>
   <a href="https://codecov.io/gh/justin13601/ACES"><img alt="Codecov" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV"></a>
   <a href="https://github.com/justin13601/ACES/actions/workflows/tests.yml"><img alt="Tests" src="https://github.com/justin13601/ACES/actions/workflows/tests.yml/badge.svg"></a>
