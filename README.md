@@ -25,18 +25,17 @@ Currently, two data standards are directly supported: the [Medical Event Data St
 
 This README provides an overview of this tool, instructions for use, and a description of the fields in the task configuration file (see configs in `sample_configs/`). Please refer to the [ACES Documentation](https://eventstreamaces.readthedocs.io/en/latest/) for more detailed information.
 
-## Dependencies
-
-- polars == 0.20.\*
-- bigtree == 0.18.\*
-- ruamel.yaml == 0.18.\*
-- loguru == 0.7.\*
-- hydra-core == 1.3.\*
-- pytimeparse == 1.1.\*
-- networkx == 3.3.\*
-- pyarrow == 16.1.\*
-
 ## Installation
+
+### For MEDS v0.3.2
+
+`pip install es-aces`
+
+### For MEDS v0.3
+
+`pip install es-aces==0.3.2`
+
+### For ESGPT Installation
 
 1. If using the ESGPT data standard, install [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT):
 
@@ -53,12 +52,6 @@ pip install -e .
 ```
 
 **Note**: To avoid potential dependency conflicts, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
-
-2. Install ACES:
-
-```bash
-pip install es-aces
-```
 
 ## Instructions for Use
 
