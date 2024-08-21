@@ -11,6 +11,7 @@ from pathlib import Path
 
 import polars as pl
 from loguru import logger
+from meds import subject_id_field
 from yaml import load as load_yaml
 
 from .utils import assert_df_equal, get_and_validate_label_schema, run_command
@@ -32,7 +33,7 @@ DEFAULT_CSV_TS_FORMAT = "%m/%d/%Y %H:%M"
 
 # TODO: Make use meds library
 MEDS_PL_SCHEMA = {
-    "patient_id": pl.UInt32,
+    subject_id_field: pl.Int64,
     "time": pl.Datetime("us"),
     "code": pl.Utf8,
     "numeric_value": pl.Float32,
@@ -84,9 +85,9 @@ def parse_labels_yaml(yaml_str: str) -> dict[str, pl.DataFrame]:
 
 # Data (input)
 MEDS_SHARDS = parse_shards_yaml(
-    """
+    f"""
   "train/0": |-
-    patient_id,time,code,numeric_value
+    {subject_id_field},time,code,numeric_value
     2,,SNP//rs234567,
     2,,SNP//rs345678,
     2,,GENDER//FEMALE,
@@ -111,7 +112,7 @@ MEDS_SHARDS = parse_shards_yaml(
     2,6/8/1996 3:00,DEATH,
 
   "train/1": |-2
-    patient_id,time,code,numeric_value
+    {subject_id_field},time,code,numeric_value
     4,,GENDER//MALE,
     4,,SNP//rs123456,
     4,12/1/1989 12:03,ADMISSION//CARDIAC,
@@ -161,7 +162,7 @@ MEDS_SHARDS = parse_shards_yaml(
     6,3/12/1996 0:00,DEATH,
 
   "held_out/0/0": |-2
-    patient_id,time,code,numeric_value
+    {subject_id_field},time,code,numeric_value
     3,,GENDER//FEMALE,
     3,,SNP//rs234567,
     3,,SNP//rs345678,
@@ -176,10 +177,10 @@ MEDS_SHARDS = parse_shards_yaml(
     3,3/12/1996 0:00,DEATH,
 
   "empty_shard": |-2
-    patient_id,time,code,numeric_value
+    {subject_id_field},time,code,numeric_value
 
   "held_out": |-2
-    patient_id,time,code,numeric_value
+    {subject_id_field},time,code,numeric_value
     1,,GENDER//MALE,
     1,,SNP//rs123456,
     1,12/1/1989 12:03,ADMISSION//CARDIAC,
@@ -264,22 +265,22 @@ windows:
 """
 
 WANT_SHARDS = parse_labels_yaml(
-    """
+    f"""
   "train/0": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
 
   "train/1": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
     4,1/28/1991 23:32,False,,,,
 
   "held_out/0/0": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
 
   "empty_shard": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
 
   "held_out": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
     1,1/28/1991 23:32,False,,,,
     """
 )

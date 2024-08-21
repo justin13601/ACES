@@ -8,7 +8,7 @@ import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
 from loguru import logger
-from meds import label_schema
+from meds import label_schema, subject_id_field
 from omegaconf import DictConfig
 
 config_yaml = files("aces").joinpath("configs/aces.yaml")
@@ -20,7 +20,7 @@ if len(sys.argv) == 1:
     sys.exit(1)
 
 MEDS_LABEL_MANDATORY_TYPES = {
-    "patient_id": pl.Int64,
+    subject_id_field: pl.Int64,
 }
 
 MEDS_LABEL_OPTIONAL_TYPES = {
@@ -56,25 +56,25 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         >>> get_and_validate_label_schema(df) # doctest: +NORMALIZE_WHITESPACE
         Traceback (most recent call last):
             ...
-        ValueError: MEDS Data DataFrame must have a 'patient_id' column of type Int64.
+        ValueError: MEDS Data DataFrame must have a 'subject_id' column of type Int64.
                     MEDS Data DataFrame must have a 'prediction_time' column of type String.
                         Datetime(time_unit='us', time_zone=None).
         >>> from datetime import datetime
         >>> df = pl.DataFrame({
-        ...     "patient_id": pl.Series([1, 3, 2], dtype=pl.UInt32),
+        ...     subject_id_field: pl.Series([1, 3, 2], dtype=pl.UInt32),
         ...     "time": [datetime(2021, 1, 1), datetime(2021, 1, 2), datetime(2021, 1, 3)],
         ...     "boolean_value": [1, 0, 100],
         ... })
         >>> get_and_validate_label_schema(df)
         pyarrow.Table
-        patient_id: int64
+        subject_id: int64
         time: timestamp[us]
         boolean_value: bool
         integer_value: int64
         float_value: float
         categorical_value: string
         ----
-        patient_id: [[1,3,2]]
+        subject_id: [[1,3,2]]
         time: [[2021-01-01 00:00:00.000000,2021-01-02 00:00:00.000000,2021-01-03 00:00:00.000000]]
         boolean_value: [[true,false,true]]
         integer_value: [[null,null,null]]
@@ -119,7 +119,12 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         df = df.drop(extra_cols)
 
     df = df.select(
-        "patient_id", "prediction_time", "boolean_value", "integer_value", "float_value", "categorical_value"
+        subject_id_field,
+        "prediction_time",
+        "boolean_value",
+        "integer_value",
+        "float_value",
+        "categorical_value",
     )
 
     return df.to_arrow().cast(label_schema)
@@ -160,18 +165,18 @@ def main(cfg: DictConfig):
 
     if cfg.data.standard.lower() == "meds":
         for in_col, out_col in [
-            ("subject_id", "patient_id"),
+            ("subject_id", subject_id_field),
             ("index_timestamp", "prediction_time"),
             ("label", "boolean_value"),
         ]:
             if in_col in result.columns:
                 result = result.rename({in_col: out_col})
-        if "patient_id" not in result.columns:
+        if subject_id_field not in result.columns:
             if not result_is_empty:
-                raise ValueError("Output dataframe is missing a 'patient_id' column.")
+                raise ValueError("Output dataframe is missing a 'subject_id' column.")
             else:
                 logger.warning("Output dataframe is empty; adding an empty patient ID column.")
-                result = result.with_columns(pl.lit(None, dtype=pl.Int64).alias("patient_id"))
+                result = result.with_columns(pl.lit(None, dtype=pl.Int64).alias(subject_id_field))
                 result = result.head(0)
 
         result = get_and_validate_label_schema(result)

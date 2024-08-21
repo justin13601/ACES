@@ -9,11 +9,11 @@ import subprocess
 import polars as pl
 import pyarrow as pa
 from loguru import logger
-from meds import label_schema
+from meds import label_schema, subject_id_field
 from polars.testing import assert_frame_equal
 
 MEDS_LABEL_MANDATORY_TYPES = {
-    "patient_id": pl.Int64,
+    subject_id_field: pl.Int64,
 }
 
 MEDS_LABEL_OPTIONAL_TYPES = {
@@ -109,7 +109,12 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         df = df.drop(extra_cols)
 
     df = df.select(
-        "patient_id", "prediction_time", "boolean_value", "integer_value", "float_value", "categorical_value"
+        subject_id_field,
+        "prediction_time",
+        "boolean_value",
+        "integer_value",
+        "float_value",
+        "categorical_value",
     )
 
     return df.to_arrow().cast(label_schema)
