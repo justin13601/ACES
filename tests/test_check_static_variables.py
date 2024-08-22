@@ -44,7 +44,7 @@ def test_check_static_variables():
             "is_C": [1, 1, 1, 0],
         }
     )
-    assert filtered_df.frame_equal(expected_df)
+    assert filtered_df.equals(expected_df)
 
     # Test ValueError when demographic column is missing
     with pytest.raises(ValueError, match="Static predicate 'female' not found in the predicates dataframe."):
