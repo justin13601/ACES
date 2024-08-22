@@ -31,7 +31,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         ValueError: If the (subject_id, timestamp) columns are not unique.
 
     Examples:
-    These examples just show the error cases for now; see the `tests` directory for full examples.
+    These examples are limited for now; see the `tests` directory for full examples.
         >>> cfg = None # This is obviously invalid, but we're just testing the error case.
         >>> predicates_df = {"subject_id": [1, 1], "timestamp": [1, 1]}
         >>> query(cfg, predicates_df)
@@ -42,6 +42,33 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         Traceback (most recent call last):
             ...
         ValueError: The (subject_id, timestamp) columns must be unique.
+        >>> from datetime import datetime
+        >>> from .config import PlainPredicateConfig, WindowConfig, EventConfig
+        >>> cfg = TaskExtractorConfig(
+        ...     predicates={"A": PlainPredicateConfig("A")},
+        ...     trigger=EventConfig("_ANY_EVENT"),
+        ...     windows={
+        ...         "pre": WindowConfig(None, "trigger", True, False),
+        ...         "post": WindowConfig("pre.end", None, True, True),
+        ...     },
+        ... )
+        >>> predicates_df = pl.DataFrame({
+        ...     "subject_id": [1, 2, 3],
+        ...     "timestamp": [datetime(1980, 12, 28), datetime(2010, 6, 20), datetime(2010, 5, 11)],
+        ...     "A": [False, False, False],
+        ...     "_ANY_EVENT": [True, True, True],
+        ... })
+        >>> query(cfg, predicates_df).select("subject_id", "trigger")
+        shape: (3, 2)
+        ┌────────────┬─────────────────────┐
+        │ subject_id ┆ trigger             │
+        │ ---        ┆ ---                 │
+        │ i64        ┆ datetime[μs]        │
+        ╞════════════╪═════════════════════╡
+        │ 1          ┆ 1980-12-28 00:00:00 │
+        │ 2          ┆ 2010-06-20 00:00:00 │
+        │ 3          ┆ 2010-05-11 00:00:00 │
+        └────────────┴─────────────────────┘
     """
     if not isinstance(predicates_df, pl.DataFrame):
         raise TypeError(f"Predicates dataframe type must be a polars.DataFrame. Got: {type(predicates_df)}.")
