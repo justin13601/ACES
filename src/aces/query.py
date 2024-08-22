@@ -53,7 +53,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         ...     },
         ... )
         >>> predicates_df = pl.DataFrame({
-        ...     "subject_id": [1, 2, 3],
+        ...     "subject_id": [1, 1, 3],
         ...     "timestamp": [datetime(1980, 12, 28), datetime(2010, 6, 20), datetime(2010, 5, 11)],
         ...     "A": [False, False, False],
         ...     "_ANY_EVENT": [True, True, True],
@@ -66,7 +66,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         │ i64        ┆ datetime[μs]        │
         ╞════════════╪═════════════════════╡
         │ 1          ┆ 1980-12-28 00:00:00 │
-        │ 2          ┆ 2010-06-20 00:00:00 │
+        │ 1          ┆ 2010-06-20 00:00:00 │
         │ 3          ┆ 2010-05-11 00:00:00 │
         └────────────┴─────────────────────┘
     """
