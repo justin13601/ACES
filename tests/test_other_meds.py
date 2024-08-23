@@ -184,7 +184,7 @@ MEDS_SHARDS = parse_shards_yaml(
     1,1/16/20 13:02,LVEF//ECHO,0.24,
     1,1/17/20 10:00,ICD9CM//428.9,,
     1,1/17/20 10:00,DISCHARGE//HOME,,
-    1,1/18/22 14:46,ADMISSION//MEDICAL,,
+    1,1/18/22 4:46,ADMISSION//MEDICAL,,
     1,1/20/22 8:00,DISCHARGE//HOME_AMA,,
     1,1/20/22 8:00,ICD9CM//428.41,,
     1,1/20/22 8:00,ICD9CM//451.1,,
@@ -306,7 +306,7 @@ WANT_SHARDS = {
   "0": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     1,1/15/20 15:14,0,,,
-    1,1/19/22 14:46,0,,,
+    1,1/19/22 4:46,0,,,
     1,1/25/22 8:11,1,,,
 
   "1": |-2
