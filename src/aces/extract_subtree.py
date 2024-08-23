@@ -140,9 +140,11 @@ def extract_subtree(
         ...     "_ANY_EVENT":   [1, 1, 1, 1, 1,   1, 1, 1, 1, 1,   1, 1, 1],
         ... })
         >>> subtreee_anchor_realizations = (
-        ...     predicates_df.filter(pl.col("is_admission") > 0)
+        ...     predicates_df
+        ...     .filter(pl.col("is_admission") > 0)
         ...     .rename({"timestamp": "subtree_anchor_timestamp"})
-        ... ).select("subject_id", "subtree_anchor_timestamp")
+        ...     .select("subject_id", "subtree_anchor_timestamp")
+        ... )
         >>> print(subtreee_anchor_realizations)
         shape: (5, 2)
         ┌────────────┬──────────────────────────┐
@@ -157,10 +159,7 @@ def extract_subtree(
         │ 3          ┆ 1999-12-06 15:17:00      │
         └────────────┴──────────────────────────┘
         >>> out = extract_subtree(root, subtreee_anchor_realizations, predicates_df, timedelta(0))
-        >>> out.select(
-        ...     "subject_id",
-        ...     "subtree_anchor_timestamp",
-        ... )
+        >>> out.select("subject_id", "subtree_anchor_timestamp")
         shape: (1, 2)
         ┌────────────┬──────────────────────────┐
         │ subject_id ┆ subtree_anchor_timestamp │
