@@ -272,11 +272,16 @@ def extract_subtree(
                 # In an event bound case, the child root will be a proper extant event, so it will be the
                 # anchor as well, and thus the child root offset should be zero.
                 child_root_offset = timedelta(days=0)
+                if endpoint_expr.end_event.startswith("-"):
+                    child_anchor_time = "timestamp_at_start"
+                else:
+                    child_anchor_time = "timestamp_at_end"
+
                 window_summary_df = (
                     aggregate_event_bound_window(predicates_df, endpoint_expr)
                     .with_columns(
                         pl.col("timestamp").alias("subtree_anchor_timestamp"),
-                        pl.col("timestamp_at_end").alias("child_anchor_timestamp"),
+                        pl.col(child_anchor_time).alias("child_anchor_timestamp"),
                     )
                     .drop("timestamp")
                 )
