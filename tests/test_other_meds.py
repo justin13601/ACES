@@ -185,7 +185,7 @@ MEDS_SHARDS = parse_shards_yaml(
     1,1/17/20 10:00,ICD9CM//428.9,,
     1,1/17/20 10:00,DISCHARGE//HOME,,
     1,1/18/22 14:46,ADMISSION//MEDICAL,,
-    1,1/20/22 15:18,DISCHARGE//HOME_AMA,,
+    1,1/20/22 8:00,DISCHARGE//HOME_AMA,,
     1,1/20/22 8:00,ICD9CM//428.41,,
     1,1/20/22 8:00,ICD9CM//451.1,,
     1,1/24/22 8:11,ADMISSION//ED,,
@@ -305,15 +305,22 @@ WANT_SHARDS = {
         """
   "0": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    1,1/15/20 15:14,0,,,
+    1,1/19/22 14:46,0,,,
+    1,1/25/22 8:11,1,,,
 
   "1": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    3,3/19/24 16:54,0,,,
+    3,3/30/24 11:00,0,,,
     """
     ),
     "HF_derived_readmission": parse_labels_yaml(
         """
   "0": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    1,1/17/20 10:00,0,,,
+    1,1/20/22 8:00,1,,,
 
   "1": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
