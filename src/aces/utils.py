@@ -41,7 +41,16 @@ def parse_timedelta(time_str: str) -> timedelta:
 
 @contextmanager
 def capture_output():
-    """A context manager to capture stdout output."""
+    """A context manager to capture stdout output.
+
+    This can eventually be eliminated if https://github.com/kayjan/bigtree/issues/285 is resolved.
+
+    Examples:
+        >>> with capture_output() as captured:
+        ...     print("Hello, world!")
+        >>> captured.getvalue().strip()
+        'Hello, world!'
+    """
     new_out = io.StringIO()  # Create a StringIO object to capture output
     old_out = sys.stdout  # Save the current stdout so we can restore it later
     try:
@@ -54,9 +63,8 @@ def capture_output():
 def log_tree(node):
     """Logs the tree structure using logging.info."""
     with capture_output() as captured:
-        print("\n")
         print_tree(node, style="const_bold")  # This will print to the captured StringIO instead of stdout
-    logger.info(captured.getvalue())  # Log the captured output
+    logger.info("\n" + captured.getvalue())  # Log the captured output
 
 
 def hydra_loguru_init(filename) -> None:
