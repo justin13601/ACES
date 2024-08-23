@@ -223,56 +223,6 @@ def direct_load_plain_predicates(
     )
 
 
-def unnest_meds(data: pl.DataFrame) -> pl.DataFrame:
-    """Unnest MEDS data.
-
-    Single-nested MEDS has a row per patient, with all the observations aggregated into a list of "event"
-    structs. The events column needs to be exploded and unnested.
-
-    Args:
-        data: The Polars DataFrame containing the single-nested MEDS data.
-
-    Returns:
-        The Polars DataFrame with the events column exploded and unnested.
-
-    Example:
-        >>> data = pl.DataFrame({
-        ...     "subject_id": [1, 2, 3],
-        ...     "events": [
-        ...         [{"timestamp": None, "code": "EYE_COLOR//HAZEL", "numerical_value": None},
-        ...             {"timestamp": None, "code": "HEIGHT", "numerical_value": 160},
-        ...             {"timestamp": "3/9/1978 00:00", "code": "DOB", "numerical_value": None}],
-        ...         [{"timestamp": None, "code": "EYE_COLOR//BROWN", "numerical_value": None},
-        ...             {"timestamp": None, "code": "HEIGHT", "numerical_value": 175},
-        ...             {"timestamp": "12/28/1980 00:00", "code": "DOB", "numerical_value": None}],
-        ...         [{"timestamp": None, "code": "EYE_COLOR//BROWN", "numerical_value": None},
-        ...             {"timestamp": None, "code": "HEIGHT", "numerical_value": 166},
-        ...             {"timestamp": "12/19/1988 00:00", "code": "DOB", "numerical_value": None}],
-        ...     ],
-        ... })
-        >>> unnest_meds(data)
-        shape: (9, 4)
-        ┌────────────┬──────────────────┬──────────────────┬─────────────────┐
-        │ subject_id ┆ timestamp        ┆ code             ┆ numerical_value │
-        │ ---        ┆ ---              ┆ ---              ┆ ---             │
-        │ i64        ┆ str              ┆ str              ┆ i64             │
-        ╞════════════╪══════════════════╪══════════════════╪═════════════════╡
-        │ 1          ┆ null             ┆ EYE_COLOR//HAZEL ┆ null            │
-        │ 1          ┆ null             ┆ HEIGHT           ┆ 160             │
-        │ 1          ┆ 3/9/1978 00:00   ┆ DOB              ┆ null            │
-        │ 2          ┆ null             ┆ EYE_COLOR//BROWN ┆ null            │
-        │ 2          ┆ null             ┆ HEIGHT           ┆ 175             │
-        │ 2          ┆ 12/28/1980 00:00 ┆ DOB              ┆ null            │
-        │ 3          ┆ null             ┆ EYE_COLOR//BROWN ┆ null            │
-        │ 3          ┆ null             ┆ HEIGHT           ┆ 166             │
-        │ 3          ┆ 12/19/1988 00:00 ┆ DOB              ┆ null            │
-        └────────────┴──────────────────┴──────────────────┴─────────────────┘
-    """
-    logger.info("Found single-nested MEDS data, unnesting...")
-
-    return data.explode("events").unnest("events")
-
-
 def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl.DataFrame:
     """Generate plain predicate columns from a MEDS dataset.
 
@@ -317,9 +267,6 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
 
     logger.info("Loading MEDS data...")
     data = pl.read_parquet(data_path).rename({"patient_id": "subject_id", "time": "timestamp"})
-
-    if data.columns == ["subject_id", "events"]:
-        data = unnest_meds(data)
 
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
