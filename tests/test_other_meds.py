@@ -161,210 +161,184 @@ def parse_labels_yaml(yaml_str: str) -> dict[str, pl.DataFrame]:
 # Data (input)
 MEDS_SHARDS = parse_shards_yaml(
     """
-  "train/0": |-
-    patient_id,time,code,numeric_value
-    2,,SNP//rs234567,
-    2,,SNP//rs345678,
-    2,,GENDER//FEMALE,
-    2,3/8/1996 2:22,ED_VISIT,
-    2,3/8/1996 2:24,ADMISSION//SURGICAL,
-    2,3/8/1996 2:24,TEMP//F,98.6
-    2,3/8/1996 2:24,AOx3,
-    2,3/8/1996 2:35,LAB//HR,110
-    2,3/8/1996 2:35,LAB//HR,102
-    2,3/8/1996 4:00,diagnosis//unk,
-    2,3/8/1996 10:00,LAB//RBC,3.2
-    2,3/8/1996 16:00,DISCHARGE//HOME,
-    2,6/5/1996 0:32,ADMISSION//ED,
-    2,6/5/1996 0:48,LAB//HR,9999
-    2,6/5/1996 1:59,LAB//HR,102
-    2,6/7/1996 6:00,LAB//HR,89
-    2,6/7/1996 9:00,LAB//RR,25
-    2,6/7/1996 12:00,VENTILATION_START,
-    2,6/7/1996 12:00,LAB//SpO2,79.1
-    2,6/7/1996 15:00,LAB//RR,40
-    2,6/7/1996 15:00,LAB//HR,60
-    2,6/8/1996 3:00,DEATH,
+  "0": |-2
+    patient_id,time,code,numeric_value,text_value
+    1,,GENDER//MALE,,
+    1,,SNP//rs234567,,
+    1,12/18/1960 11:03,MEDS_BIRTH,,
+    1,08/02/1972 10:00,CLINIC_VISIT,,
+    1,08/02/1972 10:00,ICD9CM//493.90,,
+    1,08/02/1972 10:00,LOINC//8310-5,0.65,
+    1,08/02/1972 10:00,VITALS//BP//SYSTOLIC,108,
+    1,01/14/2020 15:14,ADMISSION//MEDICAL,,
+    1,01/14/2020 15:18,VITALS//BP//SYSTOLIC,132,
+    1,01/14/2020 15:18,VITALS//BP//DIASTOLIC,90,
+    1,01/14/2020 15:18,VITALS//HR//BPM,121,
+    1,01/14/2020 15:18,VITALS//WEIGHT//LBS,233.2,
+    1,01/15/2020 10:04,VITALS//BP//SYSTOLIC,126,
+    1,01/15/2020 10:04,VITALS//BP//DIASTOLIC,91,
+    1,01/15/2020 10:04,VITALS//HR//BPM,85,
+    1,01/16/2020 10:11,VITALS//BP//SYSTOLIC,135,
+    1,01/16/2020 10:11,VITALS//BP//DIASTOLIC,88,
+    1,01/16/2020 10:11,VITALS//HR//BPM,79,
+    1,01/16/2020 13:02,LVEF//ECHO,0.24,
+    1,01/17/2020 10:00,ICD9CM//428.9,,
+    1,01/17/2020 10:00,DISCHARGE//HOME,,
+    1,01/18/2022 04:46,ADMISSION//MEDICAL,,
+    1,01/20/2022 08:00,DISCHARGE//HOME_AMA,,
+    1,01/20/2022 08:00,ICD9CM//428.41,,
+    1,01/20/2022 08:00,ICD9CM//451.1,,
+    1,01/24/2022 08:11,ADMISSION//ED,,
+    1,01/25/2022 10:04,VITALS//BP//SYSTOLIC,168,
+    1,01/25/2022 10:04,VITALS//BP//DIASTOLIC,100,
+    1,01/25/2022 10:04,VITALS//HR//BPM,56,
+    1,02/27/2022 01:13,ICD9CM//428.41,,
+    1,02/27/2022 01:13,ICD9CM//410.1,,
+    1,02/27/2022 01:13,DEATH,,
 
-  "train/1": |-2
-    patient_id,time,code,numeric_value
-    4,,GENDER//MALE,
-    4,,SNP//rs123456,
-    4,12/1/1989 12:03,ADMISSION//CARDIAC,
-    4,12/1/1989 12:03,diagnosis//ICD10CM//K79.8,
-    4,12/1/1989 13:14,LAB//SPO2,98.6
-    4,12/1/1989 15:17,LAB//SPO2,99.6
-    4,12/1/1989 16:17,LAB//SPO2,98.9
-    4,12/1/1989 20:17,LAB//SPO2,99.2
-    4,12/2/1989 3:00,LAB//SPO2,99.1
-    4,12/2/1989 9:00,LAB//HR,60
-    4,12/2/1989 10:00,diagnosis//ICD9CM//403.2,
-    4,12/2/1989 10:00,LAB//BUN,
-    4,12/2/1989 14:22,CXR,
-    4,12/2/1989 14:22,LAB//RR,40.2
-    4,12/2/1989 15:00,DISCHARGE//HOME,
-    4,1/21/1991 11:59,CLINIC_VISIT,
-    4,1/27/1991 23:32,ADMISSION//ORTHO,
-    4,1/27/1991 23:46,LAB//HR,60
-    4,1/28/1991 3:18,LAB//HR,60
-    4,1/28/1991 3:18,LAB//HR,62
-    4,1/28/1991 3:28,LAB//HR,68
-    4,1/28/1991 4:36,LAB//HR,70
-    4,1/28/1991 4:36,LAB//SpO2,99.2
-    4,1/29/1991 23:32,LAB//HR,60
-    4,1/30/1991 5:00,diagnosis//ICD9CM//403.2,
-    4,1/30/1991 8:00,LAB//HR,62
-    4,1/30/1991 11:00,LAB//HR,59
-    4,1/30/1991 14:00,LAB//HR,60
-    4,1/30/1991 14:15,LAB//HR,60
-    4,1/31/1991 1:00,LAB//HR,60
-    4,1/31/1991 2:15,DISCHARGE//SNF,
-    4,2/8/1991 8:15,OUTPATIENT_VISIT,
-    4,3/3/1991 19:33,ADMISSION//ED,
-    4,3/3/1991 20:33,LAB//HR,42
-    4,3/3/1991 21:38,DEATH,
-    6,,GENDER//MALE,
-    6,,SNP//rs234567,
-    6,,SNP//rs345678,
-    6,3/8/1996 2:22,ED_VISIT,
-    6,3/8/1996 2:24,ADMISSION//MEDICAL,
-    6,3/8/1996 2:37,LAB//HR,60
-    6,3/9/1996 8:00,LAB//HR,60
-    6,3/9/1996 11:00,LAB//SpO2,99.2
-    6,3/9/1996 19:00,LAB//RR,43
-    6,3/9/1996 22:00,LAB//RR,40
-    6,3/11/1996 21:00,LAB//HR,60
-    6,3/12/1996 0:00,DEATH,
-
-  "held_out/0/0": |-2
-    patient_id,time,code,numeric_value
-    3,,GENDER//FEMALE,
-    3,,SNP//rs234567,
-    3,,SNP//rs345678,
-    3,3/8/1996 2:22,ED_VISIT,
-    3,3/8/1996 2:24,ADMISSION//MEDICAL,
-    3,3/8/1996 2:37,LAB//HR,60
-    3,3/9/1996 8:00,LAB//HR,60
-    3,3/9/1996 11:00,LAB//SpO2,99.2
-    3,3/9/1996 19:00,LAB//RR,43
-    3,3/9/1996 22:00,LAB//RR,40
-    3,3/11/1996 21:00,LAB//HR,60
-    3,3/12/1996 0:00,DEATH,
-
-  "empty_shard": |-2
-    patient_id,time,code,numeric_value
-
-  "held_out": |-2
-    patient_id,time,code,numeric_value
-    1,,GENDER//MALE,
-    1,,SNP//rs123456,
-    1,12/1/1989 12:03,ADMISSION//CARDIAC,
-    1,12/1/1989 12:03,diagnosis//ICD10CM//K79.8,
-    1,12/1/1989 13:14,LAB//SPO2,98.6
-    1,12/1/1989 15:17,LAB//SPO2,99.6
-    1,12/1/1989 16:17,LAB//SPO2,98.9
-    1,12/1/1989 20:17,LAB//SPO2,99.2
-    1,12/2/1989 3:00,LAB//SPO2,99.1
-    1,12/2/1989 9:00,LAB//HR,60
-    1,12/2/1989 10:00,diagnosis//ICD9CM//403.2,
-    1,12/2/1989 10:00,LAB//BUN,
-    1,12/2/1989 14:22,CXR,
-    1,12/2/1989 14:22,LAB//RR,40.2
-    1,12/2/1989 15:00,DISCHARGE//HOME,
-    1,1/21/1991 11:59,CLINIC_VISIT,
-    1,1/27/1991 23:32,ADMISSION//ORTHO,
-    1,1/27/1991 23:46,LAB//HR,60
-    1,1/28/1991 3:18,LAB//HR,60
-    1,1/28/1991 3:18,LAB//HR,62
-    1,1/28/1991 3:28,LAB//HR,68
-    1,1/28/1991 4:36,LAB//HR,70
-    1,1/28/1991 4:36,LAB//SpO2,99.2
-    1,1/29/1991 23:32,LAB//HR,60
-    1,1/30/1991 5:00,diagnosis//ICD9CM//403.2,
-    1,1/30/1991 8:00,LAB//HR,62
-    1,1/30/1991 11:00,LAB//HR,59
-    1,1/30/1991 14:00,LAB//HR,60
-    1,1/30/1991 14:15,LAB//HR,60
-    1,1/31/1991 1:00,LAB//HR,60
-    1,1/31/1991 2:15,DISCHARGE//SNF,
-    1,2/8/1991 8:15,OUTPATIENT_VISIT,
-    1,3/3/1991 19:33,ADMISSION//ED,
-    1,3/3/1991 20:33,LAB//HR,42
-    1,3/3/1991 21:38,DEATH,
-    """
+  "1": |-2
+    patient_id,time,code,numeric_value,text_value
+    3,,GENDER//FEMALE,,
+    3,,SNP//rs2345291,,
+    3,,SNP//rs228192,,
+    3,02/28/1982 00:00,MEDS_BIRTH,,
+    3,01/14/2020 15:14,ADMISSION//MEDICAL,,
+    3,01/14/2020 15:18,VITALS//BP//SYSTOLIC,132,
+    3,01/14/2020 15:18,VITALS//BP//DIASTOLIC,90,
+    3,01/14/2020 15:18,VITALS//HR//BPM,121,
+    3,01/17/2020 10:00,ICD9CM//V30.00,,
+    3,01/17/2020 10:00,DISCHARGE//HOME,,
+    3,01/18/2020 18:18,ADMISSION//MEDICAL,,
+    3,01/20/2020 15:18,DISCHARGE//HOME,,
+    3,03/18/2024 16:54,ICD9CM//428.9,,
+    3,03/18/2024 17:11,ADMISSION//SURGICAL,,
+    3,03/28/2024 10:00,DISCHARGE//HOME,,
+    3,03/29/2024 11:00,ADMISSION//SURGICAL,,
+    3,04/19/2024 13:32,DISCHARGE//HOME,,
+    3,05/22/2024 00:00,ICD9CM//428.9,,
+    """,
+    text_value=pl.Utf8,
 )
 
 # Tasks (input)
-TASK_NAME = "inhospital_mortality"
-TASK_CFG = """
-# Task: 24-hour In-hospital Mortality Prediction
-predicates:
-  admission:
-    code: {regex: ADMISSION.*}
-  discharge:
-    code: {regex: DISCHARGE.*}
-  death:
-    code: DEATH
-  discharge_or_death:
-    expr: or(discharge, death)
+TASKS = {
+    "inhospital_mortality": """
+        predicates:
+          admission:
+            code: {regex: ADMISSION//.*}
+          discharge:
+            code: {regex: DISCHARGE//.*}
+          death:
+            code: DEATH
+          discharge_or_death:
+            expr: or(discharge, death)
 
-patient_demographics:
-  male:
-    code: GENDER//MALE
+        trigger: admission
 
-trigger: admission
+        windows:
+          input:
+            start: NULL
+            end: trigger + 24h
+            start_inclusive: True
+            end_inclusive: True
+            has:
+              _ANY_EVENT: (5, None)
+            index_timestamp: end
+          gap:
+            start: trigger
+            end: start + 48h
+            start_inclusive: False
+            end_inclusive: True
+            has:
+              admission: (None, 0)
+              discharge_or_death: (None, 0)
+          target:
+            start: gap.end
+            end: start -> discharge_or_death
+            start_inclusive: False
+            end_inclusive: True
+            label: death
+        """,
+    "HF_derived_readmission": """
+        predicates:
+          admission:
+            code: {regex: ADMISSION//.*}
+          discharge:
+            code: {regex: DISCHARGE//.*}
+          HF_dx:
+            code: {regex: ICD9CM//428.*}
 
-windows:
-  input:
-    start: NULL
-    end: trigger + 24h
-    start_inclusive: True
-    end_inclusive: True
-    has:
-      _ANY_EVENT: (5, None)
-    index_timestamp: end
-  gap:
-    start: trigger
-    end: start + 48h
-    start_inclusive: False
-    end_inclusive: True
-    has:
-      admission: (None, 0)
-      discharge_or_death: (None, 0)
-  target:
-    start: gap.end
-    end: start -> discharge_or_death
-    start_inclusive: False
-    end_inclusive: True
-    label: death
-"""
+        trigger: discharge
 
-WANT_SHARDS = parse_labels_yaml(
+        windows:
+          data_within_5yr_of_admit:
+            start: end - 1825d
+            end: admission_is_HF.start
+            start_inclusive: True
+            end_inclusive: False
+            has:
+              _ANY_EVENT: (1, None)
+          admission_is_HF:
+            start: end <- admission
+            end: trigger
+            start_inclusive: True
+            end_inclusive: True
+            has:
+              HF_dx: (1, None)
+          input:
+            start: NULL
+            end: trigger
+            start_inclusive: True
+            end_inclusive: True
+            index_timestamp: end
+          target:
+            start: input.end
+            end: start + 30d
+            start_inclusive: False
+            end_inclusive: True
+            label: admission
+          censor_protection:
+            start: target.end
+            end: null
+            start_inclusive: False
+            end_inclusive: True
+            has:
+              _ANY_EVENT: (1, None)
+    """,
+}
+
+WANT_SHARDS = {
+    "inhospital_mortality": parse_labels_yaml(
+        """
+  "0": |-2
+    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    1,01/15/2020 15:14,0,,,
+    1,01/19/2022 04:46,0,,,
+    1,01/25/2022 08:11,1,,,
+
+  "1": |-2
+    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    3,03/19/2024 17:11,0,,,
+    3,03/30/2024 11:00,0,,,
     """
-  "train/0": |-2
+    ),
+    "HF_derived_readmission": parse_labels_yaml(
+        """
+  "0": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    1,01/20/2022 08:00,1,,,
 
-  "train/1": |-2
+  "1": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-    4,1/28/1991 23:32,False,,,,
-
-  "held_out/0/0": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-
-  "empty_shard": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-
-  "held_out": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-    1,1/28/1991 23:32,False,,,,
     """
-)
+    ),
+}
 
 
 def test_meds():
     cli_test(
         input_files=MEDS_SHARDS,
-        task_configs={TASK_NAME: TASK_CFG},
-        want_outputs_by_task={TASK_NAME: WANT_SHARDS},
+        task_configs=TASKS,
+        want_outputs_by_task=WANT_SHARDS,
         data_standard="meds",
     )
