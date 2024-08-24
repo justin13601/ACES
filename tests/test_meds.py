@@ -5,16 +5,15 @@ import rootutils
 
 root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
 
-import tempfile
 from io import StringIO
-from pathlib import Path
 
 import polars as pl
+import pyarrow as pa
 from loguru import logger
-from meds import subject_id_field
+from meds import label_schema, subject_id_field
 from yaml import load as load_yaml
 
-from .utils import assert_df_equal, get_and_validate_label_schema, run_command
+from .utils import cli_test
 
 try:
     from yaml import CLoader as Loader
@@ -39,6 +38,87 @@ MEDS_PL_SCHEMA = {
     "numeric_value": pl.Float32,
     "numeric_value/is_inlier": pl.Boolean,
 }
+
+
+MEDS_LABEL_MANDATORY_TYPES = {
+    subject_id_field: pl.Int64,
+}
+
+MEDS_LABEL_OPTIONAL_TYPES = {
+    "boolean_value": pl.Boolean,
+    "integer_value": pl.Int64,
+    "float_value": pl.Float64,
+    "categorical_value": pl.String,
+    "prediction_time": pl.Datetime("us"),
+}
+
+
+def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
+    """Validates the schema of a MEDS data DataFrame.
+
+    This function validates the schema of a MEDS label DataFrame, ensuring that it has the correct columns
+    and that the columns are of the correct type. This function will:
+      1. Re-type any of the mandator MEDS column to the appropriate type.
+      2. Attempt to add the ``numeric_value`` or ``time`` columns if either are missing, and set it to `None`.
+         It will not attempt to add any other missing columns even if ``do_retype`` is `True` as the other
+         columns cannot be set to `None`.
+
+    Args:
+        df: The MEDS label DataFrame to validate.
+
+    Returns:
+        pa.Table: The validated MEDS data DataFrame, with columns re-typed as needed.
+
+    Raises:
+        ValueError: if do_retype is False and the MEDS data DataFrame is not schema compliant.
+    """
+
+    schema = df.schema
+    if "prediction_time" not in schema:
+        logger.warning(
+            "Output DataFrame is missing a 'prediction_time' column. If this is not intentional, add a "
+            "'index_timestamp' (yes, it should be different) key to the task configuration identifying "
+            "which window's start or end time to use as the prediction time."
+        )
+
+    errors = []
+    for col, dtype in MEDS_LABEL_MANDATORY_TYPES.items():
+        if col in schema and schema[col] != dtype:
+            df = df.with_columns(pl.col(col).cast(dtype, strict=False))
+        elif col not in schema:
+            errors.append(f"MEDS Data DataFrame must have a '{col}' column of type {dtype}.")
+
+    if errors:
+        raise ValueError("\n".join(errors))
+
+    for col, dtype in MEDS_LABEL_OPTIONAL_TYPES.items():
+        if col in schema and schema[col] != dtype:
+            df = df.with_columns(pl.col(col).cast(dtype, strict=False))
+        elif col not in schema:
+            df = df.with_columns(pl.lit(None, dtype=dtype).alias(col))
+
+    extra_cols = [
+        c for c in schema if c not in MEDS_LABEL_MANDATORY_TYPES and c not in MEDS_LABEL_OPTIONAL_TYPES
+    ]
+    if extra_cols:
+        err_cols_str = "\n".join(f"  - {c}" for c in extra_cols)
+        logger.warning(
+            "Output contains columns that are not valid MEDS label columns. For now, we are dropping them.\n"
+            "If you need these columns, please comment on https://github.com/justin13601/ACES/issues/97\n"
+            f"Columns:\n{err_cols_str}"
+        )
+        df = df.drop(extra_cols)
+
+    df = df.select(
+        subject_id_field,
+        "prediction_time",
+        "boolean_value",
+        "integer_value",
+        "float_value",
+        "categorical_value",
+    )
+
+    return df.to_arrow().cast(label_schema)
 
 
 def parse_meds_csvs(
@@ -287,61 +367,9 @@ WANT_SHARDS = parse_labels_yaml(
 
 
 def test_meds():
-    with tempfile.TemporaryDirectory() as d:
-        data_dir = Path(d) / "sample_data"
-        cohort_dir = Path(d) / "sample_cohort"
-
-        MEDS_data_dir = data_dir / "data"
-
-        # Create the directories
-        data_dir.mkdir()
-        cohort_dir.mkdir()
-
-        # Write the predicates CSV file
-        for shard, data_df in MEDS_SHARDS.items():
-            shard_fp = MEDS_data_dir / f"{shard}.parquet"
-            shard_fp.parent.mkdir(parents=True, exist_ok=True)
-            data_df.write_parquet(shard_fp)
-
-        # Run script and check the outputs
-        all_stderrs = []
-        all_stdouts = []
-        full_stderr = ""
-        full_stdout = ""
-        try:
-            task_name = TASK_NAME
-            task_cfg = TASK_CFG
-            logger.info(f"Running task '{task_name}'...")
-
-            # Write the task config YAMLs
-            task_cfg_path = cohort_dir / f"{task_name}.yaml"
-            task_cfg_path.write_text(task_cfg)
-
-            extraction_config_kwargs = {
-                "data": "sharded",
-                "data.root": str(MEDS_data_dir.resolve()),
-                "data.standard": "meds",
-                "cohort_dir": str(cohort_dir.resolve()),
-                "cohort_name": task_name,
-                '"data.shard': f'$(expand_shards {str(MEDS_data_dir.resolve())})"',
-                "hydra.verbose": True,
-            }
-
-            stderr, stdout = run_command("aces-cli --multirun", extraction_config_kwargs, task_name)
-
-            all_stderrs.append(stderr)
-            all_stdouts.append(stdout)
-
-            full_stderr = "\n".join(all_stderrs)
-            full_stdout = "\n".join(all_stdouts)
-
-            for out_shard, want_df in WANT_SHARDS.items():
-                got_df = pl.read_parquet(cohort_dir / task_name / f"{out_shard}.parquet")
-
-                assert_df_equal(want_df, got_df, f"Data mismatch for shard '{out_shard}'")
-
-        except AssertionError as e:
-            print(f"Failed on task '{task_name}'")
-            print(f"stderr:\n{full_stderr}")
-            print(f"stdout:\n{full_stdout}")
-            raise e
+    cli_test(
+        input_files=MEDS_SHARDS,
+        task_configs={TASK_NAME: TASK_CFG},
+        want_outputs_by_task={TASK_NAME: WANT_SHARDS},
+        data_standard="meds",
+    )

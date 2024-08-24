@@ -906,6 +906,10 @@ class TaskExtractorConfig:
         ...     "discharge": PlainPredicateConfig("discharge"),
         ...     "death": PlainPredicateConfig("death"),
         ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
+        ...     "diabetes_icd9": PlainPredicateConfig("ICD9CM//250.02"),
+        ...     "diabetes_icd10": PlainPredicateConfig("ICD10CM//E11.65"),
+        ...     "diabetes": DerivedPredicateConfig("or(diabetes_icd9, diabetes_icd10)"),
+        ...     "diabetes_and_discharge": DerivedPredicateConfig("and(diabetes, discharge)"),
         ... }
         >>> trigger = EventConfig("admission")
         >>> windows = {
@@ -955,18 +959,39 @@ class TaskExtractorConfig:
                               value_min_inclusive=None,
                               value_max_inclusive=None,
                               static=False,
+                              other_cols={}),
+         'diabetes_icd9': PlainPredicateConfig(code='ICD9CM//250.02',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None,
+                              static=False,
+                              other_cols={}),
+         'diabetes_icd10': PlainPredicateConfig(code='ICD10CM//E11.65',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None,
+                              static=False,
                               other_cols={})}
-
         >>> print(config.label_window) # doctest: +NORMALIZE_WHITESPACE
         target
         >>> print(config.index_timestamp_window) # doctest: +NORMALIZE_WHITESPACE
         input
         >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
-        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)', static=False)}
+        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)', static=False),
+         'diabetes': DerivedPredicateConfig(expr='or(diabetes_icd9, diabetes_icd10)', static=False),
+         'diabetes_and_discharge': DerivedPredicateConfig(expr='and(diabetes, discharge)', static=False)}
         >>> print(nx.write_network_text(config.predicates_DAG))
         ╟── death
         ╎   └─╼ death_or_discharge ╾ discharge
-        ╙── discharge
+        ╟── discharge
+        ╎   ├─╼ diabetes_and_discharge ╾ diabetes
+        ╎   └─╼  ...
+        ╟── diabetes_icd9
+        ╎   └─╼ diabetes ╾ diabetes_icd10
+        ╎       └─╼  ...
+        ╙── diabetes_icd10
             └─╼  ...
         >>> print_tree(config.window_tree)
         trigger
@@ -975,6 +1000,7 @@ class TaskExtractorConfig:
             └── gap.end
                 └── target.end
 
+    Configs will error out in various ways when passed inappropriate arguments:
         >>> config_path = "/foo/non_existent_file.yaml"
         >>> cfg = TaskExtractorConfig.load(config_path)
         Traceback (most recent call last):
@@ -1272,31 +1298,6 @@ class TaskExtractorConfig:
             predicate_objs.update(patient_demographics)
 
         return cls(predicates=predicate_objs, trigger=trigger, windows=windows)
-
-    def save(self, config_path: str | Path, do_overwrite: bool = False):
-        """Load a configuration file from the given path and return it as a dict.
-
-        Args:
-            config_path: The path to which the calling object will be saved in YAML form.
-            do_overwrite: Whether or not to overwrite any existing saved configuration file at that filepath.
-
-        Raises:
-            FileExistsError: If there exists a file at the given location and ``do_overwrite`` is not `True`.
-            ValueError: If the filepath is not a ".yaml" file.
-        """
-        if isinstance(config_path, str):
-            config_path = Path(config_path)
-
-        if config_path.is_file() and not do_overwrite:
-            raise FileExistsError(
-                f"Can't overwrite extant {str(config_path.resolve())} as do_overwrite={do_overwrite}"
-            )
-
-        if config_path.suffix == ".yaml":
-            yaml = ruamel.yaml.YAML(typ="safe", pure=True)
-            config_path.write_text(yaml.dump(dataclasses.asdict(self)))
-        else:
-            raise ValueError(f"Only supports writing to '.yaml' files currently. Got: '{config_path.suffix}'")
 
     def _initialize_predicates(self):
         """Initialize the predicates tree from the configuration object and check validity.
