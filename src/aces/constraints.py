@@ -71,6 +71,23 @@ def check_constraints(
         │ 2          ┆ 1989-12-01 13:14:00 ┆ 3    ┆ 10   ┆ 1    │
         │ 2          ┆ 1989-12-03 15:17:00 ┆ 3    ┆ 2    ┆ 1    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> predicates_df = pl.DataFrame({
+        ...     "subject_id": [1, 1, 3],
+        ...     "timestamp": [datetime(1980, 12, 28), datetime(2010, 6, 20), datetime(2010, 5, 11)],
+        ...     "A": [False, False, False],
+        ...     "_ANY_EVENT": [True, True, True],
+        ... })
+        >>> check_constraints({"_ANY_EVENT": (1, None)}, predicates_df)
+        shape: (3, 4)
+        ┌────────────┬─────────────────────┬───────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ A     ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ ---   ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ bool  ┆ bool       │
+        ╞════════════╪═════════════════════╪═══════╪════════════╡
+        │ 1          ┆ 1980-12-28 00:00:00 ┆ false ┆ true       │
+        │ 1          ┆ 2010-06-20 00:00:00 ┆ false ┆ true       │
+        │ 3          ┆ 2010-05-11 00:00:00 ┆ false ┆ true       │
+        └────────────┴─────────────────────┴───────┴────────────┘
     """
 
     should_drop = pl.lit(False)
