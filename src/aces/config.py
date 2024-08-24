@@ -1273,31 +1273,6 @@ class TaskExtractorConfig:
 
         return cls(predicates=predicate_objs, trigger=trigger, windows=windows)
 
-    def save(self, config_path: str | Path, do_overwrite: bool = False):
-        """Load a configuration file from the given path and return it as a dict.
-
-        Args:
-            config_path: The path to which the calling object will be saved in YAML form.
-            do_overwrite: Whether or not to overwrite any existing saved configuration file at that filepath.
-
-        Raises:
-            FileExistsError: If there exists a file at the given location and ``do_overwrite`` is not `True`.
-            ValueError: If the filepath is not a ".yaml" file.
-        """
-        if isinstance(config_path, str):
-            config_path = Path(config_path)
-
-        if config_path.is_file() and not do_overwrite:
-            raise FileExistsError(
-                f"Can't overwrite extant {str(config_path.resolve())} as do_overwrite={do_overwrite}"
-            )
-
-        if config_path.suffix == ".yaml":
-            yaml = ruamel.yaml.YAML(typ="safe", pure=True)
-            config_path.write_text(yaml.dump(dataclasses.asdict(self)))
-        else:
-            raise ValueError(f"Only supports writing to '.yaml' files currently. Got: '{config_path.suffix}'")
-
     def _initialize_predicates(self):
         """Initialize the predicates tree from the configuration object and check validity.
 
