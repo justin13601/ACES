@@ -974,7 +974,6 @@ class TaskExtractorConfig:
                               value_max_inclusive=None,
                               static=False,
                               other_cols={})}
-
         >>> print(config.label_window) # doctest: +NORMALIZE_WHITESPACE
         target
         >>> print(config.index_timestamp_window) # doctest: +NORMALIZE_WHITESPACE
@@ -1001,6 +1000,7 @@ class TaskExtractorConfig:
             └── gap.end
                 └── target.end
 
+    Configs will error out in various ways when passed inappropriate arguments:
         >>> config_path = "/foo/non_existent_file.yaml"
         >>> cfg = TaskExtractorConfig.load(config_path)
         Traceback (most recent call last):
