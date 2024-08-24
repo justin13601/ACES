@@ -142,6 +142,9 @@ def cli_test(
                     assert want_fp.is_file(), f"Expected {out_shard} to exist."
 
                     got_df = pl.read_parquet(want_fp)
-                    assert_df_equal(want_df, got_df, f"Data mismatch for shard '{out_shard}'")
+                    assert_df_equal(
+                        want_df, got_df, f"Data mismatch for shard '{out_shard}':\n{want_df}\n{got_df}"
+                    )
             except AssertionError as e:
-                raise AssertionError(f"{e} -- Error running task '{task}':\n{stderr}\n{stdout}") from e
+                logger.error(f"{stderr}\n{stdout}")
+                raise AssertionError(f"Error running task '{task}': {e}") from e

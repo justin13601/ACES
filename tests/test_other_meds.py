@@ -209,7 +209,7 @@ MEDS_SHARDS = parse_shards_yaml(
     3,01/17/2020 10:00,ICD9CM//V30.00,,
     3,01/17/2020 10:00,DISCHARGE//HOME,,
     3,01/18/2020 18:18,ADMISSION//MEDICAL,,
-    3,01/20/2022 15:18,DISCHARGE//HOME,,
+    3,01/20/2020 15:18,DISCHARGE//HOME,,
     3,03/18/2024 16:54,ICD9CM//428.9,,
     3,03/18/2024 17:11,ADMISSION//SURGICAL,,
     3,03/28/2024 10:00,DISCHARGE//HOME,,
@@ -305,22 +305,22 @@ WANT_SHARDS = {
         """
   "0": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-    1,1/15/2020 15:14,0,,,
-    1,1/19/2022 4:46,0,,,
-    1,1/25/2022 8:11,1,,,
+    1,01/15/2020 15:14,0,,,
+    1,01/19/2022 04:46,0,,,
+    1,01/25/2022 08:11,1,,,
 
   "1": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-    3,3/19/2024 16:54,0,,,
-    3,3/30/2024 11:00,0,,,
+    3,03/19/2024 17:11,0,,,
+    3,03/30/2024 11:00,0,,,
     """
     ),
     "HF_derived_readmission": parse_labels_yaml(
         """
   "0": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-    1,1/17/2020 10:00,0,,,
-    1,1/20/2022 8:00,1,,,
+    1,01/17/2020 10:00,0,,,
+    1,01/20/2022 08:00,1,,,
 
   "1": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
