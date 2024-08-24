@@ -271,6 +271,13 @@ TASKS = {
         trigger: discharge
 
         windows:
+          data_within_5yr_of_admit:
+            start: end - 1825d
+            end: admission_is_HF.start
+            start_inclusive: True
+            end_inclusive: False
+            has:
+              _ANY_EVENT: (1, None)
           admission_is_HF:
             start: end <- admission
             end: trigger
@@ -319,7 +326,6 @@ WANT_SHARDS = {
         """
   "0": |-2
     patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-    1,01/17/2020 10:00,0,,,
     1,01/20/2022 08:00,1,,,
 
   "1": |-2
