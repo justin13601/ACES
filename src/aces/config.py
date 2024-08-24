@@ -905,9 +905,9 @@ class TaskExtractorConfig:
         ...     "admission": PlainPredicateConfig("admission"),
         ...     "discharge": PlainPredicateConfig("discharge"),
         ...     "death": PlainPredicateConfig("death"),
+        ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
         ...     "diabetes_icd9": PlainPredicateConfig("ICD9CM//250.02"),
         ...     "diabetes_icd10": PlainPredicateConfig("ICD10CM//E11.65"),
-        ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
         ...     "diabetes": DerivedPredicateConfig("or(diabetes_icd9, diabetes_icd10)"),
         ...     "diabetes_and_discharge": DerivedPredicateConfig("and(diabetes, discharge)"),
         ... }
