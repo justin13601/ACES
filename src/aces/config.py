@@ -905,7 +905,11 @@ class TaskExtractorConfig:
         ...     "admission": PlainPredicateConfig("admission"),
         ...     "discharge": PlainPredicateConfig("discharge"),
         ...     "death": PlainPredicateConfig("death"),
+        ...     "diabetes_icd9": PlainPredicateConfig("ICD9CM//250.02"),
+        ...     "diabetes_icd10": PlainPredicateConfig("ICD10CM//E11.65"),
         ...     "death_or_discharge": DerivedPredicateConfig("or(death, discharge)"),
+        ...     "diabetes": DerivedPredicateConfig("or(diabetes_icd9, diabetes_icd10)"),
+        ...     "diabetes_and_discharge": DerivedPredicateConfig("and(diabetes, discharge)"),
         ... }
         >>> trigger = EventConfig("admission")
         >>> windows = {
@@ -955,6 +959,20 @@ class TaskExtractorConfig:
                               value_min_inclusive=None,
                               value_max_inclusive=None,
                               static=False,
+                              other_cols={}),
+         'diabetes_icd9': PlainPredicateConfig(code='ICD9CM//250.02',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None,
+                              static=False,
+                              other_cols={}),
+         'diabetes_icd10': PlainPredicateConfig(code='ICD10CM//E11.65',
+                              value_min=None,
+                              value_max=None,
+                              value_min_inclusive=None,
+                              value_max_inclusive=None,
+                              static=False,
                               other_cols={})}
 
         >>> print(config.label_window) # doctest: +NORMALIZE_WHITESPACE
@@ -962,11 +980,19 @@ class TaskExtractorConfig:
         >>> print(config.index_timestamp_window) # doctest: +NORMALIZE_WHITESPACE
         input
         >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
-        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)', static=False)}
+        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)', static=False),
+         'diabetes': DerivedPredicateConfig(expr='or(diabetes_icd9, diabetes_icd10)', static=False),
+         'diabetes_and_discharge': DerivedPredicateConfig(expr='and(diabetes, discharge)', static=False)}
         >>> print(nx.write_network_text(config.predicates_DAG))
         ╟── death
         ╎   └─╼ death_or_discharge ╾ discharge
-        ╙── discharge
+        ╟── discharge
+        ╎   ├─╼ diabetes_and_discharge ╾ diabetes
+        ╎   └─╼  ...
+        ╟── diabetes_icd9
+        ╎   └─╼ diabetes ╾ diabetes_icd10
+        ╎       └─╼  ...
+        ╙── diabetes_icd10
             └─╼  ...
         >>> print_tree(config.window_tree)
         trigger
