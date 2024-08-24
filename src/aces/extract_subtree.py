@@ -295,7 +295,7 @@ def extract_subtree(
         child_anchor_realizations = window_summary_df.select(
             "subject_id",
             pl.col("child_anchor_timestamp").alias("subtree_anchor_timestamp"),
-        )
+        ).unique()
 
         # Step 5: Recurse
         recursive_result = extract_subtree(
