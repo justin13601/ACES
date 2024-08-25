@@ -459,6 +459,12 @@ TASKS = {
           discharge:
             expr: or(hospital_discharge_0,hospital_discharge_1,hospital_discharge_2,hospital_discharge_3,hospital_discharge_4,hospital_discharge_5,hospital_discharge_6,hospital_discharge_7,hospital_discharge_8,hospital_discharge_9,hospital_discharge_10,hospital_discharge_11,hospital_discharge_12,hospital_discharge_13)
 
+          death:
+            code: DEATH
+
+          discharge_or_death:
+            expr: or(discharge, death)
+
         trigger: discharge
 
         windows:
@@ -473,7 +479,9 @@ TASKS = {
             start: end <- admission
             end: trigger
             start_inclusive: True
-            end_inclusive: True
+            end_inclusive: False
+            has:
+              discharge_or_death: (None, 0)
           input:
             start: NULL
             end: trigger
