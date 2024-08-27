@@ -5,7 +5,9 @@ import rootutils
 
 root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
 
+import tempfile
 from io import StringIO
+from pathlib import Path
 
 import polars as pl
 import pyarrow as pa
@@ -13,7 +15,13 @@ from loguru import logger
 from meds import label_schema
 from yaml import load as load_yaml
 
-from .utils import cli_test
+from .utils import (
+    assert_df_equal,
+    cli_test,
+    run_command,
+    write_input_files,
+    write_task_configs,
+)
 
 try:
     from yaml import CLoader as Loader
@@ -371,16 +379,6 @@ def test_meds():
 
 
 def test_meds_window_storage():
-    import tempfile
-    from pathlib import Path
-
-    from tests.utils import (
-        assert_df_equal,
-        run_command,
-        write_input_files,
-        write_task_configs,
-    )
-
     input_files = MEDS_SHARDS
     task_configs = {TASK_NAME: TASK_CFG}
     want_outputs_by_task = {TASK_NAME: WANT_SHARDS}
@@ -406,7 +404,7 @@ def test_meds_window_storage():
             }
             window_dir = Path(cohort_dir / "window_stats")
             want_window_output_files = [
-                window_dir / task / f"{n}.parquet" for n in want_outputs_by_task[task].keys()
+                window_dir / task / f"{n}.parquet" for n in want_outputs_by_task[task]
             ]
 
             extraction_config_kwargs = {
