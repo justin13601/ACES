@@ -13,7 +13,8 @@ config_path: ${cohort_dir}/${cohort_name}.yaml
 # sharded data mode.
 output_filepath: ${cohort_dir}/${cohort_name}${data._prefix}.parquet
 # Optional path to store the output file with the raw window data.
-window_stats_filepath: null
+window_stats_dir: null
+window_stats_filename: ${window_stats_dir}/${cohort_name}${data._prefix}.parquet
 
 log_dir: ${cohort_dir}/${cohort_name}/.logs
 

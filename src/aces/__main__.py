@@ -173,8 +173,9 @@ def main(cfg: DictConfig):
                 logger.warning("Output dataframe is empty; adding an empty patient ID column.")
                 result = result.with_columns(pl.lit(None, dtype=pl.Int64).alias("patient_id"))
                 result = result.head(0)
-        if cfg.window_stats_filepath:
-            result.write_parquet(cfg.window_stats_filepath)
+        if cfg.window_stats_dir:
+            Path(cfg.window_stats_filename).parent.mkdir(exist_ok=True, parents=True)
+            result.write_parquet(cfg.window_stats_filename)
         result = get_and_validate_label_schema(result)
         pq.write_table(result, cfg.output_filepath)
     else:
