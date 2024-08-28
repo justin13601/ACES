@@ -375,7 +375,7 @@ WANT_SHARDS = parse_labels_yaml(
 
 WANT_EMPTY_WINDOW_SCHEMA = {"subject_id": pl.Int64}
 WANT_NON_EMPTY_WINDOW_SCHEMA = {
-    "subject_id": pl.UInt32,
+    "subject_id": pl.Int64,
     "prediction_time": pl.Datetime,
     "boolean_value": pl.Int64,
     "trigger": pl.Datetime,
