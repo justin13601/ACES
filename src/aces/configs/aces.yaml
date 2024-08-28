@@ -14,7 +14,7 @@ config_path: ${cohort_dir}/${cohort_name}.yaml
 output_filepath: ${cohort_dir}/${cohort_name}${data._prefix}.parquet
 # Optional path to store the output file with the raw window data.
 window_stats_dir: null
-window_stats_filename: ${window_stats_dir}/${cohort_name}${data._prefix}.parquet
+window_stats_filepath: ${window_stats_dir}/${cohort_name}${data._prefix}.parquet
 
 log_dir: ${cohort_dir}/${cohort_name}/.logs
 
