@@ -5,164 +5,19 @@ import rootutils
 
 root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
 
-from io import StringIO
 
 import polars as pl
-import pyarrow as pa
-from loguru import logger
-from meds import label_schema
-from yaml import load as load_yaml
 
+from .test_meds import parse_labels_yaml, parse_shards_yaml
 from .utils import cli_test
 
-try:
-    from yaml import CLoader as Loader
-except ImportError:
-    from yaml import Loader
-
 pl.enable_string_cache()
-
-TS_FORMAT = "%m/%d/%Y %H:%M"
-PRED_CNT_TYPE = pl.Int64
-EVENT_INDEX_TYPE = pl.UInt64
-ANY_EVENT_COLUMN = "_ANY_EVENT"
-LAST_EVENT_INDEX_COLUMN = "_LAST_EVENT_INDEX"
-
-DEFAULT_CSV_TS_FORMAT = "%m/%d/%Y %H:%M"
-
-# TODO: Make use meds library
-MEDS_PL_SCHEMA = {
-    "patient_id": pl.UInt32,
-    "time": pl.Datetime("us"),
-    "code": pl.Utf8,
-    "numeric_value": pl.Float32,
-    "numeric_value/is_inlier": pl.Boolean,
-}
-
-
-MEDS_LABEL_MANDATORY_TYPES = {
-    "patient_id": pl.Int64,
-}
-
-MEDS_LABEL_OPTIONAL_TYPES = {
-    "boolean_value": pl.Boolean,
-    "integer_value": pl.Int64,
-    "float_value": pl.Float64,
-    "categorical_value": pl.String,
-    "prediction_time": pl.Datetime("us"),
-}
-
-
-def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
-    """Validates the schema of a MEDS data DataFrame.
-
-    This function validates the schema of a MEDS label DataFrame, ensuring that it has the correct columns
-    and that the columns are of the correct type. This function will:
-      1. Re-type any of the mandator MEDS column to the appropriate type.
-      2. Attempt to add the ``numeric_value`` or ``time`` columns if either are missing, and set it to `None`.
-         It will not attempt to add any other missing columns even if ``do_retype`` is `True` as the other
-         columns cannot be set to `None`.
-
-    Args:
-        df: The MEDS label DataFrame to validate.
-
-    Returns:
-        pa.Table: The validated MEDS data DataFrame, with columns re-typed as needed.
-
-    Raises:
-        ValueError: if do_retype is False and the MEDS data DataFrame is not schema compliant.
-    """
-
-    schema = df.schema
-    if "prediction_time" not in schema:
-        logger.warning(
-            "Output DataFrame is missing a 'prediction_time' column. If this is not intentional, add a "
-            "'index_timestamp' (yes, it should be different) key to the task configuration identifying "
-            "which window's start or end time to use as the prediction time."
-        )
-
-    errors = []
-    for col, dtype in MEDS_LABEL_MANDATORY_TYPES.items():
-        if col in schema and schema[col] != dtype:
-            df = df.with_columns(pl.col(col).cast(dtype, strict=False))
-        elif col not in schema:
-            errors.append(f"MEDS Data DataFrame must have a '{col}' column of type {dtype}.")
-
-    if errors:
-        raise ValueError("\n".join(errors))
-
-    for col, dtype in MEDS_LABEL_OPTIONAL_TYPES.items():
-        if col in schema and schema[col] != dtype:
-            df = df.with_columns(pl.col(col).cast(dtype, strict=False))
-        elif col not in schema:
-            df = df.with_columns(pl.lit(None, dtype=dtype).alias(col))
-
-    extra_cols = [
-        c for c in schema if c not in MEDS_LABEL_MANDATORY_TYPES and c not in MEDS_LABEL_OPTIONAL_TYPES
-    ]
-    if extra_cols:
-        err_cols_str = "\n".join(f"  - {c}" for c in extra_cols)
-        logger.warning(
-            "Output contains columns that are not valid MEDS label columns. For now, we are dropping them.\n"
-            "If you need these columns, please comment on https://github.com/justin13601/ACES/issues/97\n"
-            f"Columns:\n{err_cols_str}"
-        )
-        df = df.drop(extra_cols)
-
-    df = df.select(
-        "patient_id", "prediction_time", "boolean_value", "integer_value", "float_value", "categorical_value"
-    )
-
-    return df.to_arrow().cast(label_schema)
-
-
-def parse_meds_csvs(
-    csvs: str | dict[str, str], schema: dict[str, pl.DataType] = MEDS_PL_SCHEMA
-) -> pl.DataFrame | dict[str, pl.DataFrame]:
-    """Converts a string or dict of named strings to a MEDS DataFrame by interpreting them as CSVs.
-
-    TODO: doctests.
-    """
-
-    default_read_schema = {**schema}
-    default_read_schema["time"] = pl.Utf8
-
-    def reader(csv_str: str) -> pl.DataFrame:
-        cols = csv_str.strip().split("\n")[0].split(",")
-        read_schema = {k: v for k, v in default_read_schema.items() if k in cols}
-        return pl.read_csv(StringIO(csv_str), schema=read_schema).with_columns(
-            pl.col("time").str.strptime(MEDS_PL_SCHEMA["time"], DEFAULT_CSV_TS_FORMAT)
-        )
-
-    if isinstance(csvs, str):
-        return reader(csvs)
-    else:
-        return {k: reader(v) for k, v in csvs.items()}
-
-
-def parse_shards_yaml(yaml_str: str, **schema_updates) -> dict[str, pl.DataFrame]:
-    schema = {**MEDS_PL_SCHEMA, **schema_updates}
-    return parse_meds_csvs(load_yaml(yaml_str, Loader=Loader), schema=schema)
-
-
-def parse_labels_yaml(yaml_str: str) -> dict[str, pl.DataFrame]:
-    dfs = {}
-    for k, v in load_yaml(yaml_str, Loader=Loader).items():
-        dfs[k] = pl.from_arrow(
-            get_and_validate_label_schema(
-                pl.read_csv(StringIO(v)).with_columns(
-                    pl.col("prediction_time").str.strptime(pl.Datetime("us"), "%m/%d/%Y %H:%M")
-                )
-            )
-        )
-    return dfs
-
 
 # Data (input)
 MEDS_SHARDS = parse_shards_yaml(
     """
   "0": |-2
-    patient_id,time,code,numeric_value,text_value
+    subject_id,time,code,numeric_value,text_value
     1,,GENDER//MALE,,
     1,,SNP//rs234567,,
     1,12/18/1960 11:03,MEDS_BIRTH,,
@@ -197,7 +52,7 @@ MEDS_SHARDS = parse_shards_yaml(
     1,02/27/2022 01:13,DEATH,,
 
   "1": |-2
-    patient_id,time,code,numeric_value,text_value
+    subject_id,time,code,numeric_value,text_value
     3,,GENDER//FEMALE,,
     3,,SNP//rs2345291,,
     3,,SNP//rs228192,,
@@ -508,13 +363,13 @@ WANT_SHARDS = {
     "inhospital_mortality": parse_labels_yaml(
         """
   "0": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     1,01/15/2020 15:14,0,,,
     1,01/19/2022 04:46,0,,,
     1,01/25/2022 08:11,1,,,
 
   "1": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     3,03/19/2024 17:11,0,,,
     3,03/30/2024 11:00,0,,,
     """
@@ -522,21 +377,21 @@ WANT_SHARDS = {
     "HF_derived_readmission": parse_labels_yaml(
         """
   "0": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     1,01/20/2022 08:00,1,,,
 
   "1": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     """
     ),
     "nested_preds_readmission": parse_labels_yaml(
         """
   "0": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     1,01/20/2022 08:00,1,,,
 
   "1": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     3,01/20/2020 15:18,0,,,
     3,03/28/2024 10:00,1,,,
     3,04/19/2024 13:32,0,,,

@@ -30,7 +30,7 @@ def expand_shards(*shards: str) -> str:
         'data/data_0,data/data_1,data/data_2,data/data_3,data/test_0,data/test_1,data/test_2,data/test_3'
 
         >>> parquet_data = pl.DataFrame({
-        ...     "patient_id": [1, 1, 1, 2, 3],
+        ...     "subject_id": [1, 1, 1, 2, 3],
         ...     "time": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 01:00", "1/1/1989 02:00", None],
         ...     "code": ['admission', 'discharge', 'discharge', 'admission', "gender"],
         ... }).with_columns(pl.col("time").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
