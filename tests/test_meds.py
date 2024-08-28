@@ -373,9 +373,9 @@ WANT_SHARDS = parse_labels_yaml(
     """
 )
 
-WANT_EMPTY_WINDOW_SCHEMA = {"patient_id": pl.Int64}
+WANT_EMPTY_WINDOW_SCHEMA = {"subject_id": pl.Int64}
 WANT_NON_EMPTY_WINDOW_SCHEMA = {
-    "patient_id": pl.UInt32,
+    "subject_id": pl.UInt32,
     "prediction_time": pl.Datetime,
     "boolean_value": pl.Int64,
     "trigger": pl.Datetime,
@@ -432,7 +432,7 @@ WANT_NON_EMPTY_WINDOW_SCHEMA = {
 WANT_TRAIN_WINDOW_DATA = """
 [
     {
-        "patient_id": 4,
+        "subject_id": 4,
         "prediction_time": "1991-01-28 23:32:00",
         "boolean_value": 0,
         "trigger": "1991-01-27 23:32:00",
@@ -483,7 +483,7 @@ WANT_TRAIN_WINDOW_DATA = """
 WANT_HELD_OUT_WINDOW_DATA = """
 [
     {
-        "patient_id": 1,
+        "subject_id": 1,
         "prediction_time": "1991-01-28 23:32:00",
         "boolean_value": 0,
         "trigger": "1991-01-27 23:32:00",

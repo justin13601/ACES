@@ -387,11 +387,11 @@ WANT_SHARDS = {
     "nested_preds_readmission": parse_labels_yaml(
         """
   "0": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     1,01/20/2022 08:00,1,,,
 
   "1": |-2
-    patient_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     3,01/20/2020 15:18,0,,,
     3,03/28/2024 10:00,1,,,
     3,04/19/2024 13:32,0,,,
