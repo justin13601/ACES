@@ -1210,6 +1210,7 @@ class TaskExtractorConfig:
                 f"Only supports reading from '.yaml'. Got: '{config_path.suffix}' in '{config_path.name}'."
             )
 
+        overriding_predicates = {}
         if predicates_path:
             if isinstance(predicates_path, str):
                 predicates_path = Path(predicates_path)
@@ -1228,32 +1229,47 @@ class TaskExtractorConfig:
                     f"'{predicates_path.name}'."
                 )
 
-            predicates = predicates_dict.pop("predicates")
-            patient_demographics = predicates_dict.pop("patient_demographics", None)
-
             # Remove the description or metadata keys if they exist - currently unused except for readability
             # in the YAML
             _ = predicates_dict.pop("description", None)
             _ = predicates_dict.pop("metadata", None)
+            overriding_predicates = predicates_dict.pop("predicates")
 
             if predicates_dict:
                 raise ValueError(
                     f"Unrecognized keys in configuration file: '{', '.join(predicates_dict.keys())}'"
                 )
-        else:
-            predicates = loaded_dict.pop("predicates")
-            patient_demographics = loaded_dict.pop("patient_demographics", None)
-
-        trigger = loaded_dict.pop("trigger")
-        windows = loaded_dict.pop("windows", None)
 
         # Remove the description or metadata keys if they exist - currently unused except for readability
         # in the YAML
         _ = loaded_dict.pop("description", None)
         _ = loaded_dict.pop("metadata", None)
 
+        patient_demographics = loaded_dict.pop("patient_demographics", None)
+        trigger = loaded_dict.pop("trigger")
+        windows = loaded_dict.pop("windows", None)
+
+        predicates = loaded_dict.pop("predicates")
+
         if loaded_dict:
             raise ValueError(f"Unrecognized keys in configuration file: '{', '.join(loaded_dict.keys())}'")
+
+        predicates_to_override = {}
+        for key, value in predicates.items():
+            if value.get("code") == "???" or value.get("expr") == "???":
+                predicates_to_override[key] = value
+
+        if predicates_to_override:
+            if not set(predicates_to_override.keys()).issubset(set(overriding_predicates.keys())):
+                raise ValueError(
+                    "Unresolved predicates found in configuration file: "
+                    f"{', '.join(predicates_to_override.keys())}. "
+                    "Please provide a predicates file to resolve these predicates or specify them explicitly "
+                    "in the task configuration file (with a code that is not '???')."
+                )
+
+            # update predicates with overrides only if the predicate is in the list of predicates to override
+            predicates.update({k: v for k, v in overriding_predicates.items() if k in predicates_to_override})
 
         logger.info("Parsing windows...")
         if windows is None:
