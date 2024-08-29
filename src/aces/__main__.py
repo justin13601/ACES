@@ -8,7 +8,7 @@ import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
 from loguru import logger
-from meds import label_schema, subject_id_field
+from meds import label_schema, prediction_time_field, subject_id_field
 from omegaconf import DictConfig
 
 config_yaml = files("aces").joinpath("configs/aces.yaml")
@@ -28,7 +28,7 @@ MEDS_LABEL_OPTIONAL_TYPES = {
     "integer_value": pl.Int64,
     "float_value": pl.Float64,
     "categorical_value": pl.String,
-    "prediction_time": pl.Datetime("us"),
+    prediction_time_field: pl.Datetime("us"),
 }
 
 
