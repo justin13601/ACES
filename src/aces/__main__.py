@@ -11,7 +11,7 @@ from loguru import logger
 from meds import label_schema, subject_id_field
 from omegaconf import DictConfig
 
-config_yaml = files("aces").joinpath("configs/aces.yaml")
+config_yaml = files("aces").joinpath("configs/_aces.yaml")
 
 if len(sys.argv) == 1:
     print("Usage: aces-cli [OPTIONS]")
