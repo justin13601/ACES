@@ -57,13 +57,21 @@ def write_input_files(data_dir: Path, input_files: dict[str, pl.DataFrame | str]
     return wrote_files
 
 
-def write_task_configs(cohort_dir: Path, task_configs: dict[str, str]) -> dict[str, Path]:
+def write_task_configs(
+    cohort_dir: Path, task_configs: dict[str, str], predicate_files: dict[str, str] | None = None
+) -> dict[str, Path]:
     wrote_files = {}
     for name, cfg in task_configs.items():
         fp = cohort_dir / f"{name}.yaml"
         fp.parent.mkdir(parents=True, exist_ok=True)
         fp.write_text(cfg)
         wrote_files[name] = fp
+    if predicate_files is not None:
+        for name, cfg in predicate_files.items():
+            fp = cohort_dir / f"{name}_predicates.yaml"
+            fp.parent.mkdir(parents=True, exist_ok=True)
+            fp.write_text(cfg)
+            wrote_files[f"{name}_predicates"] = fp
     return wrote_files
 
 
@@ -72,6 +80,7 @@ def cli_test(
     task_configs: dict[str, str],
     want_outputs_by_task: dict[str, dict[str, pl.DataFrame]],
     data_standard: str,
+    predicate_files: str = None,
 ):
     if data_standard not in ["meds", "direct"]:
         raise ValueError(f"Invalid data standard: {data_standard}")
@@ -91,7 +100,7 @@ def cli_test(
             sharded = False
             command = "aces-cli"
 
-        wrote_configs = write_task_configs(cohort_dir, task_configs)
+        wrote_configs = write_task_configs(cohort_dir, task_configs, predicate_files)
         if len(wrote_configs) == 0:
             raise ValueError("No task configs were written.")
 
@@ -116,6 +125,11 @@ def cli_test(
                 extraction_config_kwargs['"data.shard'] = f'$(expand_shards {str(data_dir.resolve())})"'
             else:
                 extraction_config_kwargs["data.path"] = str(list(wrote_files.values())[0].resolve())
+
+            if predicate_files is not None:
+                extraction_config_kwargs["predicates_path"] = str(
+                    wrote_configs[f"{task}_predicates"].resolve()
+                )
 
             stderr, stdout = run_command(command, extraction_config_kwargs, f"CLI should run for {task}")
 
