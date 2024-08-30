@@ -1303,7 +1303,6 @@ class TaskExtractorConfig:
             }
             predicate_objs.update(final_demographics)
 
-        print(predicate_objs)
         return cls(predicates=predicate_objs, trigger=trigger, windows=windows)
 
     def _initialize_predicates(self):
