@@ -1017,10 +1017,17 @@ class TaskExtractorConfig:
         >>> predicates_path = "/foo/non_existent_predicates.yaml"
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
         ...     config_path = Path(f.name)
-        ...     cfg = TaskExtractorConfig.load(config_path, predicates_path)
+        ...     cfg = TaskExtractorConfig.load(
+        ...         config_path, predicates_path, do_error_if_missing_predicates=True
+        ...     )
         Traceback (most recent call last):
             ...
         FileNotFoundError: Cannot load missing predicates file /foo/non_existent_predicates.yaml!
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+        ...     config_path = Path(f.name)
+        ...     cfg = TaskExtractorConfig.load(config_path, predicates_path)
+        ...     print("If you don't rely on the predicates and the file is missing, it won't error.")
+        If you don't rely on the predicates and the file is missing, it won't error.
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as f:
         ...     predicates_path = Path(f.name)
         ...     with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f2:
@@ -1127,7 +1134,12 @@ class TaskExtractorConfig:
     index_timestamp_window: str | None = None
 
     @classmethod
-    def load(cls, config_path: str | Path, predicates_path: str | Path = None) -> TaskExtractorConfig:
+    def load(
+        cls,
+        config_path: str | Path,
+        predicates_path: str | Path = None,
+        do_error_if_missing_predicates: bool = False,
+    ) -> TaskExtractorConfig:
         """Load a configuration file from the given path and return it as a dict.
 
         Args:
@@ -1217,11 +1229,13 @@ class TaskExtractorConfig:
                 predicates_path = Path(predicates_path)
 
             if not predicates_path.is_file():
-                raise FileNotFoundError(
-                    f"Cannot load missing predicates file {str(predicates_path.resolve())}!"
-                )
-
-            if predicates_path.suffix == ".yaml":
+                if do_error_if_missing_predicates:
+                    raise FileNotFoundError(
+                        f"Cannot load missing predicates file {str(predicates_path.resolve())}!"
+                    )
+                else:
+                    predicates_dict = {}
+            elif predicates_path.suffix == ".yaml":
                 yaml = ruamel.yaml.YAML(typ="safe", pure=True)
                 predicates_dict = yaml.load(predicates_path.read_text())
             else:
