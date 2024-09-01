@@ -8,6 +8,7 @@ cohort_name: ""
 
 # Path to the task configuration file
 config_path: ${cohort_dir}/${cohort_name}.yaml
+predicates_path: null
 
 # Path to store the output file. The `${data._prefix}` addition allows us to add shard specific prefixes in a
 # sharded data mode.

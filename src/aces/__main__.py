@@ -151,7 +151,14 @@ def main(cfg: DictConfig):
 
     # load configuration
     logger.info(f"Loading config from '{cfg.config_path}'")
-    task_cfg = config.TaskExtractorConfig.load(Path(cfg.config_path))
+    if cfg.predicates_path:
+        logger.info(f"Overriding predicates and/or demographics from '{cfg.predicates_path}'")
+        predicates_path = Path(cfg.predicates_path)
+    else:
+        predicates_path = None
+    task_cfg = config.TaskExtractorConfig.load(
+        config_path=Path(cfg.config_path), predicates_path=predicates_path
+    )
 
     logger.info(f"Attempting to get predicates dataframe given:\n{OmegaConf.to_yaml(cfg.data)}")
     predicates_df = predicates.get_predicates_df(task_cfg, cfg.data)
