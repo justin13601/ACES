@@ -145,10 +145,6 @@ def main(cfg: DictConfig):
 
     st = datetime.now()
 
-    # Set output path
-    cohort_dir = Path(cfg.cohort_dir)
-    cohort_dir.mkdir(exist_ok=True, parents=True)
-
     # load configuration
     logger.info(f"Loading config from '{cfg.config_path}'")
     if cfg.predicates_path:
