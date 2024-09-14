@@ -212,7 +212,7 @@ aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data.path="baz.p
 A MEDS dataset can have multiple shards, each stored as a `.parquet` file containing subsets of the full dataset. We can make use of Hydra's launchers and multi-run (`-m`) capabilities to start an extraction job for each shard (`data=sharded`), either in series or in parallel (e.g., using `joblib`, or `submitit` for Slurm). To load data with multiple shards, a data root needs to be provided, along with an expression containing a comma-delimited list of files for each shard. We provide a function `expand_shards` to do this, which accepts a sequence representing `<shards_location>/<number_of_shards>`. It also accepts a file directory, where all `.parquet` files in its directory and subdirectories will be included.
 
 ```bash
-aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data=sharded data.root="baz/" "data.shard=$(expand_shards qux/#)" -m
+aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data=sharded data.root="baz/" "data.shard=$(expand_shards baz/)" -m
 ```
 
 ### ESGPT
