@@ -19,25 +19,23 @@
 
 Automatic Cohort Extraction System (ACES) is a library that streamlines the extraction of task-specific cohorts from time series datasets formatted as event-streams, such as Electronic Health Records (EHR). ACES is designed to query these EHR datasets for valid subjects, guided by various constraints and requirements defined in a YAML task configuration file. This offers a powerful and user-friendly solution to researchers and developers. The use of a human-readable YAML configuration file also eliminates the need for users to be proficient in complex dataframe querying, making the extraction process accessible to a broader audience.
 
-There are diverse applications in healthcare and beyond. For instance, researchers can effortlessly define subsets of EHR datasets for training of foundation models. Retrospective analyses can also become more accessible to clinicians as it enables the extraction of tailored cohorts for studying specific medical conditions or population demographics.
+There are diverse applications in healthcare and beyond. For instance, researchers can effortlessly define subsets of EHR datasets for training of foundation models. Retrospective analyses can also become more accessible to clinicians as it enables the extraction of tailored cohorts for studying specific medical conditions or population demographics. A new era of benchmarking over tasks instead of data may also be realized ([MEDS-DEV](https://github.com/mmcdermott/MEDS-DEV/tree/main)).
 
-Currently, two data standards are directly supported: the [Medical Event Data Standard (MEDS)](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your in one of these two formats by following instructions in their respective repositories. ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it as an event-stream. More information about this is available below and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html).
+Currently, two data standards are directly supported: the [Medical Event Data Standard (MEDS)](https://github.com/Medical-Event-Data-Standard/meds) standard and the [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT) standard. You must format your data in one of these two formats by following instructions in their respective repositories. ACES also supports ***any*** arbitrary dataset schema, provided you extract the necessary dataset-specific plain predicates and format it as an event-stream. More information about this is available below and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html).
 
-This README provides an overview of this tool, instructions for use, and a description of the fields in the task configuration file (see configs in `sample_configs/`). Please refer to the [ACES Documentation](https://eventstreamaces.readthedocs.io/en/latest/) for more detailed information.
+This README provides a brief overview of this tool, instructions for use, and a description of the fields in the task configuration file (see representative configs in `sample_configs/`). Please refer to the [ACES Documentation](https://eventstreamaces.readthedocs.io/en/latest/) for more detailed information.
 
 ## Installation
 
-### For MEDS v0.3.2
+### For MEDS v0.3.3
 
-`pip install es-aces`
+```bash
+pip install es-aces
+```
 
-### For MEDS v0.3
+### For ESGPT
 
-`pip install es-aces==0.3.2`
-
-### For ESGPT Installation
-
-1. If using the ESGPT data standard, install [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT):
+1. Install [EventStreamGPT (ESGPT)](https://github.com/mmcdermott/EventStreamGPT):
 
 Clone EventStreamGPT:
 
@@ -56,13 +54,13 @@ pip install -e .
 ## Instructions for Use
 
 1. **Prepare a Task Configuration File**: Define your predicates and task windows according to your research needs. Please see below or [here](https://eventstreamaces.readthedocs.io/en/latest/configuration.html) for details regarding the configuration language.
-2. **Get Predicates DataFrame**: Process your dataset according to the instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) (single-nested or un-nested) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard so you can leverage ACES to automatically create the predicates dataframe. You can also create your own predicates dataframe directly (more information below and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
+2. **Prepare Dataset & Predicates DataFrame**: Process your dataset according to instructions for the [MEDS](https://github.com/Medical-Event-Data-Standard/meds) or [ESGPT](https://github.com/mmcdermott/EventStreamGPT) standard so you can leverage ACES to automatically create the predicates dataframe. Alternatively, you can also create your own predicates dataframe directly (more information below and [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/predicates.html)).
 3. **Execute Query**: A query may be executed using either the command-line interface or by importing the package in Python:
 
 ### Command-Line Interface:
 
 ```bash
-aces-cli data.path='/path/to/data/file/or/directory' data.standard='<esgpt/meds/direct>' cohort_dir='/directory/to/task/config/' cohort_name='<task_config_name>'
+aces-cli data.path='/path/to/data/directory/or/file' data.standard='<meds|esgpt|direct>' cohort_dir='/directory/to/task/config/' cohort_name='<task_config_name>'
 ```
 
 For help using `aces-cli`:
@@ -78,13 +76,13 @@ from aces import config, predicates, query
 from omegaconf import DictConfig
 
 # create task configuration object
-cfg = config.TaskExtractorConfig.load(config_path="/path/to/task/config/task.yaml")
+cfg = config.TaskExtractorConfig.load(config_path="/path/to/task/config.yaml")
 
 # get predicates dataframe
 data_config = DictConfig(
     {
-        "path": "/path/to/data/file/or/directory",
-        "standard": "<esgpt/meds/direct>",
+        "path": "/path/to/data/directory/or/file",
+        "standard": "<meds|esgpt|direct>",
         "ts_format": "%m/%d/%Y %H:%M",
     }
 )
@@ -94,7 +92,7 @@ predicates_df = predicates.get_predicates_df(cfg=cfg, data_config=data_config)
 df_result = query.query(cfg=cfg, predicates_df=predicates_df)
 ```
 
-4. **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality cohort using the ESGPT standard:
+4. **Results**: The output will be a dataframe of subjects who satisfy the conditions defined in your task configuration file. Timestamps for the start/end boundaries of each window specified in the task configuration, as well as predicate counts for each window, are also provided. Below are sample logs for the successful extraction of an in-hospital mortality cohort:
 
 ```log
 aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs" data.standard="esgpt" data.path="MIMIC_ESD_new_schema_08-31-23-1/"
