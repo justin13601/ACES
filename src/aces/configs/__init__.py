@@ -37,9 +37,16 @@ Configuration Group File Structure:
         (`.csv` or `.parquet`) if using `direct`
         - standard (required): data standard, one of  'meds', 'esgpt', or 'direct'
         - ts_format (required if data.standard is 'direct'): timestamp format for the data
+        - root (required, applicable when data=sharded): root directory for the data shards
+        - shard (required, applicable when data=sharded): shard number of specific shard from a MEDS dataset.
+
+        Note: data.shard can be expanded using the `expand_shards` function. Please refer to
+        https://github.com/justin13601/ACES/blob/main/src/aces/expand_shards.py for more information.
+
     cohort_dir (required): cohort directory, used to automatically load configs, saving results, and logging
     cohort_name (required): cohort name, used to automatically load configs, saving results, and logging
     config_path (optional): path to the task configuration file, defaults to '<cohort_dir>/<cohort_name>.yaml'
+    predicates_path (optional): path to a separate predicates configuration file for overriding
     output_filepath (optional): path to the output file, defaults to '<cohort_dir>/<cohort_name>.parquet'
 
     ---------------- Default Config ----------------
