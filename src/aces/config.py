@@ -1269,7 +1269,11 @@ class TaskExtractorConfig:
 
         referenced_predicates = {pred for w in windows.values() for pred in w.referenced_predicates}
         referenced_predicates.add(trigger.predicate)
-        referenced_predicates.add([w.label for w in windows.values() if w.label or w.index_timestamp][0])
+        label_reference = [w.label for w in windows.values() if w.label]
+        index_reference = [w.index_timestamp for w in windows.values() if w.index_timestamp]
+        if label_reference or index_reference:
+            other_references = set(label_reference + index_reference)
+            referenced_predicates.update(other_references)
         current_predicates = set(referenced_predicates)
         special_predicates = {ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY}
         for pred in current_predicates - special_predicates:
