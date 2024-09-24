@@ -189,7 +189,7 @@ The above two fields are used below for automatically loading task configuration
 
 Additionally, predicates may be specified in a separate predicates configuration file and loaded for overrides:
 
-***`predicates_path`***: Path to the [separate predicates configuration file](<>). Defaults to null
+***`predicates_path`***: Path to the [separate predicates-only file](https://eventstreamaces.readthedocs.io/en/latest/usage.html#separate-predicates-only-file). Defaults to null
 
 #### Tab Completion
 
