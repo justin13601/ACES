@@ -332,6 +332,7 @@ Finally, ACES is not tied to a particular common data model. Built on a flexible
 - Support timestamp binning for use in predicates or as qualifiers ([#44](https://github.com/justin13601/ACES/issues/44))
 - Support additional label types ([#45](https://github.com/justin13601/ACES/issues/45))
 - Allow chaining of multiple task configurations ([#49](https://github.com/justin13601/ACES/issues/49))
+- Additional predicates expansions ([#66](https://github.com/justin13601/ACES/issues/66))
 
 ### Generalizability
 
