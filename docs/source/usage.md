@@ -149,43 +149,47 @@ Hydra configuration files are leveraged for cohort extraction runs. All fields c
 
 #### Data Configuration
 
-To set a data standard:
+**To set a data standard**:
 
-`data.standard`: String specifying the data standard, must be 'meds' OR 'esgpt' OR 'direct'
+***`data.standard`***: String specifying the data standard, must be 'meds' OR 'esgpt' OR 'direct'
 
-To query from a single MEDS shard:
+**To query from a single MEDS shard**:
 
-`data.path`: Path to the `.parquet`shard file
+***`data.path`***: Path to the `.parquet` shard file
 
-To query from multiple MEDS shards, you must set `data=sharded`. Additionally:
+**To query from multiple MEDS shards**, you must set `data=sharded`. Additionally:
 
-`data.root`: Root directory of MEDS dataset containing shard directories
+***`data.root`***: Root directory of MEDS dataset containing shard directories
 
-`data.shard`: Expression specifying MEDS shards (`$(expand_shards <str>/<int>)`)
+***`data.shard`***: Expression specifying MEDS shards using [expand_shards](https://github.com/justin13601/ACES/blob/main/src/aces/expand_shards.py) (`$(expand_shards <str>/<int>)`)
 
-To query from an ESGPT dataset:
+**To query from an ESGPT dataset**:
 
-`data.path`: Directory of the full ESGPT dataset
+***`data.path`***: Directory of the full ESGPT dataset
 
-To query from a direct predicates dataframe:
+**To query from a direct predicates dataframe**:
 
-`data.path` Path to the `.csv` or `.parquet` file containing the predicates dataframe
+***`data.path`*** Path to the `.csv` or `.parquet` file containing the predicates dataframe
 
-`data.ts_format`: Timestamp format for predicates. Defaults to "%m/%d/%Y %H:%M"
+***`data.ts_format`***: Timestamp format for predicates. Defaults to "%m/%d/%Y %H:%M"
 
 #### Task Configuration
 
-`cohort_dir`: Directory of your task configuration file
+***`cohort_dir`***: Directory of your task configuration file
 
-`cohort_name`: Name of the task configuration file
+***`cohort_name`***: Name of the task configuration file
 
-The above two fields are used for automatically loading task configurations, saving results, and logging:
+The above two fields are used below for automatically loading task configurations, saving results, and logging:
 
-`config_path`: Path to the task configuration file. Defaults to `${cohort_dir}/${cohort_name}.yaml`
+***`config_path`***: Path to the task configuration file. Defaults to `${cohort_dir}/${cohort_name}.yaml`
 
-`output_filepath`: Path to store the outputs. Defaults to `${cohort_dir}/${cohort_name}/${data.shard}.parquet` for MEDS with multiple shards, and `${cohort_dir}/${cohort_name}.parquet` otherwise
+***`output_filepath`***: Path to store the outputs. Defaults to `${cohort_dir}/${cohort_name}/${data.shard}.parquet` for MEDS with multiple shards, and `${cohort_**dir}/${cohort_name}.parquet` otherwise
 
-`log_dir`: Path to store logs. Defaults to `${cohort_dir}/${cohort_name}/.logs`
+***`log_dir`***: Path to store logs. Defaults to `${cohort_dir}/${cohort_name}/.logs`
+
+Additionally, predicates may be specified in a separate predicates configuration file and loaded for overrides:
+
+***`predicates_path`***: Path to the [separate predicates-only file](https://eventstreamaces.readthedocs.io/en/latest/usage.html#separate-predicates-only-file). Defaults to null
 
 #### Tab Completion
 
@@ -257,6 +261,8 @@ For example, to query an in-hospital mortality task on the sample data (both the
 >>> query.query(cfg=cfg, predicates_df=predicates_df)
 ```
 
+### Separate Predicates-Only File
+
 For more complex tasks involving a large number of predicates, a separate predicates-only "database" file can
 be created and passed into `TaskExtractorConfig.load()`. Only referenced predicates will have a predicate
 column computed and evaluated, so one could create a dataset-specific deposit file with many predicates and
@@ -265,5 +271,9 @@ reference as needed to ensure the cleanliness of the dataset-agnostic task crite
 ```python
 >>> cfg = config.TaskExtractorConfig.load(config_path="criteria.yaml", predicates_path="predicates.yaml")
 ```
+
+If the same predicates are defined in both the task configuration file and the predicates-only file, the
+predicates-only definition takes precedent and will be used to override previous definitions. As such, one may
+create a predicates-only "database" file for a particular dataset, and override accordingly for various tasks.
 
 ______________________________________________________________________

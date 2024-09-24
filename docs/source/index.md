@@ -38,19 +38,19 @@ If you have a dataset and want to leverage it for machine learning tasks, the AC
 
 - Task-Specific Concepts: Identify the predicates (data concepts) required for your specific machine learning tasks.
 - Pre-Defined Criteria: Utilize our pre-defined criteria across various tasks and clinical areas to expedite this process.
-- [PIE-MD](https://github.com/mmcdermott/PIE_MD/tree/main/tasks/criteria): Access our repository of tasks to find relevant predicates!
+- [MEDS-DEV](https://github.com/mmcdermott/MEDS-DEV/tree/main): Access our benchmark of tasks to find relevant predicates!
 
 ### III. Set Dataset-Agnostic Criteria
 
 - Standardization: Combine the identified predicates with standardized, dataset-agnostic criteria files.
-- Examples: Refer to the [MIMIC-IV](https://github.com/mmcdermott/PIE_MD/tree/main/tasks/MIMIC-IV) and [eICU](https://github.com/mmcdermott/PIE_MD/tree/main/tasks/eICU) examples for guidance on how to structure your criteria files for your private datasets!
+- Examples: Refer to the [MEDS-DEV](https://github.com/mmcdermott/MEDS-DEV/tree/main/src/MEDS_DEV/tasks/criteria) examples for guidance on how to structure your criteria files for your private datasets!
 
 ### IV. Run ACES
 
-- Run the ACES Command-Line Interface tool (`aces-cli`) to extract cohorts based on your task - check out the [Usage Guide](https://eventstreamaces.readthedocs.io/en/latest/usage.html)!
+- Run the ACES Command-Line Interface tool (`aces-cli`) to extract cohorts based on your task - check out the [Usage Guide](https://eventstreamaces.readthedocs.io/en/latest/usage.html) for more information!
 
 ### V. Run MEDS-Tab
 
-- Painless Reproducibility: Use [MEDS-Tab](https://github.com/mmcdermott/MEDS_TAB_MIMIC_IV/tree/main/tasks) to obtain comparable, reproducible, and well-tuned XGBoost results tailored to your dataset-specific feature space!
+- Painless Reproducibility: Use [MEDS-Tab](https://github.com/mmcdermott/MEDS_TAB_MIMIC_IV/tree/main) to obtain comparable, reproducible, and well-tuned XGBoost results tailored to your dataset-specific feature space!
 
-By following these steps, you can seamlessly transform your dataset, define necessary criteria, and leverage powerful machine learning tools within the ACES ecosystem. This approach not only simplifies the process but also ensures high-quality, reproducible results for your machine learning for health projects. It can reliably take no more than a week of full-time human effort to perform Steps I-V on new datasets in reasonable raw formulations!
+By following these steps, you can seamlessly transform your dataset, define necessary criteria, and leverage powerful machine learning tools within the ACES and MEDS ecosystem. This approach not only simplifies the process but also ensures high-quality, reproducible results for your machine learning for health projects. It can reliably take no more than a week of full-time human effort to perform Steps I-V on new datasets in reasonable raw formulations!

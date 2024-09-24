@@ -28,8 +28,8 @@ project = "ACES: Automatic Cohort Extraction System for Event-Streams"
 copyright = "2024, Justin Xu & Matthew McDermott"
 author = "Justin Xu & Matthew McDermott"
 
-release = "0.2.5"
-version = "0.2.5"
+# release = "0.2.5"
+# version = "0.2.5"
 
 
 def ensure_pandoc_installed(_):
@@ -256,7 +256,7 @@ html_theme_options = {
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
-html_title = f"ACES v{version} Documentation"
+html_title = "ACES Documentation"
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
 html_short_title = "ACES Documentation"
@@ -386,7 +386,7 @@ latex_documents = [
 # -- Options for EPUB output
 epub_show_urls = "footnote"
 
-print(f"loading configurations for {project} {version} ...", file=sys.stderr)
+print(f"loading configurations for {project} ...", file=sys.stderr)
 
 
 def setup(app):

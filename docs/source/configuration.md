@@ -63,6 +63,8 @@ These configs consist of the following four fields:
   will be used).
 - `value_min_inclusive`: See `value_min`
 - `value_max_inclusive`: See `value_max`
+- `other_cols`: This optional field accepts a 1-to-1 dictionary of column names to column values, and can be
+  used to specify further constraints on other columns (ie., not `code`) for this predicate.
 
 A given observation will be gauged to satisfy or fail to satisfy this predicate in one of two ways, depending
 on its source format.
@@ -191,5 +193,3 @@ to achieve the result. Instead, this bound is always interpreted to be inclusive
 the constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of predicate
 `name` in a window was either 1 or 2. All constraints in the dictionary must be satisfied on a window for it
 to be included.
-
-______________________________________________________________________
