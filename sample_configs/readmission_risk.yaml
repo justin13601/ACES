@@ -1,9 +1,9 @@
 # Task: 30-day Readmission Risk Prediction
 predicates:
   admission:
-    code: event_type//ADMISSION
+    code: { regex: "ADMISSION//.*" }
   discharge:
-    code: event_type//DISCHARGE
+    code: { regex: "DISCHARGE//.*" }
 
 trigger: admission
 

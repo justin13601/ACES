@@ -1,7 +1,7 @@
 # Task: 24-hour Imminent Mortality Prediction
 predicates:
   death:
-    code: event_type//DEATH
+    code: DEATH
 
 trigger: _ANY_EVENT
 
