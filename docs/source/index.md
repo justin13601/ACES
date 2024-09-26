@@ -15,7 +15,7 @@ README <readme>
 Usage Guide <usage>
 Task Examples <notebooks/examples>
 Predicates DataFrame <notebooks/predicates>
-Sample Data Tutorial <notebooks/tutorial>
+MEDS Data Tutorial <notebooks/tutorial_meds>
 Technical Details <technical>
 Computational Profile <profiling>
 Module API Reference <api/modules>

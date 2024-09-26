@@ -1,9 +1,9 @@
 # Task: Ventilation Weaning Prediction
 predicates:
   procedure_start:
-    code: event_type//PROCEDURE_START
+    code: PROCEDURE_START
   procedure_end:
-    code: event_type//PROCEDURE_END
+    code: PROCEDURE_END
   ventilation:
     code: procedure//Invasive Ventilation
   ventilation_start:

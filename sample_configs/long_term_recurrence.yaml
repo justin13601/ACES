@@ -1,9 +1,9 @@
 # Task: Long-term (3 Years) MI Recurrence Prediction
 predicates:
   admission:
-    code: event_type//ADMISSION
+    code: { regex: "ADMISSION//.*" }
   discharge:
-    code: event_type//DISCHARGE
+    code: { regex: "DISCHARGE//.*" }
   diagnosis_ICD9CM_41071:
     code: diagnosis//ICD9CM_41071
   diagnosis_ICD10CM_I214:

@@ -75,10 +75,13 @@ ACES/
 │   │   ├── events_df.parquet
 │   │   └── dynamic_measurements_df.parquet
 │   ├── meds_sample/
-│   │   ├── shards/
+│   │   ├── held_out/
+│   │   │   └── 0.parquet
+│   │   ├── train/
 │   │   │   ├── 0.parquet
 │   │   │   └── 1.parquet
-│   │   └── sample_shard.parquet
+│   │   └── tuning/
+│   │       └── 0.parquet
 │   └── sample_data.csv
 ├── sample_configs/
 │   └── inhospital_mortality.yaml
@@ -88,7 +91,7 @@ ACES/
 **To query from a single MEDS shard**:
 
 ```bash
-aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data.path="sample_data/meds_sample/sample_shard.parquet"
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data.path="sample_data/meds_sample/train/0.parquet"
 ```
 
 **To query from multiple MEDS shards**:
