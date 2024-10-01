@@ -45,17 +45,17 @@ class PlainPredicateConfig:
         Examples:
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) >=
-               (dyn int: 120)], [(col("numerical_value")) < (dyn int: 140)]])
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numeric_value")) >=
+               (dyn int: 120)], [(col("numeric_value")) < (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) >
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numeric_value")) >
                (dyn int: 120)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_max=140, value_max_inclusive=True)
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numerical_value")) <=
+            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numeric_value")) <=
                (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//diastolic")
             >>> expr = cfg.MEDS_eval_expr()
@@ -136,14 +136,14 @@ class PlainPredicateConfig:
 
             if self.value_min is not None:
                 if self.value_min_inclusive:
-                    criteria.append(pl.col("numerical_value") >= self.value_min)
+                    criteria.append(pl.col("numeric_value") >= self.value_min)
                 else:
-                    criteria.append(pl.col("numerical_value") > self.value_min)
+                    criteria.append(pl.col("numeric_value") > self.value_min)
             if self.value_max is not None:
                 if self.value_max_inclusive:
-                    criteria.append(pl.col("numerical_value") <= self.value_max)
+                    criteria.append(pl.col("numeric_value") <= self.value_max)
                 else:
-                    criteria.append(pl.col("numerical_value") < self.value_max)
+                    criteria.append(pl.col("numeric_value") < self.value_max)
 
         if self.other_cols:
             criteria.extend([pl.col(col) == value for col, value in self.other_cols.items()])
