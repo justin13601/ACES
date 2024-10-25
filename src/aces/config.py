@@ -1195,6 +1195,23 @@ class TaskExtractorConfig:
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
                                 label_window=None, index_timestamp_window=None)
+            >>> predicates_dict = {
+            ...     "metadata": {'description': 'A test predicates file'},
+            ...     "description": 'this is a test',
+            ...     "patient_demographics": {"brown_eyes": {"code": "eye_color//BR"}},
+            ...     "predicates": {'admission': "invalid"},
+            ... }
+            >>> with (tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as config_fp,
+            ...      tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as pred_fp):
+            ...     config_path = Path(config_fp.name)
+            ...     pred_path = Path(pred_fp.name)
+            ...     yaml.dump(no_predicates_config, config_fp)
+            ...     yaml.dump(predicates_dict, pred_fp)
+            ...     cfg = TaskExtractorConfig.load(config_path, pred_path) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Predicate 'admission' is not defined correctly in the configuration file. Currently
+            defined as the string: invalid. Please refer to the documentation for the supported formats.
         """
         if isinstance(config_path, str):
             config_path = Path(config_path)
@@ -1295,6 +1312,12 @@ class TaskExtractorConfig:
             if "expr" in p:
                 predicate_objs[n] = DerivedPredicateConfig(**p)
             else:
+                if isinstance(p, str):
+                    raise ValueError(
+                        f"Predicate '{n}' is not defined correctly in the configuration file. "
+                        f"Currently defined as the string: {p}. "
+                        "Please refer to the documentation for the supported formats."
+                    )
                 config_data = {k: v for k, v in p.items() if k in PlainPredicateConfig.__dataclass_fields__}
                 other_cols = {k: v for k, v in p.items() if k not in config_data}
                 predicate_objs[n] = PlainPredicateConfig(**config_data, other_cols=other_cols)

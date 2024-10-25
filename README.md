@@ -218,13 +218,15 @@ Fields for a "plain" predicate:
 
 - `code` (required): Must be one of the following:
   - a string with `//` sequence separating the column name and column value.
-  - a list of strings as above in the form of {any: \[???, ???, ...\]}, which will match any of the listed codes.
-  - a regex in the form of {regex: "???"}, which will match any code that matches that regular expression.
+  - a list of strings as above in the form of `{any: \[???, ???, ...\]}`, which will match any of the listed codes.
+  - a regex in the form of `{regex: "???"}`, which will match any code that matches that regular expression.
 - `value_min` (optional): Must be float or integer specifying the minimum value of the predicate, if the variable is presented as numerical values.
 - `value_max` (optional): Must be float or integer specifying the maximum value of the predicate, if the variable is presented as numerical values.
 - `value_min_inclusive` (optional): Must be a boolean specifying whether `value_min` is inclusive or not.
 - `value_max_inclusive` (optional): Must be a boolean specifying whether `value_max` is inclusive or not.
 - `other_cols` (optional): Must be a 1-to-1 dictionary of column name and column value, which places additional constraints on further columns.
+
+**Note**: For memory optimization, we strongly recommend using either the List of Values or Regular Expression formats whenever possible, especially when needing to match multiple values. Defining each code as an individual string will increase memory usage significantly, as each code generates a separate predicate column. Using a list or regex consolidates multiple matching codes under a single column, reducing the overall memory footprint.
 
 #### Derived Predicates
 

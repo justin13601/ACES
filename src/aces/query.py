@@ -4,6 +4,8 @@ It accepts the configuration file and predicate columns, builds the tree, and re
 """
 
 
+from collections import Counter
+
 import polars as pl
 from bigtree import preorder_iter
 from loguru import logger
@@ -136,6 +138,20 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
             .alias("label")
         )
         to_return_cols.insert(1, "label")
+
+        if result["label"].n_unique() == 1:
+            logger.warning(
+                f"All labels in the extracted cohort are the same: '{result['label'][0]}'. "
+                "This may indicate an issue with the task logic. "
+                "Please double-check your configuration file if this is not expected."
+            )
+        else:
+            unique_labels = result["label"].n_unique()
+            label_distribution = Counter(result["label"])
+            logger.info(
+                f"Found {unique_labels} unique labels in the extracted cohort: "
+                f"{dict(label_distribution)}."
+            )
 
     # add index_timestamp column if specified
     if cfg.index_timestamp_window:
