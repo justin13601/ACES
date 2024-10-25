@@ -148,9 +148,12 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         else:
             unique_labels = result["label"].n_unique()
             label_distribution = Counter(result["label"])
+            total_count = sum(label_distribution.values())
+            distribution_with_pct = {
+                k: f"{v} ({v/total_count*100:.1f}%)" for k, v in label_distribution.items()
+            }
             logger.info(
-                f"Found {unique_labels} unique labels in the extracted cohort: "
-                f"{dict(label_distribution)}."
+                f"Found {unique_labels} unique labels in the extracted cohort: " f"{distribution_with_pct}."
             )
 
     # add index_timestamp column if specified
