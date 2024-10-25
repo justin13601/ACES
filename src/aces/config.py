@@ -287,7 +287,7 @@ class DerivedPredicateConfig:
     """
 
     expr: str
-    static: list = field(default_factory=list)
+    static: bool = False
 
     def __post_init__(self):
         if not self.expr:
@@ -979,9 +979,9 @@ class TaskExtractorConfig:
         >>> print(config.index_timestamp_window) # doctest: +NORMALIZE_WHITESPACE
         input
         >>> print(config.derived_predicates) # doctest: +NORMALIZE_WHITESPACE
-        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)', static=[]),
-         'diabetes': DerivedPredicateConfig(expr='or(diabetes_icd9, diabetes_icd10)', static=[]),
-         'diabetes_and_discharge': DerivedPredicateConfig(expr='and(diabetes, discharge)', static=[])}
+        {'death_or_discharge': DerivedPredicateConfig(expr='or(death, discharge)', static=False),
+         'diabetes': DerivedPredicateConfig(expr='or(diabetes_icd9, diabetes_icd10)', static=False),
+         'diabetes_and_discharge': DerivedPredicateConfig(expr='and(diabetes, discharge)', static=False)}
         >>> print(nx.write_network_text(config.predicates_DAG))
         ╟── death
         ╎   └─╼ death_or_discharge ╾ discharge
@@ -1293,7 +1293,7 @@ class TaskExtractorConfig:
         predicate_objs = {}
         for n, p in predicates_to_parse.items():
             if "expr" in p:
-                predicate_objs[n] = DerivedPredicateConfig(**p, static=list(final_demographics.keys()))
+                predicate_objs[n] = DerivedPredicateConfig(**p)
             else:
                 config_data = {k: v for k, v in p.items() if k in PlainPredicateConfig.__dataclass_fields__}
                 other_cols = {k: v for k, v in p.items() if k not in config_data}
