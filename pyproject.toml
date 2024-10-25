@@ -37,7 +37,7 @@ expand_shards = "aces.expand_shards:main"
 
 [project.optional-dependencies]
 dev = [
-  "pre-commit", "pytest", "pytest-cov", "pytest-subtests", "rootutils", "hypothesis"
+  "pre-commit<4", "pytest", "pytest-cov", "pytest-subtests", "rootutils", "hypothesis"
 ]
 profiling = ["psutil"]
 
