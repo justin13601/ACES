@@ -8,8 +8,6 @@ predicates:
     code: DEATH
   discharge_or_death:
     expr: or(discharge, death)
-  male_admission:
-    expr: and(male, admission)
 
 patient_demographics:
   male:
@@ -35,7 +33,6 @@ windows:
       admission: (None, 0)
       discharge: (None, 0)
       death: (None, 0)
-      male_admission: (None, 0)
   target:
     start: gap.end
     end: start -> discharge_or_death
