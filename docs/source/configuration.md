@@ -49,20 +49,29 @@ These configs consist of the following four fields:
   The field can additionally be a dictionary with either a `regex` key and the value being a regular
   expression (satisfied if the regular expression evaluates to True), or a `any` key and the value being a
   list of strings (satisfied if there is an occurrence for any code in the list).
+
+  **Note**: Each individual definition of `PlainPredicateConfig` and `code` will generate a separate predicate
+  column. Thus, for memory optimization, it is strongly recommended to match multiple values using either the
+  List of Values or Regular Expression formats whenever possible.
+
 - `value_min`: If specified, an observation will only satisfy this predicate if the occurrence of the
   underlying `code` with a reported numerical value that is either greater than or greater than or equal to
   `value_min` (with these options being decided on the basis of `value_min_inclusive`, where
   `value_min_inclusive=True` indicating that an observation satisfies this predicate if its value is greater
   than or equal to `value_min`, and `value_min_inclusive=False` indicating a greater than but not equal to
   will be used).
+
 - `value_max`: If specified, an observation will only satisfy this predicate if the occurrence of the
   underlying `code` with a reported numerical value that is either less than or less than or equal to
   `value_max` (with these options being decided on the basis of `value_max_inclusive`, where
   `value_max_inclusive=True` indicating that an observation satisfies this predicate if its value is less
   than or equal to `value_max`, and `value_max_inclusive=False` indicating a less than but not equal to
   will be used).
+
 - `value_min_inclusive`: See `value_min`
+
 - `value_max_inclusive`: See `value_max`
+
 - `other_cols`: This optional field accepts a 1-to-1 dictionary of column names to column values, and can be
   used to specify further constraints on other columns (ie., not `code`) for this predicate.
 
