@@ -696,6 +696,8 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
             raise ValueError(f"Invalid data standard: {standard}. Options are 'direct', 'MEDS', 'ESGPT'.")
     predicate_cols = list(plain_predicates.keys())
 
+    data = data.sort(by=["subject_id", "timestamp"], nulls_last=False)
+
     # derived predicates
     logger.info("Loaded plain predicates. Generating derived predicate columns...")
     static_variables = [pred for pred in cfg.plain_predicates if cfg.plain_predicates[pred].static]
@@ -713,8 +715,6 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         data = data.with_columns(code.eval_expr().cast(PRED_CNT_TYPE).alias(name))
         logger.info(f"Added predicate column '{name}'.")
         predicate_cols.append(name)
-
-    data = data.sort(by=["subject_id", "timestamp"], nulls_last=False)
 
     # add special predicates:
     # a column of 1s representing any predicate
