@@ -698,15 +698,16 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
 
     # derived predicates
     logger.info("Loaded plain predicates. Generating derived predicate columns...")
+    static_variables = [pred for pred in cfg.plain_predicates if cfg.plain_predicates[pred].static]
     for name, code in cfg.derived_predicates.items():
-        if any(x in code.static for x in code.input_predicates):
+        if any(x in static_variables for x in code.input_predicates):
             data = data.with_columns(
                 [
                     pl.col(static_var)
                     .first()
                     .over("subject_id")  # take the first value in each subject_id group and propagate it
                     .alias(static_var)
-                    for static_var in code.static
+                    for static_var in static_variables
                 ]
             )
         data = data.with_columns(code.eval_expr().cast(PRED_CNT_TYPE).alias(name))
