@@ -1275,6 +1275,7 @@ class TaskExtractorConfig:
 
         final_predicates = {**predicates, **overriding_predicates}
         final_demographics = {**patient_demographics, **overriding_demographics}
+        all_predicates = {**final_predicates, **final_demographics}
 
         logger.info("Parsing windows...")
         if windows is None:
@@ -1288,22 +1289,44 @@ class TaskExtractorConfig:
         logger.info("Parsing trigger event...")
         trigger = EventConfig(trigger)
 
+        # add window referenced predicates
         referenced_predicates = {pred for w in windows.values() for pred in w.referenced_predicates}
+
+        # add trigger predicate
         referenced_predicates.add(trigger.predicate)
+
+        # add label predicate if it exists and not already added
         label_reference = [w.label for w in windows.values() if w.label]
         if label_reference:
             referenced_predicates.update(set(label_reference))
-        current_predicates = set(referenced_predicates)
+
         special_predicates = {ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY}
-        for pred in current_predicates - special_predicates:
-            if pred not in final_predicates:
+        for pred in set(referenced_predicates) - special_predicates:
+            if pred not in all_predicates:
                 raise KeyError(
-                    f"Something referenced predicate {pred} that wasn't defined in the configuration."
+                    f"Something referenced predicate '{pred}' that wasn't defined in the configuration."
                 )
-            if "expr" in final_predicates[pred]:
-                referenced_predicates.update(
-                    DerivedPredicateConfig(**final_predicates[pred]).input_predicates
-                )
+
+            if "expr" in all_predicates[pred]:
+                stack = list(DerivedPredicateConfig(**all_predicates[pred]).input_predicates)
+
+                while stack:
+                    nested_pred = stack.pop()
+
+                    if nested_pred not in all_predicates:
+                        raise KeyError(
+                            f"Predicate '{nested_pred}' referenced in '{pred}' is not defined in the "
+                            "configuration."
+                        )
+
+                    # if nested_pred is a DerivedPredicateConfig, unpack input_predicates and add to stack
+                    if "expr" in all_predicates[nested_pred]:
+                        derived_config = DerivedPredicateConfig(**all_predicates[nested_pred])
+                        stack.extend(derived_config.input_predicates)
+                        referenced_predicates.add(nested_pred)  # also add itself to referenced_predicates
+                    else:
+                        # if nested_pred is a PlainPredicateConfig, only add it to referenced_predicates
+                        referenced_predicates.add(nested_pred)
 
         logger.info("Parsing predicates...")
         predicates_to_parse = {k: v for k, v in final_predicates.items() if k in referenced_predicates}
