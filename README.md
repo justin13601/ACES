@@ -217,9 +217,10 @@ normal_spo2:
 Fields for a "plain" predicate:
 
 - `code` (required): Must be one of the following:
-  - a string with `//` sequence separating the column name and column value.
-  - a list of strings as above in the form of `{any: \[???, ???, ...\]}`, which will match any of the listed codes.
-  - a regex in the form of `{regex: "???"}`, which will match any code that matches that regular expression.
+  - a string matching values in a column named `code` (for `MEDS` only).
+  - a string with a `//` sequence separating the column name and the matching column value (for `ESGPT` only).
+  - a list of strings as above in the form of `{any: \[???, ???, ...\]}` (or the corresponding expanded indented `YAML` format), which will match any of the listed codes.
+  - a regex in the form of `{regex: "???"}` (or the corresponding expanded indented `YAML` format), which will match any code that matches that regular expression.
 - `value_min` (optional): Must be float or integer specifying the minimum value of the predicate, if the variable is presented as numerical values.
 - `value_max` (optional): Must be float or integer specifying the maximum value of the predicate, if the variable is presented as numerical values.
 - `value_min_inclusive` (optional): Must be a boolean specifying whether `value_min` is inclusive or not.
