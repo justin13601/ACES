@@ -1166,6 +1166,7 @@ class TaskExtractorConfig:
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
                                 label_window=None, index_timestamp_window=None)
+
             >>> predicates_dict = {
             ...     "metadata": {'description': 'A test predicates file'},
             ...     "description": 'this is a test',
@@ -1195,6 +1196,66 @@ class TaskExtractorConfig:
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
                                 label_window=None, index_timestamp_window=None)
+
+            >>> config_dict = {
+            ...     "metadata": {'description': 'A test configuration file'},
+            ...     "description": 'this is a test for joining static and plain predicates',
+            ...     "patient_demographics": {"male": {"code": "MALE"}, "female": {"code": "FEMALE"}},
+            ...     "predicates": {"normal_male_lab_range": {"code": "LAB", "value_min": 0, "value_max": 100,
+            ...                  "value_min_inclusive": True, "value_max_inclusive": True},
+            ...                  "normal_female_lab_range": {"code": "LAB", "value_min": 0, "value_max": 90,
+            ...                  "value_min_inclusive": True, "value_max_inclusive": True},
+            ...                  "normal_lab_male": {"expr": "and(normal_male_lab_range, male)"},
+            ...                  "normal_lab_female": {"expr": "and(normal_female_lab_range, female)"}},
+            ...     "trigger": "_ANY_EVENT",
+            ...     "windows": {
+            ...         "start": {
+            ...             "start": None, "end": "trigger + 24h", "start_inclusive": True,
+            ...             "end_inclusive": True, "has": {"normal_lab_male": "(1, None)"},
+            ...         }
+            ...     },
+            ... }
+            >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+            ...     config_path = Path(f.name)
+            ...     yaml.dump(config_dict, f)
+            ...     cfg = TaskExtractorConfig.load(config_path)
+            >>> cfg.predicates.keys() # doctest: +NORMALIZE_WHITESPACE
+            dict_keys(['normal_lab_male', 'normal_male_lab_range', 'female', 'male'])
+
+            >>> config_dict = {
+            ...     "metadata": {'description': 'A test configuration file'},
+            ...     "description": 'this is a test for nested derived predicates',
+            ...     "patient_demographics": {"male": {"code": "MALE"}, "female": {"code": "FEMALE"}},
+            ...     "predicates": {"abnormally_low_male_lab_range": {"code": "LAB", "value_max": 90,
+            ...                  "value_max_inclusive": False},
+            ...                  "abnormally_low_female_lab_range": {"code": "LAB", "value_max": 80,
+            ...                  "value_max_inclusive": False},
+            ...                  "abnormally_high_lab_range": {"code": "LAB", "value_min": 120,
+            ...                  "value_min_inclusive": False},
+            ...                  "abnormal_lab_male_range": {"expr":
+            ...                             "or(abnormally_low_male_lab_range, abnormally_high_lab_range)"},
+            ...                  "abnormal_lab_female_range": {"expr":
+            ...                             "or(abnormally_low_female_lab_range, abnormally_high_lab_range)"},
+            ...                  "abnormal_lab_male": {"expr": "and(abnormal_lab_male_range, male)"},
+            ...                  "abnormal_lab_female": {"expr": "and(abnormal_lab_female_range, female)"},
+            ...                  "abnormal_labs": {"expr": "or(abnormal_lab_male, abnormal_lab_female)"}},
+            ...     "trigger": "_ANY_EVENT",
+            ...     "windows": {
+            ...         "start": {
+            ...             "start": None, "end": "trigger + 24h", "start_inclusive": True,
+            ...             "end_inclusive": True, "has": {"abnormal_labs": "(1, None)"},
+            ...         }
+            ...     },
+            ... }
+            >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+            ...     config_path = Path(f.name)
+            ...     yaml.dump(config_dict, f)
+            ...     cfg = TaskExtractorConfig.load(config_path)
+            >>> cfg.predicates.keys() # doctest: +NORMALIZE_WHITESPACE
+            dict_keys(['abnormal_lab_female', 'abnormal_lab_female_range', 'abnormal_lab_male',
+            'abnormal_lab_male_range', 'abnormal_labs', 'abnormally_high_lab_range',
+            'abnormally_low_female_lab_range', 'abnormally_low_male_lab_range', 'female', 'male'])
+
             >>> predicates_dict = {
             ...     "metadata": {'description': 'A test predicates file'},
             ...     "description": 'this is a test',
