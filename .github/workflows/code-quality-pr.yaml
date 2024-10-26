@@ -39,4 +39,4 @@ jobs:
       - name: Run pre-commits
         uses: pre-commit/action@v3.0.1
         with:
-          extra_args: --all-files
+          extra_args: --files ${{ steps.file_changes.outputs.files}}
