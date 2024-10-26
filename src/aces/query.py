@@ -107,7 +107,8 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)
     if result.is_empty():  # pragma: no cover
-        logger.info("No valid rows found.")
+        logger.warning("No valid rows found.")
+        return pl.DataFrame()
     else:
         # number of patients
         logger.info(
