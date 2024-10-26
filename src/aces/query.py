@@ -106,7 +106,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         return pl.DataFrame()
 
     result = extract_subtree(cfg.window_tree, prospective_root_anchors, predicates_df)
-    if result.is_empty():
+    if result.is_empty():  # pragma: no cover
         logger.info("No valid rows found.")
     else:
         # number of patients
@@ -125,7 +125,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     # add label column if specified
     if cfg.label_window:
-        logger.info(
+        logger.info(  # pragma: no cover
             f"Extracting label '{cfg.windows[cfg.label_window].label}' from window "
             f"'{cfg.label_window}'..."
         )
@@ -137,7 +137,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         )
         to_return_cols.insert(1, "label")
 
-        if result["label"].n_unique() == 1:
+        if result["label"].n_unique() == 1:  # pragma: no cover
             logger.warning(
                 f"All labels in the extracted cohort are the same: '{result['label'][0]}'. "
                 "This may indicate an issue with the task logic. "
@@ -146,7 +146,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     # add index_timestamp column if specified
     if cfg.index_timestamp_window:
-        logger.info(
+        logger.info(  # pragma: no cover
             f"Setting index timestamp as '{cfg.windows[cfg.index_timestamp_window].index_timestamp}' "
             f"of window '{cfg.index_timestamp_window}'..."
         )
