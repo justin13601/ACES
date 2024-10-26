@@ -1074,7 +1074,7 @@ class TaskExtractorConfig:
         >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
         Traceback (most recent call last):
             ...
-        KeyError: "Missing 1 relationships:\\nDerived predicate 'foobar' references undefined predicate 'bar'"
+        KeyError: "Missing 1 relationships: Derived predicate 'foobar' references undefined predicate 'bar'"
 
         >>> predicates = {"foo": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("foo")
@@ -1367,7 +1367,7 @@ class TaskExtractorConfig:
                 )
         if missing_predicates:
             raise KeyError(
-                f"Missing {len(missing_predicates)} relationships:\n" + "\n".join(missing_predicates)
+                f"Missing {len(missing_predicates)} relationships: " + "; ".join(missing_predicates)
             )
 
         self._predicate_dag_graph = nx.DiGraph(dag_relationships)
