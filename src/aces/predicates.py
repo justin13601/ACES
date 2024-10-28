@@ -609,6 +609,64 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0    ┆ 1          ┆ 1             ┆ 0           │
         │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0    ┆ 1          ┆ 0             ┆ 1           │
         └────────────┴─────────────────────┴─────┴──────┴────────────┴───────────────┴─────────────┘
+
+        >>> data = pl.DataFrame({
+        ...     "subject_id": [1, 1, 1, 2, 2],
+        ...     "timestamp": [
+        ...         None,
+        ...         "01/01/2021 00:00",
+        ...         "01/01/2021 12:00",
+        ...         "01/02/2021 00:00",
+        ...         "01/02/2021 12:00"],
+        ...     "adm":       [0, 1, 0, 1, 0],
+        ...     "male":      [1, 0, 0, 0, 0],
+        ... })
+        >>> predicates = {
+        ...     "adm": PlainPredicateConfig("adm"),
+        ...     "male": PlainPredicateConfig("male", static=True), # predicate match based on name for direct
+        ...     "male_adm": DerivedPredicateConfig("and(male, adm)", static=['male']),
+        ... }
+        >>> trigger = EventConfig("adm")
+        >>> windows = {
+        ...     "input": WindowConfig(
+        ...         start=None,
+        ...         end="trigger + 24h",
+        ...         start_inclusive=True,
+        ...         end_inclusive=True,
+        ...         has={"_ANY_EVENT": "(32, None)"},
+        ...     ),
+        ...     "gap": WindowConfig(
+        ...         start="input.end",
+        ...         end="start + 24h",
+        ...         start_inclusive=False,
+        ...         end_inclusive=True,
+        ...         has={
+        ...             "adm": "(None, 0)",
+        ...             "male_adm": "(None, 0)",
+        ...         },
+        ...     ),
+        ... }
+        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
+        ...     data_path = Path(f.name)
+        ...     data.write_csv(data_path)
+        ...     data_config = DictConfig({
+        ...         "path": str(data_path), "standard": "direct", "ts_format": "%m/%d/%Y %H:%M"
+        ...     })
+        ...     get_predicates_df(config, data_config)
+        shape: (5, 6)
+        ┌────────────┬─────────────────────┬─────┬──────┬──────────┬────────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ male ┆ male_adm ┆ _ANY_EVENT │
+        │ ---        ┆ ---                 ┆ --- ┆ ---  ┆ ---      ┆ ---        │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64  ┆ i64      ┆ i64        │
+        ╞════════════╪═════════════════════╪═════╪══════╪══════════╪════════════╡
+        │ 1          ┆ null                ┆ 0   ┆ 1    ┆ 0        ┆ null       │
+        │ 1          ┆ 2021-01-01 00:00:00 ┆ 1   ┆ 1    ┆ 1        ┆ 1          │
+        │ 1          ┆ 2021-01-01 12:00:00 ┆ 0   ┆ 1    ┆ 0        ┆ 1          │
+        │ 2          ┆ 2021-01-02 00:00:00 ┆ 1   ┆ 0    ┆ 0        ┆ 1          │
+        │ 2          ┆ 2021-01-02 12:00:00 ┆ 0   ┆ 0    ┆ 0        ┆ 1          │
+        └────────────┴─────────────────────┴─────┴──────┴──────────┴────────────┘
+
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".csv") as f:
         ...     data_path = Path(f.name)
         ...     data.write_csv(data_path)
@@ -638,14 +696,25 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
             raise ValueError(f"Invalid data standard: {standard}. Options are 'direct', 'MEDS', 'ESGPT'.")
     predicate_cols = list(plain_predicates.keys())
 
+    data = data.sort(by=["subject_id", "timestamp"], nulls_last=False)
+
     # derived predicates
     logger.info("Loaded plain predicates. Generating derived predicate columns...")
+    static_variables = [pred for pred in cfg.plain_predicates if cfg.plain_predicates[pred].static]
     for name, code in cfg.derived_predicates.items():
+        if any(x in static_variables for x in code.input_predicates):
+            data = data.with_columns(
+                [
+                    pl.col(static_var)
+                    .first()
+                    .over("subject_id")  # take the first value in each subject_id group and propagate it
+                    .alias(static_var)
+                    for static_var in static_variables
+                ]
+            )
         data = data.with_columns(code.eval_expr().cast(PRED_CNT_TYPE).alias(name))
         logger.info(f"Added predicate column '{name}'.")
         predicate_cols.append(name)
-
-    data = data.sort(by=["subject_id", "timestamp"], nulls_last=False)
 
     # add special predicates:
     # a column of 1s representing any predicate

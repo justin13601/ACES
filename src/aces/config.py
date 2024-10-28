@@ -1074,7 +1074,7 @@ class TaskExtractorConfig:
         >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
         Traceback (most recent call last):
             ...
-        KeyError: "Missing 1 relationships:\\nDerived predicate 'foobar' references undefined predicate 'bar'"
+        KeyError: "Missing 1 relationships: Derived predicate 'foobar' references undefined predicate 'bar'"
 
         >>> predicates = {"foo": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("foo")
@@ -1166,6 +1166,7 @@ class TaskExtractorConfig:
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
                                 label_window=None, index_timestamp_window=None)
+
             >>> predicates_dict = {
             ...     "metadata": {'description': 'A test predicates file'},
             ...     "description": 'this is a test',
@@ -1195,6 +1196,83 @@ class TaskExtractorConfig:
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
                                 label_window=None, index_timestamp_window=None)
+
+            >>> config_dict = {
+            ...     "metadata": {'description': 'A test configuration file'},
+            ...     "description": 'this is a test for joining static and plain predicates',
+            ...     "patient_demographics": {"male": {"code": "MALE"}, "female": {"code": "FEMALE"}},
+            ...     "predicates": {"normal_male_lab_range": {"code": "LAB", "value_min": 0, "value_max": 100,
+            ...                  "value_min_inclusive": True, "value_max_inclusive": True},
+            ...                  "normal_female_lab_range": {"code": "LAB", "value_min": 0, "value_max": 90,
+            ...                  "value_min_inclusive": True, "value_max_inclusive": True},
+            ...                  "normal_lab_male": {"expr": "and(normal_male_lab_range, male)"},
+            ...                  "normal_lab_female": {"expr": "and(normal_female_lab_range, female)"}},
+            ...     "trigger": "_ANY_EVENT",
+            ...     "windows": {
+            ...         "start": {
+            ...             "start": None, "end": "trigger + 24h", "start_inclusive": True,
+            ...             "end_inclusive": True, "has": {"normal_lab_male": "(1, None)"},
+            ...         }
+            ...     },
+            ... }
+            >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+            ...     config_path = Path(f.name)
+            ...     yaml.dump(config_dict, f)
+            ...     cfg = TaskExtractorConfig.load(config_path)
+            >>> cfg.predicates.keys() # doctest: +NORMALIZE_WHITESPACE
+            dict_keys(['normal_lab_male', 'normal_male_lab_range', 'female', 'male'])
+
+            >>> config_dict = {
+            ...     "metadata": {'description': 'A test configuration file'},
+            ...     "description": 'this is a test for nested derived predicates',
+            ...     "patient_demographics": {"male": {"code": "MALE"}, "female": {"code": "FEMALE"}},
+            ...     "predicates": {"abnormally_low_male_lab_range": {"code": "LAB", "value_max": 90,
+            ...                  "value_max_inclusive": False},
+            ...                  "abnormally_low_female_lab_range": {"code": "LAB", "value_max": 80,
+            ...                  "value_max_inclusive": False},
+            ...                  "abnormally_high_lab_range": {"code": "LAB", "value_min": 120,
+            ...                  "value_min_inclusive": False},
+            ...                  "abnormal_lab_male_range": {"expr":
+            ...                             "or(abnormally_low_male_lab_range, abnormally_high_lab_range)"},
+            ...                  "abnormal_lab_female_range": {"expr":
+            ...                             "or(abnormally_low_female_lab_range, abnormally_high_lab_range)"},
+            ...                  "abnormal_lab_male": {"expr": "and(abnormal_lab_male_range, male)"},
+            ...                  "abnormal_lab_female": {"expr": "and(abnormal_lab_female_range, female)"},
+            ...                  "abnormal_labs": {"expr": "or(abnormal_lab_male, abnormal_lab_female)"}},
+            ...     "trigger": "_ANY_EVENT",
+            ...     "windows": {
+            ...         "start": {
+            ...             "start": None, "end": "trigger + 24h", "start_inclusive": True,
+            ...             "end_inclusive": True, "has": {"abnormal_labs": "(1, None)"},
+            ...         }
+            ...     },
+            ... }
+            >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+            ...     config_path = Path(f.name)
+            ...     yaml.dump(config_dict, f)
+            ...     cfg = TaskExtractorConfig.load(config_path)
+            >>> cfg.predicates.keys() # doctest: +NORMALIZE_WHITESPACE
+            dict_keys(['abnormal_lab_female', 'abnormal_lab_female_range', 'abnormal_lab_male',
+            'abnormal_lab_male_range', 'abnormal_labs', 'abnormally_high_lab_range',
+            'abnormally_low_female_lab_range', 'abnormally_low_male_lab_range', 'female', 'male'])
+
+            >>> predicates_dict = {
+            ...     "metadata": {'description': 'A test predicates file'},
+            ...     "description": 'this is a test',
+            ...     "patient_demographics": {"brown_eyes": {"code": "eye_color//BR"}},
+            ...     "predicates": {'admission': "invalid"},
+            ... }
+            >>> with (tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as config_fp,
+            ...      tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as pred_fp):
+            ...     config_path = Path(config_fp.name)
+            ...     pred_path = Path(pred_fp.name)
+            ...     yaml.dump(no_predicates_config, config_fp)
+            ...     yaml.dump(predicates_dict, pred_fp)
+            ...     cfg = TaskExtractorConfig.load(config_path, pred_path) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Predicate 'admission' is not defined correctly in the configuration file. Currently
+            defined as the string: invalid. Please refer to the documentation for the supported formats.
         """
         if isinstance(config_path, str):
             config_path = Path(config_path)
@@ -1258,6 +1336,7 @@ class TaskExtractorConfig:
 
         final_predicates = {**predicates, **overriding_predicates}
         final_demographics = {**patient_demographics, **overriding_demographics}
+        all_predicates = {**final_predicates, **final_demographics}
 
         logger.info("Parsing windows...")
         if windows is None:
@@ -1271,22 +1350,44 @@ class TaskExtractorConfig:
         logger.info("Parsing trigger event...")
         trigger = EventConfig(trigger)
 
+        # add window referenced predicates
         referenced_predicates = {pred for w in windows.values() for pred in w.referenced_predicates}
+
+        # add trigger predicate
         referenced_predicates.add(trigger.predicate)
+
+        # add label predicate if it exists and not already added
         label_reference = [w.label for w in windows.values() if w.label]
         if label_reference:
             referenced_predicates.update(set(label_reference))
-        current_predicates = set(referenced_predicates)
+
         special_predicates = {ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY}
-        for pred in current_predicates - special_predicates:
-            if pred not in final_predicates:
+        for pred in set(referenced_predicates) - special_predicates:
+            if pred not in all_predicates:
                 raise KeyError(
-                    f"Something referenced predicate {pred} that wasn't defined in the configuration."
+                    f"Something referenced predicate '{pred}' that wasn't defined in the configuration."
                 )
-            if "expr" in final_predicates[pred]:
-                referenced_predicates.update(
-                    DerivedPredicateConfig(**final_predicates[pred]).input_predicates
-                )
+
+            if "expr" in all_predicates[pred]:
+                stack = list(DerivedPredicateConfig(**all_predicates[pred]).input_predicates)
+
+                while stack:
+                    nested_pred = stack.pop()
+
+                    if nested_pred not in all_predicates:
+                        raise KeyError(
+                            f"Predicate '{nested_pred}' referenced in '{pred}' is not defined in the "
+                            "configuration."
+                        )
+
+                    # if nested_pred is a DerivedPredicateConfig, unpack input_predicates and add to stack
+                    if "expr" in all_predicates[nested_pred]:
+                        derived_config = DerivedPredicateConfig(**all_predicates[nested_pred])
+                        stack.extend(derived_config.input_predicates)
+                        referenced_predicates.add(nested_pred)  # also add itself to referenced_predicates
+                    else:
+                        # if nested_pred is a PlainPredicateConfig, only add it to referenced_predicates
+                        referenced_predicates.add(nested_pred)
 
         logger.info("Parsing predicates...")
         predicates_to_parse = {k: v for k, v in final_predicates.items() if k in referenced_predicates}
@@ -1295,6 +1396,12 @@ class TaskExtractorConfig:
             if "expr" in p:
                 predicate_objs[n] = DerivedPredicateConfig(**p)
             else:
+                if isinstance(p, str):
+                    raise ValueError(
+                        f"Predicate '{n}' is not defined correctly in the configuration file. "
+                        f"Currently defined as the string: {p}. "
+                        "Please refer to the documentation for the supported formats."
+                    )
                 config_data = {k: v for k, v in p.items() if k in PlainPredicateConfig.__dataclass_fields__}
                 other_cols = {k: v for k, v in p.items() if k not in config_data}
                 predicate_objs[n] = PlainPredicateConfig(**config_data, other_cols=other_cols)
@@ -1344,7 +1451,7 @@ class TaskExtractorConfig:
                 )
         if missing_predicates:
             raise KeyError(
-                f"Missing {len(missing_predicates)} relationships:\n" + "\n".join(missing_predicates)
+                f"Missing {len(missing_predicates)} relationships: " + "; ".join(missing_predicates)
             )
 
         self._predicate_dag_graph = nx.DiGraph(dag_relationships)
