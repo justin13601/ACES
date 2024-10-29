@@ -10,7 +10,7 @@ from loguru import logger
 from pytimeparse import parse
 
 
-def parse_timedelta(time_str: str) -> timedelta:
+def parse_timedelta(time_str):
     """Parse a time string and return a timedelta object.
 
     Using time expression parser: https://github.com/wroberts/pytimeparse
@@ -67,7 +67,7 @@ def log_tree(node):
     logger.info("\n" + captured.getvalue())  # Log the captured output
 
 
-def hydra_loguru_init(filename) -> None:
+def hydra_loguru_init(filename):
     """Must be called from a hydra main!"""
     hydra_path = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
     logger.add(os.path.join(hydra_path, filename))
