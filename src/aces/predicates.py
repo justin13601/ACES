@@ -5,6 +5,7 @@ from pathlib import Path
 import polars as pl
 from loguru import logger
 from omegaconf import DictConfig
+from polars.exceptions import ColumnNotFoundError
 
 from .config import TaskExtractorConfig
 from .types import (
@@ -198,7 +199,7 @@ def direct_load_plain_predicates(
 
     missing_columns = [col for col in columns if col not in data.columns]
     if missing_columns:
-        raise pl.ColumnNotFoundError(missing_columns)
+        raise ColumnNotFoundError(missing_columns)
 
     data = data.select(columns)
     ts_type = data.schema["timestamp"]
