@@ -19,9 +19,10 @@
 
 **Updates**
 
+- **\[2024-12-10\]** Latest `polars` version (`1.17.1`) is now supported.
+- **\[2024-10-28\]** Nested derived predicates and derived predicates between static variables and plain predicates can now be defined.
 - **\[2024-09-01\]** Predicates can now be defined in a configuration file separate to task criteria files.
-- **\[2024-08-29\]** MEDS v0.3.3 is now supported.
-- **\[2024-08-22\]** Polars v1.5.\* is now supported.
+- **\[2024-08-29\]** Latest `MEDS` version (`0.3.3`) is now supported.
 - **\[2024-08-10\]** Expanded predicates configuration language to support regular expressions, multi-column constraints, and multi-value constraints.
 - **\[2024-07-30\]** Added ability to place constraints on static variables, such as patient demographics.
 - **\[2024-06-28\]** Paper posted at [arXiv:2406.19653](https://arxiv.org/abs/2406.19653).
