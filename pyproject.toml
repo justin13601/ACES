@@ -18,7 +18,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "polars == 1.5.*",
+    "polars >= 1.0.0, <= 1.17.1",
     "bigtree == 0.18.*",
     "ruamel.yaml == 0.18.*",
     "loguru == 0.7.*",
