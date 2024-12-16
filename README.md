@@ -203,13 +203,13 @@ There are two types of predicates that can be defined in the configuration file,
 
 #### Plain Predicates
 
-"Plain" predicates represent explicit values (either `str` or `int`) in your dataset at a particular timestamp and has 1 required `code` field (for string categorical variables) and 4 optional fields (for integer or float continuous variables). For instance, the following defines a predicate representing normal SpO2 levels (a range of 90-120 corresponding to rows where the `lab` column is `O2 saturation pulseoxymetry (%)`):
+"Plain" predicates represent explicit values (either `str` or `int`) in your dataset at a particular timestamp and has 1 required `code` field (for string categorical variables) and 4 optional fields (for integer or float continuous variables). For instance, the following defines a predicate representing normal SpO2 levels (a range of 90-100 corresponding to rows where the `lab` column is `O2 saturation pulseoxymetry (%)`):
 
 ```yaml
 normal_spo2:
   code: lab//O2 saturation pulseoxymetry (%)     # required <str>//<str>
   value_min: 90                                  # optional <float/int>
-  value_max: 120                                 # optional <float/int>
+  value_max: 100                                 # optional <float/int>
   value_min_inclusive: true                      # optional <bool>
   value_max_inclusive: true                      # optional <bool>
   other_cols: {}                                 # optional <dict>
