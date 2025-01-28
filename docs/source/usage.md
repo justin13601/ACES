@@ -18,7 +18,7 @@ pip install es-aces
 
 **Example: `inhospital_mortality.yaml`**
 
-Please see the [Task Configuration File Overview](https://eventstreamaces.readthedocs.io/en/latest/overview.html#task-configuration-file) for details on how to create this configuration for your own task! More examples are available [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/examples.html) and in the [GitHub repository](https://github.com/justin13601/ACES/tree/main/sample_configs).
+Please see the [Task Configuration File Overview](https://eventstreamaces.readthedocs.io/en/latest/readme.html#task-configuration-file) for details on how to create this configuration for your own task! More examples are available [here](https://eventstreamaces.readthedocs.io/en/latest/notebooks/examples.html) and in the [GitHub repository](https://github.com/justin13601/ACES/tree/main/sample_configs).
 
 This particular task configuration defines a cohort for the binary prediction of in-hospital mortality 48 hours after admission. Patients with 5 or more records between the start of their record and 24 hours after the admission will be included. The cohort includes both those that have been discharged (label=`0`)  and those that have died (label=`1`).
 
