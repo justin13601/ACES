@@ -96,6 +96,11 @@ class PlainPredicateConfig:
             >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             col("code").str.contains([String(^foo.*)])
+            >>> cfg = PlainPredicateConfig(code={'regex': '^foo.*'}, value_min=120)
+            >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
+            >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
+            col("code").str.contains([String(^foo.*)]).all_horizontal([[(col("numeric_value")) >
+            (dyn int: 120)]])
             >>> cfg = PlainPredicateConfig(code={'any': ['foo', 'bar']})
             >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
@@ -134,16 +139,16 @@ class PlainPredicateConfig:
         else:
             criteria.append(pl.col("code") == self.code)
 
-            if self.value_min is not None:
-                if self.value_min_inclusive:
-                    criteria.append(pl.col("numeric_value") >= self.value_min)
-                else:
-                    criteria.append(pl.col("numeric_value") > self.value_min)
-            if self.value_max is not None:
-                if self.value_max_inclusive:
-                    criteria.append(pl.col("numeric_value") <= self.value_max)
-                else:
-                    criteria.append(pl.col("numeric_value") < self.value_max)
+        if self.value_min is not None:
+            if self.value_min_inclusive:
+                criteria.append(pl.col("numeric_value") >= self.value_min)
+            else:
+                criteria.append(pl.col("numeric_value") > self.value_min)
+        if self.value_max is not None:
+            if self.value_max_inclusive:
+                criteria.append(pl.col("numeric_value") <= self.value_max)
+            else:
+                criteria.append(pl.col("numeric_value") < self.value_max)
 
         if self.other_cols:
             criteria.extend([pl.col(col) == value for col, value in self.other_cols.items()])
