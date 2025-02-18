@@ -65,15 +65,15 @@ windows:
 
 ### Run the CLI
 
-You can now run `aces-cli` in your terminal. Suppose we have a directory structure like the following:
+You can now run `aces-cli` in your terminal!
+
+#### MEDS
+
+With MEDS, ACES supports the simultaneous extraction of tasks over multiple shards with just a single command. Suppose we have a directory structure like the following:
 
 ```
 ACES/
 ├── sample_data/
-│   ├── esgpt_sample/
-│   │   ├── ...
-│   │   ├── events_df.parquet
-│   │   └── dynamic_measurements_df.parquet
 │   ├── meds_sample/
 │   │   ├── held_out/
 │   │   │   └── 0.parquet
@@ -82,31 +82,59 @@ ACES/
 │   │   │   └── 1.parquet
 │   │   └── tuning/
 │   │       └── 0.parquet
+├── sample_configs/
+│   └── inhospital_mortality.yaml
+└── ...
+```
+
+You can run the following to execute Hydra jobs in series or parallel to extract over all MEDS shards:
+
+```bash
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data=sharded data.root="sample_data/meds_sample/" "data.shard=$(expand_shards train/1 test/0)" -m
+```
+
+If you'd like to just extract a cohort from a singular shard, you can also use the following:
+
+```bash
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data.path="sample_data/meds_sample/train/0.parquet"
+```
+
+#### ESGPT
+
+Given the following directory structure containing an appropriate formatted ESGPT dataset with `events_df` and `dynamic_measurements_df`:
+
+```
+ACES/
+├── sample_data/
+│   ├── esgpt_sample/
+│   │   ├── ...
+│   │   ├── events_df.parquet
+│   │   └── dynamic_measurements_df.parquet
+├── sample_configs/
+│   └── inhospital_mortality.yaml
+└── ...
+```
+
+You can extract a cohort using the following:
+
+```bash
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=esgpt data.path="sample_data/esgpt_sample/"
+```
+
+#### Direct Predicates
+
+To extract from a direct predicates dataframe (`.csv` | `.parquet`) from the following directory structure:
+
+```
+ACES/
+├── sample_data/
 │   └── sample_data.csv
 ├── sample_configs/
 │   └── inhospital_mortality.yaml
 └── ...
 ```
 
-**To query from a single MEDS shard**:
-
-```bash
-aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data.path="sample_data/meds_sample/train/0.parquet"
-```
-
-**To query from multiple MEDS shards**:
-
-```bash
-aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data=sharded data.root="sample_data/meds_sample/" "data.shard=$(expand_shards train/1 test/0)" -m
-```
-
-**To query from ESGPT**:
-
-```bash
-aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=esgpt data.path="sample_data/esgpt_sample/"
-```
-
-**To query from a direct predicates dataframe (`.csv` | `.parquet`)**:
+You can use the following:
 
 ```bash
 aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=direct data.path="sample_data/sample_data.csv"
@@ -156,15 +184,15 @@ Hydra configuration files are leveraged for cohort extraction runs. All fields c
 
 ***`data.standard`***: String specifying the data standard, must be 'meds' OR 'esgpt' OR 'direct'
 
-**To query from a single MEDS shard**:
-
-***`data.path`***: Path to the `.parquet` shard file
-
 **To query from multiple MEDS shards**, you must set `data=sharded`. Additionally:
 
 ***`data.root`***: Root directory of MEDS dataset containing shard directories
 
 ***`data.shard`***: Expression specifying MEDS shards using [expand_shards](https://github.com/justin13601/ACES/blob/main/src/aces/expand_shards.py) (`$(expand_shards <str>/<int>)`)
+
+**To query from a single MEDS shard**, you must set `data=single_file`. Additionally:
+
+***`data.path`***: Path to the `.parquet` shard file
 
 **To query from an ESGPT dataset**:
 
@@ -206,20 +234,20 @@ eval "$(aces-cli -sc install=bash)"
 
 ### MEDS
 
-#### Single Shard
-
-Shards are stored as `.parquet` files in MEDS. As such, the data can be loading by providing a path pointing to the `.parquet` file directly.
-
-```bash
-aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data.path="baz.parquet"
-```
-
 #### Multiple Shards
 
 A MEDS dataset can have multiple shards, each stored as a `.parquet` file containing subsets of the full dataset. We can make use of Hydra's launchers and multi-run (`-m`) capabilities to start an extraction job for each shard (`data=sharded`), either in series or in parallel (e.g., using `joblib`, or `submitit` for Slurm). To load data with multiple shards, a data root needs to be provided, along with an expression containing a comma-delimited list of files for each shard. We provide a function `expand_shards` to do this, which accepts a sequence representing `<shards_location>/<number_of_shards>`. It also accepts a file directory, where all `.parquet` files in its directory and subdirectories will be included.
 
 ```bash
 aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data=sharded data.root="baz/" "data.shard=$(expand_shards qux/#)" -m
+```
+
+#### Single Shard
+
+Shards are stored as `.parquet` files in MEDS. As such, the data can be loading by providing a path pointing to the `.parquet` file directly, and specifying `data=single_file`.
+
+```bash
+aces-cli cohort_name="foo" cohort_dir="bar/" data.standard=meds data.path="baz.parquet"
 ```
 
 ### ESGPT
