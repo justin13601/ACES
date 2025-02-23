@@ -4,13 +4,15 @@ import rootutils
 
 root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
 
+import logging
 import subprocess
 import tempfile
 from pathlib import Path
 
 import polars as pl
-from loguru import logger
 from polars.testing import assert_frame_equal
+
+logger = logging.getLogger(__name__)
 
 
 def run_command(script: str, hydra_kwargs: dict[str, str], test_name: str, expected_returncode: int = 0):

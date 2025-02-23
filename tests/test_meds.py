@@ -5,13 +5,13 @@ import rootutils
 
 root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
 
+import logging
 import tempfile
 from io import StringIO
 from pathlib import Path
 
 import polars as pl
 import pyarrow as pa
-from loguru import logger
 from meds import label_schema, subject_id_field
 from yaml import load as load_yaml
 
@@ -28,6 +28,7 @@ try:
 except ImportError:
     from yaml import Loader
 
+logger = logging.getLogger(__name__)
 pl.enable_string_cache()
 
 TS_FORMAT = "%m/%d/%Y %H:%M"
