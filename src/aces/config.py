@@ -1286,6 +1286,20 @@ class TaskExtractorConfig:
                 ...
             ValueError: Predicate 'admission' is not defined correctly in the configuration file. Currently
             defined as the string: invalid. Please refer to the documentation for the supported formats.
+
+            >>> predicates_dict = {
+            ...     "predicates": {'adm': {"code": "admission"}},
+            ... }
+            >>> with (tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as config_fp,
+            ...      tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as pred_fp):
+            ...     config_path = Path(config_fp.name)
+            ...     pred_path = Path(pred_fp.name)
+            ...     yaml.dump(no_predicates_config, config_fp)
+            ...     yaml.dump(predicates_dict, pred_fp)
+            ...     cfg = TaskExtractorConfig.load(config_path, pred_path) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Something referenced predicate 'admission' that wasn't defined in the configuration."
         """
         if isinstance(config_path, str):
             config_path = Path(config_path)
@@ -1433,6 +1447,24 @@ class TaskExtractorConfig:
 
         Raises:
             ValueError: If the predicate name is not valid.
+
+        Examples:
+            >>> import networkx as nx
+            >>> from .config import TaskExtractorConfig, DerivedPredicateConfig, PlainPredicateConfig
+            >>> TaskExtractorConfig(
+            ...     predicates={
+            ...         "A": DerivedPredicateConfig("and(A, B)"),  # A depends on B
+            ...         "B": DerivedPredicateConfig("and(B, C)"),  # B depends on C
+            ...         "C": DerivedPredicateConfig("and(A, C)"),  # C depends on A (Cyclic dependency)
+            ...     },
+            ...     trigger=EventConfig("A"),
+            ...     windows={},
+            ... ) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Predicate graph is not a directed acyclic graph!
+            Cycle found: [('A', 'A')]
+            Graph: None
         """
 
         dag_relationships = []
@@ -1480,6 +1512,43 @@ class TaskExtractorConfig:
 
         Raises:
             ValueError: If the window name is not valid.
+
+            Examples:
+            >>> from .config import TaskExtractorConfig, PlainPredicateConfig, WindowConfig, EventConfig
+            >>> TaskExtractorConfig(  # doctest: +NORMALIZE_WHITESPACE
+            ...     predicates={"A": PlainPredicateConfig("A")},
+            ...     windows={
+            ...         "win1": WindowConfig(None, "trigger", True, False, has={"B": "(1, 0)"}) # B undefined
+            ...     },
+            ...     trigger=EventConfig("_ANY_EVENT"),
+            ... ) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Window 'win1' references undefined predicate 'B'.
+            Window predicates: B;
+            Defined predicates: A"
+            >>> TaskExtractorConfig(
+            ...     predicates={"A": PlainPredicateConfig("A")},
+            ...     windows={
+            ...         "win1": WindowConfig(None, "event_not_trigger", True, False)
+            ...     },
+            ...     trigger=EventConfig("_ANY_EVENT"),
+            ... ) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Window 'win1' references undefined trigger event
+            'event_not_trigger' -- must be trigger!"
+            >>> TaskExtractorConfig(
+            ...     predicates={"A": PlainPredicateConfig("A")},
+            ...     windows={
+            ...         "win1": WindowConfig("win2.end", "start -> A", True, False)
+            ...     },
+            ...     trigger=EventConfig("_ANY_EVENT"),
+            ... ) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Window 'win1' references undefined window 'win2' for event 'end'.
+            Allowed windows: win1"
         """
 
         for name in self.windows:
@@ -1560,8 +1629,8 @@ class TaskExtractorConfig:
             for predicate in window.referenced_predicates - {ANY_EVENT_COLUMN}:
                 if predicate not in self.predicates:
                     raise KeyError(
-                        f"Window '{name}' references undefined predicate '{predicate}'.\n"
-                        f"Window predicates: {', '.join(window.referenced_predicates)}\n"
+                        f"Window '{name}' references undefined predicate '{predicate}'. "
+                        f"Window predicates: {', '.join(window.referenced_predicates)}; "
                         f"Defined predicates: {', '.join(self.predicates.keys())}"
                     )
 
@@ -1581,7 +1650,8 @@ class TaskExtractorConfig:
                         f"Window '{name}' references undefined window '{referenced_window}' "
                         f"for event '{referenced_event}'. Allowed windows: {', '.join(self.windows.keys())}"
                     )
-                if referenced_event not in {"start", "end"}:
+                # Might not be needed as valid window event references are already checked (line 660)
+                if referenced_event not in {"start", "end"}:  # pragma: no cover
                     raise KeyError(
                         f"Window '{name}' references undefined event '{referenced_event}' "
                         f"for window '{referenced_window}'. Allowed events: 'start', 'end'"
@@ -1589,7 +1659,8 @@ class TaskExtractorConfig:
 
                 parent_node = f"{referenced_window}.{referenced_event}"
                 window_nodes[f"{name}.{window.root_node}"].parent = window_nodes[parent_node]
-            else:
+            # Might not be needed as valid window event references are already checked (line 660)
+            else:  # pragma: no cover
                 raise ValueError(
                     f"Window '{name}' references invalid event '{window.referenced_event}' "
                     "must be of length 1 or 2."
