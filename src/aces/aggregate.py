@@ -873,17 +873,12 @@ def boolean_expr_bound_sum(
             ...
         ValueError: Closed 'invalid_closed' invalid!
 
-        >>> df = pl.DataFrame({
-        ...     "subject_id": [1, 1, 2, 2],
-        ...     "timestamp": [datetime(2020, 1, 1), datetime(2020, 1, 2),
-        ...                   datetime(2020, 1, 1), datetime(2020, 1, 3)],
-        ...     "event": [1, 0, 1, 1]
-        ... })
-        >>> boundary_expr = pl.col("event") > 0
-        >>> result = boolean_expr_bound_sum(df, boundary_expr, mode="row_to_bound", closed="both",
-        ...         offset=timedelta(days=1))
-        >>> result.columns
-        ['subject_id', 'timestamp', 'timestamp_at_start', 'timestamp_at_end', 'event']
+        >>> boolean_expr_bound_sum(df, pl.col("idx").is_in([1, 4, 7]), mode="row_to_bound",
+        ...         closed="right", offset=timedelta(days=1)).columns
+        ['subject_id', 'timestamp', 'timestamp_at_start', 'timestamp_at_end', 'idx', 'is_A', 'is_B', 'is_C']
+        >>> boolean_expr_bound_sum(df, pl.col("idx").is_in([1, 4, 7]), mode="row_to_bound",
+        ...         closed="left", offset=timedelta(days=-1)).columns
+        ['subject_id', 'timestamp', 'timestamp_at_start', 'timestamp_at_end', 'idx', 'is_A', 'is_B', 'is_C']
     """
     if mode not in ("bound_to_row", "row_to_bound"):
         raise ValueError(f"Mode '{mode}' invalid!")
