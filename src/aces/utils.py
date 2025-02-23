@@ -1,16 +1,17 @@
 import io
 import os
 import sys
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
 
 import hydra
-from bigtree import print_tree
+from bigtree import Node, print_tree
 from loguru import logger
 from pytimeparse import parse
 
 
-def parse_timedelta(time_str):
+def parse_timedelta(time_str: str = None) -> timedelta:
     """Parse a time string and return a timedelta object.
 
     Using time expression parser: https://github.com/wroberts/pytimeparse
@@ -40,7 +41,7 @@ def parse_timedelta(time_str):
 
 
 @contextmanager
-def capture_output():
+def capture_output() -> Generator[io.StringIO, None, None]:
     """A context manager to capture stdout output.
 
     This can eventually be eliminated if https://github.com/kayjan/bigtree/issues/285 is resolved.
@@ -60,14 +61,14 @@ def capture_output():
         sys.stdout = old_out  # Restore the original stdout
 
 
-def log_tree(node):
+def log_tree(node: Node) -> None:
     """Logs the tree structure using logging.info."""
     with capture_output() as captured:
         print_tree(node, style="const_bold")  # This will print to the captured StringIO instead of stdout
     logger.info("\n" + captured.getvalue())  # Log the captured output
 
 
-def hydra_loguru_init(filename):
+def hydra_loguru_init(filename: str) -> None:
     """Must be called from a hydra main!"""
     hydra_path = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
     logger.add(os.path.join(hydra_path, filename))

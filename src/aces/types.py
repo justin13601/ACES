@@ -5,7 +5,9 @@ fields are passed in the correct order.
 """
 
 import dataclasses
+from collections.abc import Iterator
 from datetime import timedelta
+from typing import Any
 
 import polars as pl
 
@@ -59,14 +61,14 @@ class TemporalWindowBounds:
     offset: timedelta | None = None
 
     # Needed to make it accessible like a tuple.
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return (getattr(self, field.name) for field in dataclasses.fields(self))
 
     # Needed to make it scriptable.
-    def __getitem__(self, key):
+    def __getitem__(self, key: int) -> Any:
         return tuple(getattr(self, field.name) for field in dataclasses.fields(self))[key]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.offset is None:
             self.offset = timedelta(0)
 
@@ -205,7 +207,7 @@ class ToEventWindowBounds:
     right_inclusive: bool
     offset: timedelta | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.end_event == "":
             raise ValueError("The 'end_event' must be a non-empty string.")
 
@@ -226,11 +228,11 @@ class ToEventWindowBounds:
             self.offset = timedelta(0)
 
     # Needed to make it accessible like a tuple.
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         return (getattr(self, field.name) for field in dataclasses.fields(self))
 
     # Needed to make it scriptable.
-    def __getitem__(self, key):
+    def __getitem__(self, key: int) -> Any:
         return tuple(getattr(self, field.name) for field in dataclasses.fields(self))[key]
 
     @property
