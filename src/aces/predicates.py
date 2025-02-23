@@ -1,9 +1,9 @@
 """This module contains functions for generating predicate columns for event sequences."""
 
+import logging
 from pathlib import Path
 
 import polars as pl
-from loguru import logger
 from omegaconf import DictConfig
 from polars.exceptions import ColumnNotFoundError
 
@@ -14,6 +14,8 @@ from .types import (
     PRED_CNT_TYPE,
     START_OF_RECORD_KEY,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def direct_load_plain_predicates(

@@ -1,13 +1,15 @@
 """This module contains the functions for extracting constraint hierarchy subtrees."""
 
+import logging
 from datetime import timedelta
 
 import polars as pl
 from bigtree import Node
-from loguru import logger
 
 from .aggregate import aggregate_event_bound_window, aggregate_temporal_window
 from .constraints import check_constraints
+
+logger = logging.getLogger(__name__)
 
 
 def extract_subtree(

@@ -3,15 +3,17 @@
 It accepts the configuration file and predicate columns, builds the tree, and recursively queries the tree.
 """
 
+import logging
 
 import polars as pl
 from bigtree import preorder_iter
-from loguru import logger
 
 from .config import TaskExtractorConfig
 from .constraints import check_constraints, check_static_variables
 from .extract_subtree import extract_subtree
 from .utils import log_tree
+
+logger = logging.getLogger(__name__)
 
 
 def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame:

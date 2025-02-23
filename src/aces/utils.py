@@ -1,14 +1,14 @@
 import io
-import os
+import logging
 import sys
 from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import timedelta
 
-import hydra
 from bigtree import Node, print_tree
-from loguru import logger
 from pytimeparse import parse
+
+logger = logging.getLogger(__name__)
 
 
 def parse_timedelta(time_str: str = None) -> timedelta:
@@ -66,9 +66,3 @@ def log_tree(node: Node) -> None:
     with capture_output() as captured:
         print_tree(node, style="const_bold")  # This will print to the captured StringIO instead of stdout
     logger.info("\n" + captured.getvalue())  # Log the captured output
-
-
-def hydra_loguru_init(filename: str) -> None:
-    """Must be called from a hydra main!"""
-    hydra_path = hydra.core.hydra_config.HydraConfig.get().runtime.output_dir
-    logger.add(os.path.join(hydra_path, filename))

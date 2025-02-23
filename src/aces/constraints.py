@@ -1,9 +1,12 @@
 """Contains utilities for validating that windows satisfy a set of constraints."""
 
+import logging
+
 import polars as pl
-from loguru import logger
 
 from .types import ANY_EVENT_COLUMN
+
+logger = logging.getLogger(__name__)
 
 
 def check_constraints(
