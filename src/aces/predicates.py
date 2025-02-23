@@ -683,6 +683,14 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
     standard = data_config.standard
     data_path = Path(data_config.path)
 
+    expand_shards_enabled = getattr(data_config, "shard", False)
+    if not expand_shards_enabled and data_path.is_dir():
+        logger.warning(
+            "Expand shards is not enabled but your data path is a directory. "
+            "If you are working with sharded datasets or large-scale queries, using `expand_shards` and"
+            "`data=sharded` will improve efficiency and completeness."
+        )
+
     # plain predicates
     plain_predicates = cfg.plain_predicates
     match standard.lower():
