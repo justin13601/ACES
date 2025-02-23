@@ -1461,7 +1461,6 @@ class TaskExtractorConfig:
 
         Examples:
             >>> import networkx as nx
-            >>> from .config import TaskExtractorConfig, DerivedPredicateConfig, PlainPredicateConfig
             >>> TaskExtractorConfig(
             ...     predicates={
             ...         "A": DerivedPredicateConfig("and(A, B)"),  # A depends on B
@@ -1525,7 +1524,6 @@ class TaskExtractorConfig:
             ValueError: If the window name is not valid.
 
             Examples:
-            >>> from .config import TaskExtractorConfig, PlainPredicateConfig, WindowConfig, EventConfig
             >>> TaskExtractorConfig(  # doctest: +NORMALIZE_WHITESPACE
             ...     predicates={"A": PlainPredicateConfig("A")},
             ...     windows={

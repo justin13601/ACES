@@ -244,7 +244,6 @@ def extract_subtree(
         │ 1983-12-01 22:02:00 ┆ 1988-12-06 15:17:00 ┆ 1            ┆ 1            ┆ 0        ┆ 0           │
         └─────────────────────┴─────────────────────┴──────────────┴──────────────┴──────────┴─────────────┘
 
-        >>> from .extract_subtree import extract_subtree  # Adjust module name
         >>> root = Node("root")
         >>> child = Node("child")
         >>> child.endpoint_expr = (True, timedelta(days=3))
