@@ -1,5 +1,6 @@
 """Main script for end-to-end cohort extraction."""
 
+import logging
 import sys
 from importlib.resources import files
 
@@ -7,10 +8,10 @@ import hydra
 import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
-from loguru import logger
 from meds import label_schema, prediction_time_field, subject_id_field
 from omegaconf import DictConfig
 
+logger = logging.getLogger(__name__)
 config_yaml = files("aces").joinpath("configs/_aces.yaml")
 
 if len(sys.argv) == 1:
@@ -136,12 +137,9 @@ def main(cfg: DictConfig) -> None:
     from datetime import datetime
     from pathlib import Path
 
-    from hydra.core.hydra_config import HydraConfig
     from omegaconf import OmegaConf
 
-    from . import config, predicates, query, utils
-
-    utils.hydra_loguru_init(f"{HydraConfig.get().job.name}.log")
+    from . import config, predicates, query
 
     st = datetime.now()
 

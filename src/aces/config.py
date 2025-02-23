@@ -4,6 +4,7 @@ tree structure from the configuration."""
 from __future__ import annotations
 
 import dataclasses
+import logging
 import re
 from collections import OrderedDict
 from dataclasses import field
@@ -15,7 +16,6 @@ import networkx as nx
 import polars as pl
 import ruamel.yaml
 from bigtree import Node
-from loguru import logger
 
 from .types import (
     ANY_EVENT_COLUMN,
@@ -25,6 +25,8 @@ from .types import (
     ToEventWindowBounds,
 )
 from .utils import parse_timedelta
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
