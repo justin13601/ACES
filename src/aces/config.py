@@ -9,6 +9,7 @@ from collections import OrderedDict
 from dataclasses import field
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import networkx as nx
 import polars as pl
@@ -28,7 +29,7 @@ from .utils import parse_timedelta
 
 @dataclasses.dataclass
 class PlainPredicateConfig:
-    code: str | dict
+    code: str | dict[str, Any]
     value_min: float | None = None
     value_max: float | None = None
     value_min_inclusive: bool | None = None
@@ -294,7 +295,7 @@ class DerivedPredicateConfig:
     expr: str
     static: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not self.expr:
             raise ValueError("Derived predicates must have a non-empty expression field.")
 
@@ -652,7 +653,7 @@ class WindowConfig:
     index_timestamp: str | None = None
 
     @classmethod
-    def _check_reference(cls, reference: str):
+    def _check_reference(cls, reference: str) -> None:
         """Checks to ensure referenced events are valid."""
         err_str = (
             "Window boundary reference must be either a valid alphanumeric/'_' string "
@@ -713,7 +714,7 @@ class WindowConfig:
             cls._check_reference(ref)
             return {"referenced": ref, "offset": None, "event_bound": None, "occurs_before": None}
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         # Parse the has constraints from the string representation to the tuple representation
         if self.has is not None:
             for each_constraint in self.has:
@@ -1132,7 +1133,11 @@ class TaskExtractorConfig:
     index_timestamp_window: str | None = None
 
     @classmethod
-    def load(cls, config_path: str | Path, predicates_path: str | Path = None) -> TaskExtractorConfig:
+    def load(
+        cls: TaskExtractorConfig,
+        config_path: str | Path,
+        predicates_path: str | Path = None,
+    ) -> TaskExtractorConfig:
         """Load a configuration file from the given path and return it as a dict.
 
         Args:
@@ -1420,7 +1425,7 @@ class TaskExtractorConfig:
 
         return cls(predicates=predicate_objs, trigger=trigger, windows=windows)
 
-    def _initialize_predicates(self):
+    def _initialize_predicates(self) -> None:
         """Initialize the predicates tree from the configuration object and check validity.
 
         Raises:
@@ -1467,7 +1472,7 @@ class TaskExtractorConfig:
                 f"Graph: {nx.write_network_text(self._predicate_dag_graph)}"
             )
 
-    def _initialize_windows(self):
+    def _initialize_windows(self) -> None:
         """Initialize the windows tree from the configuration object and check validity.
 
         Raises:
@@ -1614,7 +1619,7 @@ class TaskExtractorConfig:
 
         self.window_nodes = window_nodes
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._initialize_predicates()
         self._initialize_windows()
 
@@ -1627,12 +1632,12 @@ class TaskExtractorConfig:
         return self._predicate_dag_graph
 
     @property
-    def plain_predicates(self) -> dict[str:PlainPredicateConfig]:
+    def plain_predicates(self) -> dict[str, PlainPredicateConfig]:
         """Returns a dictionary of plain predicates in {name: code} format."""
         return {p: cfg for p, cfg in self.predicates.items() if cfg.is_plain}
 
     @property
-    def derived_predicates(self) -> OrderedDict[str:DerivedPredicateConfig]:
+    def derived_predicates(self) -> OrderedDict[str, DerivedPredicateConfig]:
         """Returns an ordered dictionary mapping derived predicates to their configs in a proper order."""
         return {
             p: self.predicates[p]

@@ -71,7 +71,7 @@ def expand_shards(*shards: str) -> str:
     return ",".join(result)
 
 
-def main():
+def main() -> None:
     print(expand_shards(*sys.argv[1:]))
 
 

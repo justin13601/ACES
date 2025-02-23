@@ -131,7 +131,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
 
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
-def main(cfg: DictConfig):
+def main(cfg: DictConfig) -> None:
     import os
     from datetime import datetime
     from pathlib import Path
