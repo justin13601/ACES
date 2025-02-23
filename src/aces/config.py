@@ -205,6 +205,7 @@ class PlainPredicateConfig:
             >>> expr = PlainPredicateConfig("BP//systole", other_cols={"chamber": "atrial"}).ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("BP")) == (String(systole))].all_horizontal([[(col("chamber")) == (String(atrial))]])
+
             >>> expr = PlainPredicateConfig("BP//systolic", value_min=120).ESGPT_eval_expr()
             Traceback (most recent call last):
                 ...
@@ -522,6 +523,7 @@ class WindowConfig:
                             offset=datetime.timedelta(0))
         >>> target_window.root_node
         'end'
+
         >>> invalid_window = WindowConfig(
         ...     start="gap.end gap.start",
         ...     end="start -> discharge_or_death",
@@ -1014,7 +1016,6 @@ class TaskExtractorConfig:
         Traceback (most recent call last):
             ...
         FileNotFoundError: Cannot load missing configuration file /foo/non_existent_file.yaml!
-
         >>> import tempfile
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as f:
         ...     config_path = Path(f.name)
@@ -1059,7 +1060,6 @@ class TaskExtractorConfig:
         Traceback (most recent call last):
             ...
         ValueError: Unrecognized keys in configuration file: 'foo, trigger'
-
         >>> predicates = {"foo bar": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("foo")
         >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
@@ -1083,7 +1083,6 @@ class TaskExtractorConfig:
         Traceback (most recent call last):
             ...
         KeyError: "Missing 1 relationships: Derived predicate 'foobar' references undefined predicate 'bar'"
-
         >>> predicates = {"foo": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("foo")
         >>> windows = {"foo bar": WindowConfig("gap.end", "start + 24h", True, True)}
@@ -1119,7 +1118,6 @@ class TaskExtractorConfig:
             ...
         ValueError: Only the 'start'/'end' of one window can be used as the index timestamp, found
         2 windows with index_timestamp: foo, bar
-
         >>> predicates = {"foo": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("bar")
         >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
@@ -1286,7 +1284,6 @@ class TaskExtractorConfig:
                 ...
             ValueError: Predicate 'admission' is not defined correctly in the configuration file. Currently
             defined as the string: invalid. Please refer to the documentation for the supported formats.
-
             >>> predicates_dict = {
             ...     "predicates": {'adm': {"code": "admission"}},
             ... }
@@ -1300,6 +1297,20 @@ class TaskExtractorConfig:
             Traceback (most recent call last):
                 ...
             KeyError: "Something referenced predicate 'admission' that wasn't defined in the configuration."
+            >>> config_dict = {
+            ...     "predicates": {"A": {"code": "A"}, "B": {"code": "B"}, "A_or_B": {"expr": "or(A, B)"},
+            ...                  "A_or_B_and_C": {"expr": "and(A_or_B, C)"}},
+            ...     "trigger": "_ANY_EVENT",
+            ...     "windows": {"start": {"start": None, "end": "trigger + 24h", "start_inclusive": True,
+            ...             "end_inclusive": True, "has": {"A_or_B_and_C": "(1, None)"}}},
+            ... }
+            >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+            ...     config_path = Path(f.name)
+            ...     yaml.dump(config_dict, f)
+            ...     cfg = TaskExtractorConfig.load(config_path) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Predicate 'C' referenced in 'A_or_B_and_C' is not defined in the configuration."
         """
         if isinstance(config_path, str):
             config_path = Path(config_path)
