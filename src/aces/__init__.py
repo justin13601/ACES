@@ -7,5 +7,5 @@ from importlib.metadata import PackageNotFoundError, version
 __package_name__ = "es-aces"
 try:
     __version__ = version(__package_name__)
-except PackageNotFoundError:
+except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
