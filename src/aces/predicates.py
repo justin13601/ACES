@@ -199,12 +199,12 @@ def direct_load_plain_predicates(
         case _:
             raise ValueError(f"Unsupported file format: {data_path.suffix}")
 
-    missing_columns = [col for col in columns if col not in data.columns]
+    missing_columns = [col for col in columns if col not in data.collect_schema().names()]
     if missing_columns:
         raise ColumnNotFoundError(missing_columns)
 
     data = data.select(columns)
-    ts_type = data.schema["timestamp"]
+    ts_type = data.collect_schema()["timestamp"]
     if ts_type == pl.Utf8:
         if ts_format is None:
             raise ValueError("Must provide a timestamp format for direct predicates with str timestamps.")
