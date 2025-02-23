@@ -31,10 +31,6 @@ jobs:
       #----------------------------------------------
       #              run test suite
       #----------------------------------------------
-      - name: Reset previous coverage data
-        run: |
-          coverage erase
-
       - name: Run tests
         run: |
           pytest -v --doctest-modules --ignore=docs/ --cov=src --cov=src/__main__.py -s
