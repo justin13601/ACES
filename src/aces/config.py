@@ -1255,7 +1255,8 @@ class TaskExtractorConfig:
             ...     "windows": {
             ...         "start": {
             ...             "start": None, "end": "trigger + 24h", "start_inclusive": True,
-            ...             "end_inclusive": True, "has": {"abnormal_labs": "(1, None)"},
+            ...             "end_inclusive": True, "label": "abnormal_labs",
+            ...             "has": {"abnormal_labs": "(1, None)"},
             ...         }
             ...     },
             ... }
@@ -1351,7 +1352,7 @@ class TaskExtractorConfig:
         all_predicates = {**final_predicates, **final_demographics}
 
         logger.info("Parsing windows...")
-        if windows is None:
+        if windows is None:  # pragma: no cover
             windows = {}
             logger.warning(
                 "No windows specified in configuration file. Extracting only matching trigger events."
