@@ -166,6 +166,10 @@ def check_static_variables(patient_demographics: list[str], predicates_df: pl.Da
         │ 1          ┆ 1989-12-02 12:03:00 ┆ 1    ┆ 0    ┆ 1    │
         │ 1          ┆ 1989-12-06 11:00:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> check_static_variables(['female'], predicates_df)
+        Traceback (most recent call last):
+            ...
+        ValueError: Static predicate 'female' not found in the predicates dataframe.
     """
     for demographic in patient_demographics:
         if demographic not in predicates_df.columns:
