@@ -1,0 +1,3 @@
+coverage:
+  fixes:
+    - "__main__.py::<source>/__main__.py"
