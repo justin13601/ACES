@@ -187,5 +187,5 @@ def main(cfg: DictConfig) -> None:  # pragma: no cover
     logger.info(f"Completed in {datetime.now() - st}. Results saved to '{cfg.output_filepath}'.")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
