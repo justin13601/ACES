@@ -14,7 +14,7 @@ from omegaconf import DictConfig
 logger = logging.getLogger(__name__)
 config_yaml = files("aces").joinpath("configs/_aces.yaml")
 
-if len(sys.argv) == 1:
+if len(sys.argv) == 1:  # pragma: no cover
     print("Usage: aces-cli [OPTIONS]")
     print("Try 'aces-cli --help' for more information.")
     print("For more information, visit: https://eventstreamaces.readthedocs.io/en/latest/usage.html")
@@ -130,7 +130,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
 
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
-def main(cfg: DictConfig) -> None:
+def main(cfg: DictConfig) -> None:  # pragma: no cover
     import os
     from datetime import datetime
     from pathlib import Path
