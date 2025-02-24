@@ -37,7 +37,7 @@ your_package = ["*.pyi", "py.typed"]
 [tool.setuptools_scm]
 
 [project.scripts]
-aces-cli = "aces.__main__:main"
+aces-cli = "aces.run:main"
 expand_shards = "aces.expand_shards:main"
 
 [project.optional-dependencies]

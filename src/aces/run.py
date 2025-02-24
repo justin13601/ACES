@@ -145,7 +145,7 @@ def main(cfg: DictConfig) -> None:
 
     # load configuration
     logger.info(f"Loading config from '{cfg.config_path}'")
-    if cfg.predicates_path:  # pragma: no cover
+    if cfg.predicates_path:
         logger.info(f"Overriding predicates and/or demographics from '{cfg.predicates_path}'")
         predicates_path = Path(cfg.predicates_path)
     else:
