@@ -428,6 +428,18 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     Returns:
         The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
         ESGPT dataset.
+
+        >>> import pytest
+        >>> import sys
+        >>> from unittest.mock import patch
+        >>> from pathlib import Path
+        >>> with patch.dict(sys.modules, {"EventStream.data.dataset_polars": None}):
+        ...     generate_plain_predicates_from_esgpt(Path("/fake/path"), {}) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ImportError: The 'EventStream' package is required to load ESGPT datasets. If you mean to use a
+        MEDS dataset, please specify the 'MEDS' standard. Otherwise, please install the package from
+        https://github.com/mmcdermott/EventStreamGPT and add the package to your PYTHONPATH.
     """
 
     try:
