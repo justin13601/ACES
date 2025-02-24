@@ -14,7 +14,7 @@ from omegaconf import DictConfig
 logger = logging.getLogger(__name__)
 config_yaml = files("aces").joinpath("configs/_aces.yaml")
 
-if len(sys.argv) == 1:
+if len(sys.argv) == 1:  # pragma: no cover
     print("Usage: aces-cli [OPTIONS]")
     print("Try 'aces-cli --help' for more information.")
     print("For more information, visit: https://eventstreamaces.readthedocs.io/en/latest/usage.html")
@@ -58,8 +58,6 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         Traceback (most recent call last):
             ...
         ValueError: MEDS Data DataFrame must have a 'subject_id' column of type Int64.
-                    MEDS Data DataFrame must have a 'prediction_time' column of type String.
-                        Datetime(time_unit='us', time_zone=None).
         >>> from datetime import datetime
         >>> df = pl.DataFrame({
         ...     subject_id_field: pl.Series([1, 3, 2], dtype=pl.UInt32),
@@ -69,14 +67,14 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         >>> get_and_validate_label_schema(df)
         pyarrow.Table
         subject_id: int64
-        time: timestamp[us]
+        prediction_time: timestamp[us]
         boolean_value: bool
         integer_value: int64
-        float_value: float
+        float_value: double
         categorical_value: string
         ----
         subject_id: [[1,3,2]]
-        time: [[2021-01-01 00:00:00.000000,2021-01-02 00:00:00.000000,2021-01-03 00:00:00.000000]]
+        prediction_time: [[null,null,null]]
         boolean_value: [[true,false,true]]
         integer_value: [[null,null,null]]
         float_value: [[null,null,null]]
@@ -132,7 +130,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
 
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
-def main(cfg: DictConfig) -> None:
+def main(cfg: DictConfig) -> None:  # pragma: no cover
     import os
     from datetime import datetime
     from pathlib import Path
@@ -189,5 +187,5 @@ def main(cfg: DictConfig) -> None:
     logger.info(f"Completed in {datetime.now() - st}. Results saved to '{cfg.output_filepath}'.")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

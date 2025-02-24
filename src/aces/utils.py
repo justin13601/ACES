@@ -33,6 +33,12 @@ def parse_timedelta(time_str: str = None) -> timedelta:
         datetime.timedelta(days=1, seconds=51616)
         >>> parse_timedelta('365 days')
         datetime.timedelta(days=365)
+        >>> parse_timedelta()
+        datetime.timedelta(0)
+        >>> parse_timedelta("")
+        datetime.timedelta(0)
+        >>> parse_timedelta(None)
+        datetime.timedelta(0)
     """
     if not time_str:
         return timedelta(days=0)

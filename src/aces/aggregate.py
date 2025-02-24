@@ -370,6 +370,22 @@ def aggregate_event_bound_window(
         │ 2          ┆ 1989-12-08 16:22:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
         │ 2          ┆ 1989-12-10 03:07:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+        >>> aggregate_event_bound_window(df, (True, "is_C", True, timedelta(days=3)))
+        shape: (8, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-03 13:14:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-05 15:17:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-02 12:03:00 ┆ 1989-12-05 12:03:00 ┆ 1989-12-06 15:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-04 13:14:00 ┆ 1989-12-07 13:14:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 2    ┆ 1    │
+        │ 2          ┆ 1989-12-06 15:17:00 ┆ 1989-12-09 15:17:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-08 16:22:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-10 03:07:00 ┆ null                ┆ null                ┆ 0    ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
     """
     if not isinstance(endpoint_expr, ToEventWindowBounds):
         endpoint_expr = ToEventWindowBounds(*endpoint_expr)
@@ -845,6 +861,24 @@ def boolean_expr_bound_sum(
         │ 2          ┆ 1989-12-08 16:22:00 ┆ 1989-12-05 16:22:00 ┆ 1989-12-10 03:07:00 ┆ 1    ┆ 3    ┆ 2    │
         │ 2          ┆ 1989-12-10 03:07:00 ┆ 1989-12-07 03:07:00 ┆ 1989-12-10 03:07:00 ┆ 0    ┆ 2    ┆ 1    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+
+        >>> boolean_expr_bound_sum(df, pl.col("idx").is_in([1, 4, 7]), "invalid_mode", "right",
+        ...     offset = timedelta(days=-3))
+        Traceback (most recent call last):
+            ...
+        ValueError: Mode 'invalid_mode' invalid!
+        >>> boolean_expr_bound_sum(df, pl.col("idx").is_in([1, 4, 7]), "row_to_bound", "invalid_closed",
+        ...     offset = timedelta(days=-3))
+        Traceback (most recent call last):
+            ...
+        ValueError: Closed 'invalid_closed' invalid!
+
+        >>> boolean_expr_bound_sum(df, pl.col("idx").is_in([1, 4, 7]), mode="row_to_bound",
+        ...         closed="right", offset=timedelta(days=1)).columns
+        ['subject_id', 'timestamp', 'timestamp_at_start', 'timestamp_at_end', 'idx', 'is_A', 'is_B', 'is_C']
+        >>> boolean_expr_bound_sum(df, pl.col("idx").is_in([1, 4, 7]), mode="row_to_bound",
+        ...         closed="left", offset=timedelta(days=-1)).columns
+        ['subject_id', 'timestamp', 'timestamp_at_start', 'timestamp_at_end', 'idx', 'is_A', 'is_B', 'is_C']
     """
     if mode not in ("bound_to_row", "row_to_bound"):
         raise ValueError(f"Mode '{mode}' invalid!")
@@ -1010,7 +1044,8 @@ def boolean_expr_bound_sum(
         def agg_offset_fn(c: str) -> pl.Expr:
             return pl.col(c) + pl.col(f"{c}_in_offset_period")
 
-    else:
+    # Might not need as mode is already checked above (line 888)
+    else:  # pragma: no cover
         raise ValueError(f"Mode '{mode}' and offset '{offset}' invalid!")
 
     return with_at_boundary_events.join(

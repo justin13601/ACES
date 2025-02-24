@@ -199,12 +199,12 @@ def direct_load_plain_predicates(
         case _:
             raise ValueError(f"Unsupported file format: {data_path.suffix}")
 
-    missing_columns = [col for col in columns if col not in data.columns]
+    missing_columns = [col for col in columns if col not in data.collect_schema().names()]
     if missing_columns:
         raise ColumnNotFoundError(missing_columns)
 
     data = data.select(columns)
-    ts_type = data.schema["timestamp"]
+    ts_type = data.collect_schema()["timestamp"]
     if ts_type == pl.Utf8:
         if ts_format is None:
             raise ValueError("Must provide a timestamp format for direct predicates with str timestamps.")
@@ -428,6 +428,18 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     Returns:
         The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
         ESGPT dataset.
+
+        >>> import pytest
+        >>> import sys
+        >>> from unittest.mock import patch
+        >>> from pathlib import Path
+        >>> with patch.dict(sys.modules, {"EventStream.data.dataset_polars": None}):
+        ...     generate_plain_predicates_from_esgpt(Path("/fake/path"), {}) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ImportError: The 'EventStream' package is required to load ESGPT datasets. If you mean to use a
+        MEDS dataset, please specify the 'MEDS' standard. Otherwise, please install the package from
+        https://github.com/mmcdermott/EventStreamGPT and add the package to your PYTHONPATH.
     """
 
     try:
@@ -686,7 +698,7 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
     data_path = Path(data_config.path)
 
     expand_shards_enabled = getattr(data_config, "shard", False)
-    if not expand_shards_enabled and data_path.is_dir():
+    if not expand_shards_enabled and data_path.is_dir():  # pragma: no cover
         logger.warning(
             "Expand shards is not enabled but your data path is a directory. "
             "If you are working with sharded datasets or large-scale queries, using `expand_shards` and"

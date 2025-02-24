@@ -205,6 +205,7 @@ class PlainPredicateConfig:
             >>> expr = PlainPredicateConfig("BP//systole", other_cols={"chamber": "atrial"}).ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             [(col("BP")) == (String(systole))].all_horizontal([[(col("chamber")) == (String(atrial))]])
+
             >>> expr = PlainPredicateConfig("BP//systolic", value_min=120).ESGPT_eval_expr()
             Traceback (most recent call last):
                 ...
@@ -522,6 +523,7 @@ class WindowConfig:
                             offset=datetime.timedelta(0))
         >>> target_window.root_node
         'end'
+
         >>> invalid_window = WindowConfig(
         ...     start="gap.end gap.start",
         ...     end="start -> discharge_or_death",
@@ -1014,7 +1016,6 @@ class TaskExtractorConfig:
         Traceback (most recent call last):
             ...
         FileNotFoundError: Cannot load missing configuration file /foo/non_existent_file.yaml!
-
         >>> import tempfile
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as f:
         ...     config_path = Path(f.name)
@@ -1059,7 +1060,6 @@ class TaskExtractorConfig:
         Traceback (most recent call last):
             ...
         ValueError: Unrecognized keys in configuration file: 'foo, trigger'
-
         >>> predicates = {"foo bar": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("foo")
         >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
@@ -1083,7 +1083,6 @@ class TaskExtractorConfig:
         Traceback (most recent call last):
             ...
         KeyError: "Missing 1 relationships: Derived predicate 'foobar' references undefined predicate 'bar'"
-
         >>> predicates = {"foo": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("foo")
         >>> windows = {"foo bar": WindowConfig("gap.end", "start + 24h", True, True)}
@@ -1119,7 +1118,6 @@ class TaskExtractorConfig:
             ...
         ValueError: Only the 'start'/'end' of one window can be used as the index timestamp, found
         2 windows with index_timestamp: foo, bar
-
         >>> predicates = {"foo": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("bar")
         >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
@@ -1255,7 +1253,8 @@ class TaskExtractorConfig:
             ...     "windows": {
             ...         "start": {
             ...             "start": None, "end": "trigger + 24h", "start_inclusive": True,
-            ...             "end_inclusive": True, "has": {"abnormal_labs": "(1, None)"},
+            ...             "end_inclusive": True, "label": "abnormal_labs",
+            ...             "has": {"abnormal_labs": "(1, None)"},
             ...         }
             ...     },
             ... }
@@ -1285,6 +1284,33 @@ class TaskExtractorConfig:
                 ...
             ValueError: Predicate 'admission' is not defined correctly in the configuration file. Currently
             defined as the string: invalid. Please refer to the documentation for the supported formats.
+            >>> predicates_dict = {
+            ...     "predicates": {'adm': {"code": "admission"}},
+            ... }
+            >>> with (tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as config_fp,
+            ...      tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as pred_fp):
+            ...     config_path = Path(config_fp.name)
+            ...     pred_path = Path(pred_fp.name)
+            ...     yaml.dump(no_predicates_config, config_fp)
+            ...     yaml.dump(predicates_dict, pred_fp)
+            ...     cfg = TaskExtractorConfig.load(config_path, pred_path) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Something referenced predicate 'admission' that wasn't defined in the configuration."
+            >>> config_dict = {
+            ...     "predicates": {"A": {"code": "A"}, "B": {"code": "B"}, "A_or_B": {"expr": "or(A, B)"},
+            ...                  "A_or_B_and_C": {"expr": "and(A_or_B, C)"}},
+            ...     "trigger": "_ANY_EVENT",
+            ...     "windows": {"start": {"start": None, "end": "trigger + 24h", "start_inclusive": True,
+            ...             "end_inclusive": True, "has": {"A_or_B_and_C": "(1, None)"}}},
+            ... }
+            >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml") as f:
+            ...     config_path = Path(f.name)
+            ...     yaml.dump(config_dict, f)
+            ...     cfg = TaskExtractorConfig.load(config_path) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Predicate 'C' referenced in 'A_or_B_and_C' is not defined in the configuration."
         """
         if isinstance(config_path, str):
             config_path = Path(config_path)
@@ -1351,7 +1377,7 @@ class TaskExtractorConfig:
         all_predicates = {**final_predicates, **final_demographics}
 
         logger.info("Parsing windows...")
-        if windows is None:
+        if windows is None:  # pragma: no cover
             windows = {}
             logger.warning(
                 "No windows specified in configuration file. Extracting only matching trigger events."
@@ -1432,6 +1458,23 @@ class TaskExtractorConfig:
 
         Raises:
             ValueError: If the predicate name is not valid.
+
+        Examples:
+            >>> import networkx as nx
+            >>> TaskExtractorConfig(
+            ...     predicates={
+            ...         "A": DerivedPredicateConfig("and(A, B)"),  # A depends on B
+            ...         "B": DerivedPredicateConfig("and(B, C)"),  # B depends on C
+            ...         "C": DerivedPredicateConfig("and(A, C)"),  # C depends on A (Cyclic dependency)
+            ...     },
+            ...     trigger=EventConfig("A"),
+            ...     windows={},
+            ... ) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            ValueError: Predicate graph is not a directed acyclic graph!
+            Cycle found: [('A', 'A')]
+            Graph: None
         """
 
         dag_relationships = []
@@ -1479,6 +1522,42 @@ class TaskExtractorConfig:
 
         Raises:
             ValueError: If the window name is not valid.
+
+            Examples:
+            >>> TaskExtractorConfig(  # doctest: +NORMALIZE_WHITESPACE
+            ...     predicates={"A": PlainPredicateConfig("A")},
+            ...     windows={
+            ...         "win1": WindowConfig(None, "trigger", True, False, has={"B": "(1, 0)"}) # B undefined
+            ...     },
+            ...     trigger=EventConfig("_ANY_EVENT"),
+            ... ) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Window 'win1' references undefined predicate 'B'.
+            Window predicates: B;
+            Defined predicates: A"
+            >>> TaskExtractorConfig(
+            ...     predicates={"A": PlainPredicateConfig("A")},
+            ...     windows={
+            ...         "win1": WindowConfig(None, "event_not_trigger", True, False)
+            ...     },
+            ...     trigger=EventConfig("_ANY_EVENT"),
+            ... ) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Window 'win1' references undefined trigger event
+            'event_not_trigger' -- must be trigger!"
+            >>> TaskExtractorConfig(
+            ...     predicates={"A": PlainPredicateConfig("A")},
+            ...     windows={
+            ...         "win1": WindowConfig("win2.end", "start -> A", True, False)
+            ...     },
+            ...     trigger=EventConfig("_ANY_EVENT"),
+            ... ) # doctest: +NORMALIZE_WHITESPACE
+            Traceback (most recent call last):
+                ...
+            KeyError: "Window 'win1' references undefined window 'win2' for event 'end'.
+            Allowed windows: win1"
         """
 
         for name in self.windows:
@@ -1559,8 +1638,8 @@ class TaskExtractorConfig:
             for predicate in window.referenced_predicates - {ANY_EVENT_COLUMN}:
                 if predicate not in self.predicates:
                     raise KeyError(
-                        f"Window '{name}' references undefined predicate '{predicate}'.\n"
-                        f"Window predicates: {', '.join(window.referenced_predicates)}\n"
+                        f"Window '{name}' references undefined predicate '{predicate}'. "
+                        f"Window predicates: {', '.join(window.referenced_predicates)}; "
                         f"Defined predicates: {', '.join(self.predicates.keys())}"
                     )
 
@@ -1580,7 +1659,8 @@ class TaskExtractorConfig:
                         f"Window '{name}' references undefined window '{referenced_window}' "
                         f"for event '{referenced_event}'. Allowed windows: {', '.join(self.windows.keys())}"
                     )
-                if referenced_event not in {"start", "end"}:
+                # Might not be needed as valid window event references are already checked (line 660)
+                if referenced_event not in {"start", "end"}:  # pragma: no cover
                     raise KeyError(
                         f"Window '{name}' references undefined event '{referenced_event}' "
                         f"for window '{referenced_window}'. Allowed events: 'start', 'end'"
@@ -1588,7 +1668,8 @@ class TaskExtractorConfig:
 
                 parent_node = f"{referenced_window}.{referenced_event}"
                 window_nodes[f"{name}.{window.root_node}"].parent = window_nodes[parent_node]
-            else:
+            # Might not be needed as valid window event references are already checked (line 660)
+            else:  # pragma: no cover
                 raise ValueError(
                     f"Window '{name}' references invalid event '{window.referenced_event}' "
                     "must be of length 1 or 2."

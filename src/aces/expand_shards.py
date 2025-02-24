@@ -48,6 +48,11 @@ def expand_shards(*shards: str) -> str:
         ...     result = expand_shards(tmpdirname)
         ...     sorted(result.split(","))
         ['1', '3', 'evens/0/file_0', 'evens/0/file_2']
+
+        >>> expand_shards("train.invalid")
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid shard format: train.invalid
     """
 
     result = []
@@ -71,9 +76,9 @@ def expand_shards(*shards: str) -> str:
     return ",".join(result)
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     print(expand_shards(*sys.argv[1:]))
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

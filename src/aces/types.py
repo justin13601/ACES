@@ -199,7 +199,18 @@ class ToEventWindowBounds:
             ...
         ValueError: It doesn't make sense to have the start of the record _RECORD_START be an end event. Did
         you mean to make that be the start event (which should result in the `end_event` parameter being
-        '-_RECORD_START'?
+        '-_RECORD_START')?
+        >>> bounds = ToEventWindowBounds(
+        ...     left_inclusive=True,
+        ...     end_event="-_RECORD_END",
+        ...     right_inclusive=False,
+        ...     offset=timedelta(hours=1)
+        ... ) # doctest: +NORMALIZE_WHITESPACE
+        Traceback (most recent call last):
+            ...
+        ValueError: It doesn't make sense to have the end of the record _RECORD_END be a start event. Did
+        you mean to make that be the end event (which should result in the `end_event` parameter being
+        '_RECORD_END')?
     """
 
     left_inclusive: bool
@@ -215,13 +226,13 @@ class ToEventWindowBounds:
             raise ValueError(
                 f"It doesn't make sense to have the start of the record {START_OF_RECORD_KEY} be an end "
                 "event. Did you mean to make that be the start event (which should result in the `end_event` "
-                f"parameter being '-{START_OF_RECORD_KEY}'?"
+                f"parameter being '-{START_OF_RECORD_KEY}')?"
             )
         elif self.end_event == f"-{END_OF_RECORD_KEY}":
             raise ValueError(
                 f"It doesn't make sense to have the end of the record {END_OF_RECORD_KEY} be a start "
                 "event. Did you mean to make that be the end event (which should result in the `end_event` "
-                f"parameter being '{END_OF_RECORD_KEY}'?"
+                f"parameter being '{END_OF_RECORD_KEY}')?"
             )
 
         if self.offset is None:

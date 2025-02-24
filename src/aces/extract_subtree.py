@@ -243,6 +243,39 @@ def extract_subtree(
         ╞═════════════════════╪═════════════════════╪══════════════╪══════════════╪══════════╪═════════════╡
         │ 1983-12-01 22:02:00 ┆ 1988-12-06 15:17:00 ┆ 1            ┆ 1            ┆ 0        ┆ 0           │
         └─────────────────────┴─────────────────────┴──────────────┴──────────────┴──────────┴─────────────┘
+
+        >>> root = Node("root")
+        >>> child = Node("child")
+        >>> child.endpoint_expr = (True, timedelta(days=3))
+        >>> child.constraints = {}
+        >>> child.parent = root
+        >>> predicates_df = pl.DataFrame({
+        ...     "subject_id": [1],
+        ...     "timestamp": [datetime(2020, 1, 1)]
+        ... })
+        >>> subtree_anchor_realizations = pl.DataFrame({
+        ...     "subject_id": [1],
+        ...     "subtree_anchor_timestamp": [datetime(2020, 1, 1)]
+        ... })
+        >>> print(child.endpoint_expr)
+        (True, datetime.timedelta(days=3))
+        >>> extract_subtree(root, subtree_anchor_realizations, predicates_df, timedelta(0))
+        shape: (1, 3)
+        ┌────────────┬──────────────────────────┬─────────────────────────────────┐
+        │ subject_id ┆ subtree_anchor_timestamp ┆ child_summary                   │
+        │ ---        ┆ ---                      ┆ ---                             │
+        │ i64        ┆ datetime[μs]             ┆ struct[3]                       │
+        ╞════════════╪══════════════════════════╪═════════════════════════════════╡
+        │ 1          ┆ 2020-01-01 00:00:00      ┆ {"child",2020-01-01 00:00:00,2… │
+        └────────────┴──────────────────────────┴─────────────────────────────────┘
+        >>> print(child.endpoint_expr)
+        (True, datetime.timedelta(days=3))
+
+        >>> child.endpoint_expr = (True, 42)
+        >>> extract_subtree(root, subtree_anchor_realizations, predicates_df, timedelta(0))
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid endpoint expression: '(True, 42, datetime.timedelta(0))'
     """
     recursive_results = []
     predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
