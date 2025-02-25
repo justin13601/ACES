@@ -206,7 +206,9 @@ def aggregate_temporal_window(
     if not isinstance(endpoint_expr, TemporalWindowBounds):
         endpoint_expr = TemporalWindowBounds(*endpoint_expr)
 
-    predicate_cols = [c for c in predicates_df.columns if c not in {"subject_id", "timestamp"}]
+    predicate_cols = [
+        c for c in predicates_df.collect_schema().names() if c not in {"subject_id", "timestamp"}
+    ]
 
     return (
         predicates_df.rolling(
