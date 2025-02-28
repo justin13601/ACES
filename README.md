@@ -356,6 +356,12 @@ Finally, ACES is not tied to a particular common data model. Built on a flexible
 
 - LLM integration for extraction ([#55](https://github.com/justin13601/ACES/issues/55))
 
+## Video Demonstration
+
+<div align="left">
+  <a href="https://www.youtube.com/watch?v=i_hCaHDydqA"><img src="https://img.youtube.com/vi/i_hCaHDydqA/0.jpg" alt="ACES MEDS Demo"></a>
+</div>
+
 ## Acknowledgements
 
 **Matthew McDermott**, PhD | *Harvard Medical School*
