@@ -90,7 +90,7 @@ ACES/
 You can run the following to execute Hydra jobs in series or parallel to extract over all MEDS shards:
 
 ```bash
-aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data=sharded data.root="sample_data/meds_sample/" "data.shard=$(expand_shards train/1 test/0)" -m
+aces-cli cohort_name="inhospital_mortality" cohort_dir="sample_configs/" data.standard=meds data=sharded data.root="sample_data/meds_sample/" "data.shard=$(expand_shards train/2 tuning/1)" -m
 ```
 
 If you'd like to just extract a cohort from a singular shard, you can also use the following:
