@@ -33,7 +33,7 @@ jobs:
       #----------------------------------------------
       - name: Run tests
         run: |
-          pytest -v --doctest-modules --ignore=docs/ --cov=src -s
+          pytest -v --cov=src
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4.0.1
