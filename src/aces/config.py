@@ -48,27 +48,27 @@ class PlainPredicateConfig:
         Examples:
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numeric_value")) >=
+            [(col("code")) == ("BP//systolic")].all_horizontal([[(col("numeric_value")) >=
                (dyn int: 120)], [(col("numeric_value")) < (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numeric_value")) >
+            [(col("code")) == ("BP//systolic")].all_horizontal([[(col("numeric_value")) >
                (dyn int: 120)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_max=140, value_max_inclusive=True)
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//systolic))].all_horizontal([[(col("numeric_value")) <=
+            [(col("code")) == ("BP//systolic")].all_horizontal([[(col("numeric_value")) <=
                (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//diastolic")
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//diastolic))]
+            [(col("code")) == ("BP//diastolic")]
             >>> cfg = PlainPredicateConfig("BP//diastolic", other_cols={"chamber": "atrial"})
             >>> expr = cfg.MEDS_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("code")) == (String(BP//diastolic))].all_horizontal([[(col("chamber")) ==
-               (String(atrial))]])
+            [(col("code")) == ("BP//diastolic")].all_horizontal([[(col("chamber")) ==
+               ("atrial")]])
 
             >>> cfg = PlainPredicateConfig(code={'regex': None, 'any': None})
             >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
@@ -98,11 +98,11 @@ class PlainPredicateConfig:
             >>> cfg = PlainPredicateConfig(code={'regex': '^foo.*'})
             >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            col("code").str.contains([String(^foo.*)])
+            col("code").str.contains(["^foo.*"])
             >>> cfg = PlainPredicateConfig(code={'regex': '^foo.*'}, value_min=120)
             >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            col("code").str.contains([String(^foo.*)]).all_horizontal([[(col("numeric_value")) >
+            col("code").str.contains(["^foo.*"]).all_horizontal([[(col("numeric_value")) >
             (dyn int: 120)]])
             >>> cfg = PlainPredicateConfig(code={'any': ['foo', 'bar']})
             >>> expr = cfg.MEDS_eval_expr() # doctest: +NORMALIZE_WHITESPACE
@@ -175,36 +175,36 @@ class PlainPredicateConfig:
             [(col("HR")) > (dyn int: 120)]
             >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).ESGPT_eval_expr("BP_value")
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("BP")) == (String(systolic))].all_horizontal([[(col("BP_value")) >=
+            [(col("BP")) == ("systolic")].all_horizontal([[(col("BP_value")) >=
                (dyn int: 120)], [(col("BP_value")) < (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
             >>> expr = cfg.ESGPT_eval_expr("blood_pressure_value")
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("BP")) == (String(systolic))].all_horizontal([[(col("blood_pressure_value")) >
+            [(col("BP")) == ("systolic")].all_horizontal([[(col("blood_pressure_value")) >
                (dyn int: 120)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_max=140, value_max_inclusive=True)
             >>> expr = cfg.ESGPT_eval_expr("blood_pressure_value")
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("BP")) == (String(systolic))].all_horizontal([[(col("blood_pressure_value")) <=
+            [(col("BP")) == ("systolic")].all_horizontal([[(col("blood_pressure_value")) <=
                (dyn int: 140)]])
             >>> expr = PlainPredicateConfig("BP//diastolic").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("BP")) == (String(diastolic))]
+            [(col("BP")) == ("diastolic")]
             >>> expr = PlainPredicateConfig("event_type//ADMISSION").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            col("event_type").strict_cast(String).str.split([String(&)]).list.contains([String(ADMISSION)])
+            col("event_type").strict_cast(String).str.split(["&"]).list.contains(["ADMISSION"])
             >>> expr = PlainPredicateConfig("BP//diastolic//atrial").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("BP")) == (String(diastolic//atrial))]
+            [(col("BP")) == ("diastolic//atrial")]
             >>> expr = PlainPredicateConfig("BP//diastolic", None, None).ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("BP")) == (String(diastolic))]
+            [(col("BP")) == ("diastolic")]
             >>> expr = PlainPredicateConfig("BP").ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
             col("BP").is_not_null()
             >>> expr = PlainPredicateConfig("BP//systole", other_cols={"chamber": "atrial"}).ESGPT_eval_expr()
             >>> print(expr) # doctest: +NORMALIZE_WHITESPACE
-            [(col("BP")) == (String(systole))].all_horizontal([[(col("chamber")) == (String(atrial))]])
+            [(col("BP")) == ("systole")].all_horizontal([[(col("chamber")) == ("atrial")]])
 
             >>> expr = PlainPredicateConfig("BP//systolic", value_min=120).ESGPT_eval_expr()
             Traceback (most recent call last):

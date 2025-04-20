@@ -52,9 +52,15 @@ def test_aggregate_temporal_window(
     )
 
     # Should run:
-    agg_df = aggregate_temporal_window(df.lazy(), endpoint_expr)
-    assert agg_df is not None
-    agg_df = agg_df.collect()
+    try:
+        agg_df = aggregate_temporal_window(df, endpoint_expr)
+        assert agg_df is not None
+    except Exception as e:
+        raise AssertionError(
+            f"aggregate_temporal_window failed with exception: {e}. "
+            f"df:\n{df}\nleft_inclusive: {left_inclusive}, right_inclusive: {right_inclusive}, "
+            f"window_size: {window_size}, offset: {offset}"
+        ) from e
 
     # This will return something of the below form:
     #
