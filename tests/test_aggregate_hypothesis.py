@@ -10,7 +10,7 @@ from polars.testing.parametric import column, dataframes
 from aces.aggregate import aggregate_temporal_window
 from aces.types import TemporalWindowBounds
 
-datetime_st = st.datetimes(min_value=datetime(1989, 12, 1), max_value=datetime(1999, 12, 31))  # noqa: DTZ001
+datetime_st = st.datetimes(min_value=datetime(1989, 12, 1), max_value=datetime(1999, 12, 31))
 
 N_PREDICATES = 5
 PREDICATE_DATAFRAMES = dataframes(
