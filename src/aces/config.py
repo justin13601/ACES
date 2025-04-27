@@ -1014,7 +1014,6 @@ class TaskExtractorConfig:
         Traceback (most recent call last):
             ...
         FileNotFoundError: Cannot load missing configuration file /foo/non_existent_file.yaml!
-        >>> import tempfile
         >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".txt") as f:
         ...     config_path = Path(f.name)
         ...     cfg = TaskExtractorConfig.load(config_path)
@@ -1036,7 +1035,6 @@ class TaskExtractorConfig:
         Traceback (most recent call last):
             ...
         ValueError: Only supports reading from '.yaml'. Got: '.txt' in ....txt'.
-        >>> import yaml
         >>> data = {
         ...     'predicates': {},
         ...     'trigger': {},
@@ -1146,7 +1144,6 @@ class TaskExtractorConfig:
             ValueError: If the file is not a ".yaml" file.
 
         Examples:
-            >>> import tempfile
             >>> yaml = ruamel.yaml.YAML(typ="safe", pure=True)
             >>> config_dict = {
             ...     "metadata": {'description': 'A test configuration file'},
@@ -1456,7 +1453,6 @@ class TaskExtractorConfig:
             ValueError: If the predicate name is not valid.
 
         Examples:
-            >>> import networkx as nx
             >>> TaskExtractorConfig(
             ...     predicates={
             ...         "A": DerivedPredicateConfig("and(A, B)"),  # A depends on B

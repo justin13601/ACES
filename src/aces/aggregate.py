@@ -22,9 +22,7 @@ def _aggregate_singleton_temporal(
         dataframe is returned.
 
     Examples:
-        >>> import polars as pl
         >>> _ = pl.Config.set_tbl_width_chars(150)
-        >>> from datetime import datetime, timedelta
         >>> df = pl.DataFrame({
         ...     "subject_id": [1],
         ...     "timestamp": [
@@ -142,9 +140,7 @@ def aggregate_temporal_window(
             inclusive values as specified).
 
     Examples:
-        >>> import polars as pl
         >>> _ = pl.Config.set_tbl_width_chars(150)
-        >>> from datetime import datetime, timedelta
         >>> df = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 1, 2, 2],
         ...     "timestamp": [
@@ -374,9 +370,7 @@ def aggregate_event_bound_window(
         ValueError: If the offset is negative.
 
     Examples:
-        >>> import polars as pl
         >>> _ = pl.Config.set_tbl_width_chars(150)
-        >>> from datetime import datetime
         >>> df = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 2, 2, 2, 2, 2],
         ...     "timestamp": [
@@ -583,9 +577,7 @@ def boolean_expr_bound_sum(
             over the permissible row ranges given the input parameters. See above for an explanation.
 
     Examples:
-        >>> import polars as pl
         >>> _ = pl.Config.set_tbl_width_chars(150)
-        >>> from datetime import datetime
         >>> df = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 2, 2, 2, 2, 2],
         ...     "timestamp": [

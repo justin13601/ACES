@@ -27,7 +27,6 @@ def check_constraints(
         ValueError: If the constraint for a column is empty.
 
     Examples:
-        >>> from datetime import datetime
         >>> df = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 1, 2, 2],
         ...     "timestamp": [
@@ -133,7 +132,6 @@ def check_static_variables(patient_demographics: list[str], predicates_df: pl.Da
         ValueError: If the static predicate used by constraint is not in the predicates dataframe.
 
     Examples:
-        >>> from datetime import datetime
         >>> predicates_df = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 1, 1, 2, 2, 2],
         ...     "timestamp": [

@@ -33,13 +33,6 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         ValueError: If the (subject_id, timestamp) columns are not unique.
 
     Examples:
-    These examples are limited for now; see the `tests` directory for full examples.
-        >>> import logging
-        >>> from io import StringIO
-        >>> log_stream = StringIO()
-        >>> logger.addHandler(logging.StreamHandler(log_stream))
-        >>> logger.setLevel(logging.INFO)
-        >>> from datetime import datetime
         >>> from .config import PlainPredicateConfig, WindowConfig, EventConfig
 
         >>> cfg = None # This is obviously invalid, but we're just testing the error case.
@@ -68,7 +61,8 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         ...     "A": [False, False, False],
         ...     "_ANY_EVENT": [True, True, True],
         ... })
-        >>> result = query(cfg, predicates_df)
+        >>> with caplog.at_level(logging.INFO):
+        ...     result = query(cfg, predicates_df)
         >>> result.select("subject_id", "trigger")
         shape: (3, 2)
         ┌────────────┬─────────────────────┐
@@ -89,15 +83,15 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         ...     trigger=EventConfig("_ANY_EVENT"),
         ...     windows={},
         ... )
-        >>> query(cfg, predicates_df)
+        >>> with caplog.at_level(logging.INFO):
+        ...     query(cfg, predicates_df)
         shape: (0, 0)
         ┌┐
         ╞╡
         └┘
-        >>> log_output = log_stream.getvalue()
-        >>> "Static variable criteria specified, filtering patient demographics..." in log_output
+        >>> "Static variable criteria specified, filtering patient demographics..." in caplog.text
         True
-        >>> "No static variable criteria specified, removing all rows with null timestamps..." in log_output
+        >>> "No static variable criteria specified, removing all rows with null timestamps..." in caplog.text
         True
         >>> predicates_df = pl.DataFrame({
         ...     "subject_id": [1, 1, 3],
@@ -105,9 +99,9 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         ...     "A": [True, False, False],
         ...     "_ANY_EVENT": [False, False, False],
         ... })
-        >>> result = query(cfg, predicates_df)
-        >>> log_output = log_stream.getvalue()
-        >>> "No valid rows found for the trigger event" in log_output
+        >>> with caplog.at_level(logging.INFO):
+        ...     result = query(cfg, predicates_df)
+        >>> "No valid rows found for the trigger event" in caplog.text
         True
     """
     if not isinstance(predicates_df, pl.DataFrame):

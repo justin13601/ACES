@@ -3,19 +3,21 @@
 import json
 import sys
 import tempfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
 import polars as pl
 import pytest
+import yaml
 
 
 @pytest.fixture(autouse=True)
-def _setup_doctest_namespace(doctest_namespace: dict[str, Any]):
+def _setup_doctest_namespace(doctest_namespace: dict[str, Any], caplog: pytest.LogCaptureFixture) -> None:
     doctest_namespace.update(
         {
+            "caplog": caplog,
             "MagicMock": MagicMock,
             "sys": sys,
             "Path": Path,
@@ -23,7 +25,9 @@ def _setup_doctest_namespace(doctest_namespace: dict[str, Any]):
             "json": json,
             "pl": pl,
             "datetime": datetime,
+            "timedelta": timedelta,
             "UTC": UTC,
             "tempfile": tempfile,
+            "yaml": yaml,
         }
     )
