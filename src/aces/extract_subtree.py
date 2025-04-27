@@ -54,8 +54,6 @@ def extract_subtree(
         subtree configuration, as well as predicate counts for each window, are provided.
 
     Examples:
-        >>> from bigtree import Node
-        >>> from datetime import datetime
         >>> from .types import ToEventWindowBounds, TemporalWindowBounds
         >>> # We'll use an example for in-hospital mortality prediction. Our root event of the tree will be
         >>> # an admission event.
@@ -171,7 +169,7 @@ def extract_subtree(
         ╞════════════╪══════════════════════════╡
         │ 2          ┆ 1989-12-06 15:17:00      │
         └────────────┴──────────────────────────┘
-        >>> out.columns # doctest: +NORMALIZE_WHITESPACE
+        >>> out.columns
         ['subject_id',
          'target_summary',
          'subtree_anchor_timestamp',
@@ -289,7 +287,7 @@ def extract_subtree(
         # Step 1: Summarize the window from the subtree.root to child
         endpoint_expr = child.endpoint_expr
         if type(endpoint_expr) is tuple:
-            endpoint_expr = endpoint_expr + (subtree_root_offset,)
+            endpoint_expr = (*endpoint_expr, subtree_root_offset)
         else:
             endpoint_expr.offset += subtree_root_offset
 

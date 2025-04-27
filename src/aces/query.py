@@ -167,8 +167,7 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     # add label column if specified
     if cfg.label_window:
         logger.info(  # pragma: no cover
-            f"Extracting label '{cfg.windows[cfg.label_window].label}' from window "
-            f"'{cfg.label_window}'..."
+            f"Extracting label '{cfg.windows[cfg.label_window].label}' from window '{cfg.label_window}'..."
         )
         label_col = "end" if cfg.windows[cfg.label_window].root_node == "start" else "start"
         result = result.with_columns(

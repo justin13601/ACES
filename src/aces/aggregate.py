@@ -979,30 +979,18 @@ def boolean_expr_bound_sum(
             left_inclusive = False
             if mode == "row_to_bound":
                 # Here, we'll be taking cumsum_at_bound - cumsum_at_row - aggd_over_offset
-                if closed in ("left", "both"):
-                    right_inclusive = False
-                else:
-                    right_inclusive = True
+                right_inclusive = closed not in ("left", "both")
             else:
                 # Here, we'll be taking cumsum_at_row - cumsum_at_bound + aggd_over_offset
-                if closed in ("right", "both"):
-                    right_inclusive = True
-                else:
-                    right_inclusive = False
+                right_inclusive = closed in ("right", "both")
         else:
             right_inclusive = False
             if mode == "row_to_bound":
                 # Here, we'll be taking cumsum_at_bound - cumsum_at_row + aggd_over_offset
-                if closed in ("left", "both"):
-                    left_inclusive = True
-                else:
-                    left_inclusive = False
+                left_inclusive = closed in ("left", "both")
             else:
                 # Here, we'll be taking cumsum_at_row - cumsum_at_bound - aggd_over_offset
-                if closed in ("right", "both"):
-                    left_inclusive = False
-                else:
-                    left_inclusive = True
+                left_inclusive = closed not in ("right", "both")
 
         aggd_over_offset = aggregate_temporal_window(
             df,
@@ -1022,11 +1010,9 @@ def boolean_expr_bound_sum(
     cumsum_at_boundary = {c: pl.col(f"{c}_cumsum_at_row").alias(f"{c}_cumsum_at_boundary") for c in cols}
 
     # We need to adjust `cumsum_at_boundary` to appropriately include or exclude the boundary event.
-    if mode == "bound_to_row" and closed in ("left", "both"):
-        cumsum_at_boundary = {
-            c: (expr - pl.col(c)).alias(f"{c}_cumsum_at_boundary") for c, expr in cumsum_at_boundary.items()
-        }
-    elif mode == "row_to_bound" and closed not in ("right", "both"):
+    if (mode == "bound_to_row" and closed in ("left", "both")) or (
+        mode == "row_to_bound" and closed not in ("right", "both")
+    ):
         cumsum_at_boundary = {
             c: (expr - pl.col(c)).alias(f"{c}_cumsum_at_boundary") for c, expr in cumsum_at_boundary.items()
         }
@@ -1118,12 +1104,9 @@ def boolean_expr_bound_sum(
         def agg_offset_fn(c: str) -> pl.Expr:
             return pl.col(c) + pl.col(f"{c}_in_offset_period")
 
-    elif mode == "bound_to_row" and offset < timedelta(0):
-
-        def agg_offset_fn(c: str) -> pl.Expr:
-            return pl.col(c) - pl.col(f"{c}_in_offset_period")
-
-    elif mode == "row_to_bound" and offset > timedelta(0):
+    elif (mode == "bound_to_row" and offset < timedelta(0)) or (
+        mode == "row_to_bound" and offset > timedelta(0)
+    ):
 
         def agg_offset_fn(c: str) -> pl.Expr:
             return pl.col(c) - pl.col(f"{c}_in_offset_period")

@@ -1,9 +1,5 @@
 """Tests the extract_shards CLI process."""
 
-import rootutils
-
-root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
-
 import tempfile
 from pathlib import Path
 
@@ -12,9 +8,9 @@ from .utils import run_command
 
 def test_e2e():
     es_stderr, es_stdout = run_command("expand_shards train/3 tuning/1", {}, "expand_shards")
-    assert (
-        es_stdout == "train/0,train/1,train/2,tuning/0\n"
-    ), f"Expected 'train/0,train/1,train/2,tuning/0' but got '{es_stdout}'"
+    assert es_stdout == "train/0,train/1,train/2,tuning/0\n", (
+        f"Expected 'train/0,train/1,train/2,tuning/0' but got '{es_stdout}'"
+    )
 
     with tempfile.TemporaryDirectory() as d:
         data_dir = Path(d) / "sample_data"

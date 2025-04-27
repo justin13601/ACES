@@ -7,7 +7,7 @@ import polars as pl
 from omegaconf import DictConfig
 from polars.exceptions import ColumnNotFoundError
 
-from .config import TaskExtractorConfig
+from .config import PlainPredicateConfig, TaskExtractorConfig
 from .types import (
     ANY_EVENT_COLUMN,
     END_OF_RECORD_KEY,
@@ -36,7 +36,6 @@ def direct_load_plain_predicates(
         The Polars DataFrame containing the specified columns.
 
     Example:
-        >>> import tempfile
         >>> CSV_data = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 1, 2, 2],
         ...     "timestamp": [None, "01/01/2021 00:00", None, "01/01/2021 12:00", "01/02/2021 00:00", None],
@@ -185,8 +184,8 @@ def direct_load_plain_predicates(
         TypeError: Passed predicates have timestamps of invalid type Int64.
     """
 
-    columns = ["subject_id", "timestamp"] + predicates
-    logger.info(f"Attempting to load {columns} from file {str(data_path.resolve())}")
+    columns = ["subject_id", "timestamp", *predicates]
+    logger.info(f"Attempting to load {columns} from file {data_path.resolve()!s}")
 
     if not data_path.is_file():
         raise FileNotFoundError(f"Direct predicates file {data_path} does not exist!")
@@ -226,7 +225,9 @@ def direct_load_plain_predicates(
     )
 
 
-def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl.DataFrame:
+def generate_plain_predicates_from_meds(
+    data_path: Path, predicates: dict[str, PlainPredicateConfig]
+) -> pl.DataFrame:
     """Generate plain predicate columns from a MEDS dataset.
 
     To learn more about the MEDS format, please visit https://github.com/Medical-Event-Data-Standard/meds
@@ -240,8 +241,6 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
         MEDS dataset.
 
     Example:
-        >>> import tempfile
-        >>> from .config import PlainPredicateConfig
         >>> parquet_data = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 2, 3],
         ...     "time": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 01:00", "1/1/1989 02:00", None],
@@ -282,7 +281,7 @@ def generate_plain_predicates_from_meds(data_path: Path, predicates: dict) -> pl
     logger.info("Cleaning up predicates dataframe...")
     predicate_cols = list(predicates.keys())
     return (
-        data.select(["subject_id", "timestamp"] + predicate_cols)
+        data.select(["subject_id", "timestamp", *predicate_cols])
         .group_by(["subject_id", "timestamp"], maintain_order=True)
         .agg(*(pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols))
     )
@@ -306,8 +305,6 @@ def process_esgpt_data(
         ESGPT dataset.
 
     Examples:
-        >>> from datetime import datetime
-        >>> from .config import PlainPredicateConfig
         >>> subjects_df = pl.DataFrame({
         ...    "subject_id": [1, 2],
         ...    "MRN": ["A123", "B456"],
@@ -429,12 +426,7 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
         The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
         ESGPT dataset.
 
-        >>> import pytest
-        >>> import sys
-        >>> from unittest.mock import patch
-        >>> from pathlib import Path
-        >>> with patch.dict(sys.modules, {"EventStream.data.dataset_polars": None}):
-        ...     generate_plain_predicates_from_esgpt(Path("/fake/path"), {}) # doctest: +NORMALIZE_WHITESPACE
+        >>> generate_plain_predicates_from_esgpt(Path("/fake/path"), {})
         Traceback (most recent call last):
             ...
         ImportError: The 'EventStream' package is required to load ESGPT datasets. If you mean to use a
@@ -493,8 +485,7 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         ValueError: If an invalid predicate type is specified in the configuration.
 
     Example:
-        >>> import tempfile
-        >>> from .config import PlainPredicateConfig, DerivedPredicateConfig, EventConfig, WindowConfig
+        >>> from .config import DerivedPredicateConfig, EventConfig, WindowConfig
         >>> data = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 2, 2, 2],
         ...     "timestamp": [

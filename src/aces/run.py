@@ -1,24 +1,23 @@
 """Main script for end-to-end cohort extraction."""
 
 import logging
+import os
 import sys
+from datetime import UTC, datetime
 from importlib.resources import files
+from pathlib import Path
 
 import hydra
 import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
 from meds import label_schema, prediction_time_field, subject_id_field
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
+
+from . import config, predicates, query
 
 logger = logging.getLogger(__name__)
 config_yaml = files("aces").joinpath("configs/_aces.yaml")
-
-if len(sys.argv) == 1:  # pragma: no cover
-    print("Usage: aces-cli [OPTIONS]")
-    print("Try 'aces-cli --help' for more information.")
-    print("For more information, visit: https://eventstreamaces.readthedocs.io/en/latest/usage.html")
-    sys.exit(1)
 
 MEDS_LABEL_MANDATORY_TYPES = {
     subject_id_field: pl.Int64,
@@ -54,14 +53,17 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
 
     Examples:
         >>> df = pl.DataFrame({})
-        >>> get_and_validate_label_schema(df) # doctest: +NORMALIZE_WHITESPACE
+        >>> get_and_validate_label_schema(df)
         Traceback (most recent call last):
             ...
         ValueError: MEDS Data DataFrame must have a 'subject_id' column of type Int64.
-        >>> from datetime import datetime
         >>> df = pl.DataFrame({
         ...     subject_id_field: pl.Series([1, 3, 2], dtype=pl.UInt32),
-        ...     "time": [datetime(2021, 1, 1), datetime(2021, 1, 2), datetime(2021, 1, 3)],
+        ...     "time": [
+        ...         datetime(2021, 1, 1, tzinfo=UTC),
+        ...         datetime(2021, 1, 2, tzinfo=UTC),
+        ...         datetime(2021, 1, 3, tzinfo=UTC)
+        ...     ],
         ...     "boolean_value": [1, 0, 100],
         ... })
         >>> get_and_validate_label_schema(df)
@@ -131,15 +133,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
 def main(cfg: DictConfig) -> None:  # pragma: no cover
-    import os
-    from datetime import datetime
-    from pathlib import Path
-
-    from omegaconf import OmegaConf
-
-    from . import config, predicates, query
-
-    st = datetime.now()
+    st = datetime.now(tz=UTC)
 
     # load configuration
     logger.info(f"Loading config from '{cfg.config_path}'")
@@ -184,8 +178,16 @@ def main(cfg: DictConfig) -> None:  # pragma: no cover
         pq.write_table(result, cfg.output_filepath)
     else:
         result.write_parquet(cfg.output_filepath, use_pyarrow=True)
-    logger.info(f"Completed in {datetime.now() - st}. Results saved to '{cfg.output_filepath}'.")
+    logger.info(f"Completed in {datetime.now(tz=UTC) - st}. Results saved to '{cfg.output_filepath}'.")
 
 
-if __name__ == "__main__":  # pragma: no cover
+def cli():
+    """Main entry point for the script, allowing for no-arg help messages."""
+
+    if len(sys.argv) == 1:
+        print("Usage: aces-cli [OPTIONS]")
+        print("Try 'aces-cli --help' for more information.")
+        print("For more information, visit: https://eventstreamaces.readthedocs.io/en/latest/usage.html")
+        sys.exit(1)
+
     main()
