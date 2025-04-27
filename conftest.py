@@ -3,7 +3,7 @@
 import json
 import sys
 import tempfile
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
@@ -26,7 +26,6 @@ def _setup_doctest_namespace(doctest_namespace: dict[str, Any], caplog: pytest.L
             "pl": pl,
             "datetime": datetime,
             "timedelta": timedelta,
-            "UTC": UTC,
             "tempfile": tempfile,
             "yaml": yaml,
         }

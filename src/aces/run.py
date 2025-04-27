@@ -3,7 +3,7 @@
 import logging
 import os
 import sys
-from datetime import UTC, datetime
+from datetime import datetime
 from importlib.resources import files
 from pathlib import Path
 
@@ -59,11 +59,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         ValueError: MEDS Data DataFrame must have a 'subject_id' column of type Int64.
         >>> df = pl.DataFrame({
         ...     subject_id_field: pl.Series([1, 3, 2], dtype=pl.UInt32),
-        ...     "time": [
-        ...         datetime(2021, 1, 1, tzinfo=UTC),
-        ...         datetime(2021, 1, 2, tzinfo=UTC),
-        ...         datetime(2021, 1, 3, tzinfo=UTC)
-        ...     ],
+        ...     "time": [datetime(2021, 1, 1), datetime(2021, 1, 2), datetime(2021, 1, 3)],
         ...     "boolean_value": [1, 0, 100],
         ... })
         >>> get_and_validate_label_schema(df)
@@ -133,7 +129,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
 def main(cfg: DictConfig) -> None:  # pragma: no cover
-    st = datetime.now(tz=UTC)
+    st = datetime.now()
 
     # load configuration
     logger.info(f"Loading config from '{cfg.config_path}'")
@@ -178,7 +174,7 @@ def main(cfg: DictConfig) -> None:  # pragma: no cover
         pq.write_table(result, cfg.output_filepath)
     else:
         result.write_parquet(cfg.output_filepath, use_pyarrow=True)
-    logger.info(f"Completed in {datetime.now(tz=UTC) - st}. Results saved to '{cfg.output_filepath}'.")
+    logger.info(f"Completed in {datetime.now() - st}. Results saved to '{cfg.output_filepath}'.")
 
 
 def cli():
