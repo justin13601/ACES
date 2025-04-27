@@ -52,62 +52,47 @@ class PlainPredicateConfig:
             [(col("code")) == ("BP//systolic")].all_horizontal([[(col("numeric_value")) >=
                (dyn int: 120)], [(col("numeric_value")) < (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
-            >>> expr = cfg.MEDS_eval_expr()
-            >>> print(expr)
+            >>> print(cfg.MEDS_eval_expr())
             [(col("code")) == ("BP//systolic")].all_horizontal([[(col("numeric_value")) >
                (dyn int: 120)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_max=140, value_max_inclusive=True)
-            >>> expr = cfg.MEDS_eval_expr()
-            >>> print(expr)
+            >>> print(cfg.MEDS_eval_expr())
             [(col("code")) == ("BP//systolic")].all_horizontal([[(col("numeric_value")) <=
                (dyn int: 140)]])
-            >>> cfg = PlainPredicateConfig("BP//diastolic")
-            >>> expr = cfg.MEDS_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig("BP//diastolic").MEDS_eval_expr())
             [(col("code")) == ("BP//diastolic")]
             >>> cfg = PlainPredicateConfig("BP//diastolic", other_cols={"chamber": "atrial"})
-            >>> expr = cfg.MEDS_eval_expr()
-            >>> print(expr)
+            >>> print(cfg.MEDS_eval_expr())
             [(col("code")) == ("BP//diastolic")].all_horizontal([[(col("chamber")) ==
                ("atrial")]])
 
-            >>> cfg = PlainPredicateConfig(code={'regex': None, 'any': None})
-            >>> expr = cfg.MEDS_eval_expr()
+            >>> PlainPredicateConfig(code={'regex': None, 'any': None}).MEDS_eval_expr()
             Traceback (most recent call last):
                 ...
             ValueError: Only one of 'regex' or 'any' can be specified in the code field!
             Got: ['regex', 'any'].
-            >>> cfg = PlainPredicateConfig(code={'foo': None})
-            >>> expr = cfg.MEDS_eval_expr()
+            >>> PlainPredicateConfig(code={'foo': None}).MEDS_eval_expr()
             Traceback (most recent call last):
                 ...
             ValueError: Invalid specification in the code field! Got: {'foo': None}.
             Expected one of 'regex', 'any'.
-            >>> cfg = PlainPredicateConfig(code={'regex': ''})
-            >>> expr = cfg.MEDS_eval_expr()
+            >>> PlainPredicateConfig(code={'regex': ''}).MEDS_eval_expr()
             Traceback (most recent call last):
                 ...
             ValueError: Invalid specification in the code field! Got: {'regex': ''}.
             Expected a non-empty string for 'regex'.
-            >>> cfg = PlainPredicateConfig(code={'any': []})
-            >>> expr = cfg.MEDS_eval_expr()
+            >>> PlainPredicateConfig(code={'any': []}).MEDS_eval_expr()
             Traceback (most recent call last):
                 ...
             ValueError: Invalid specification in the code field! Got: {'any': []}.
             Expected a list of strings for 'any'.
 
-            >>> cfg = PlainPredicateConfig(code={'regex': '^foo.*'})
-            >>> expr = cfg.MEDS_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig(code={'regex': '^foo.*'}).MEDS_eval_expr())
             col("code").str.contains(["^foo.*"])
-            >>> cfg = PlainPredicateConfig(code={'regex': '^foo.*'}, value_min=120)
-            >>> expr = cfg.MEDS_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig(code={'regex': '^foo.*'}, value_min=120).MEDS_eval_expr())
             col("code").str.contains(["^foo.*"]).all_horizontal([[(col("numeric_value")) >
             (dyn int: 120)]])
-            >>> cfg = PlainPredicateConfig(code={'any': ['foo', 'bar']})
-            >>> expr = cfg.MEDS_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig(code={'any': ['foo', 'bar']}).MEDS_eval_expr())
             col("code").is_in([Series])
         """
         criteria = []
@@ -169,49 +154,38 @@ class PlainPredicateConfig:
         expected outputs have been validated on polars version 0.20.30.
 
         Examples:
-            >>> # Should handle univariate regression values
-            >>> expr = PlainPredicateConfig("HR", value_min=120, value_min_inclusive=False)
-            >>> expr = expr.ESGPT_eval_expr("HR")
-            >>> print(expr)
+            >>> cfg = PlainPredicateConfig("HR", value_min=120, value_min_inclusive=False)
+            >>> print(cfg.ESGPT_eval_expr("HR"))
             [(col("HR")) > (dyn int: 120)]
-            >>> expr = PlainPredicateConfig("BP//systolic", 120, 140, True, False).ESGPT_eval_expr("BP_value")
-            >>> print(expr)
+            >>> print(PlainPredicateConfig("BP//systolic", 120, 140, True, False).ESGPT_eval_expr("BP_value"))
             [(col("BP")) == ("systolic")].all_horizontal([[(col("BP_value")) >=
                (dyn int: 120)], [(col("BP_value")) < (dyn int: 140)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_min=120, value_min_inclusive=False)
-            >>> expr = cfg.ESGPT_eval_expr("blood_pressure_value")
-            >>> print(expr)
+            >>> print(cfg.ESGPT_eval_expr("blood_pressure_value"))
             [(col("BP")) == ("systolic")].all_horizontal([[(col("blood_pressure_value")) >
                (dyn int: 120)]])
             >>> cfg = PlainPredicateConfig("BP//systolic", value_max=140, value_max_inclusive=True)
-            >>> expr = cfg.ESGPT_eval_expr("blood_pressure_value")
-            >>> print(expr)
+            >>> print(cfg.ESGPT_eval_expr("blood_pressure_value"))
             [(col("BP")) == ("systolic")].all_horizontal([[(col("blood_pressure_value")) <=
                (dyn int: 140)]])
-            >>> expr = PlainPredicateConfig("BP//diastolic").ESGPT_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig("BP//diastolic").ESGPT_eval_expr())
             [(col("BP")) == ("diastolic")]
-            >>> expr = PlainPredicateConfig("event_type//ADMISSION").ESGPT_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig("event_type//ADMISSION").ESGPT_eval_expr())
             col("event_type").strict_cast(String).str.split(["&"]).list.contains(["ADMISSION"])
-            >>> expr = PlainPredicateConfig("BP//diastolic//atrial").ESGPT_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig("BP//diastolic//atrial").ESGPT_eval_expr())
             [(col("BP")) == ("diastolic//atrial")]
-            >>> expr = PlainPredicateConfig("BP//diastolic", None, None).ESGPT_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig("BP//diastolic", None, None).ESGPT_eval_expr())
             [(col("BP")) == ("diastolic")]
-            >>> expr = PlainPredicateConfig("BP").ESGPT_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig("BP").ESGPT_eval_expr())
             col("BP").is_not_null()
-            >>> expr = PlainPredicateConfig("BP//systole", other_cols={"chamber": "atrial"}).ESGPT_eval_expr()
-            >>> print(expr)
+            >>> print(PlainPredicateConfig("BP//systole", other_cols={"chamber": "atrial"}).ESGPT_eval_expr())
             [(col("BP")) == ("systole")].all_horizontal([[(col("chamber")) == ("atrial")]])
 
-            >>> expr = PlainPredicateConfig("BP//systolic", value_min=120).ESGPT_eval_expr()
+            >>> PlainPredicateConfig("BP//systolic", value_min=120).ESGPT_eval_expr()
             Traceback (most recent call last):
                 ...
             ValueError: Must specify a values column for ESGPT predicates with a value_min = 120
-            >>> expr = PlainPredicateConfig("BP//systolic", value_max=140).ESGPT_eval_expr()
+            >>> PlainPredicateConfig("BP//systolic", value_max=140).ESGPT_eval_expr()
             Traceback (most recent call last):
                 ...
             ValueError: Must specify a values column for ESGPT predicates with a value_max = 140
@@ -325,12 +299,10 @@ class DerivedPredicateConfig:
         expected outputs have been validated on polars version 0.20.30.
 
         Examples:
-            >>> expr = DerivedPredicateConfig("and(P1, P2, P3)").eval_expr()
-            >>> print(expr)
+            >>> print(DerivedPredicateConfig("and(P1, P2, P3)").eval_expr())
             [(col("P1")) > (dyn int: 0)].all_horizontal([[(col("P2")) >
                (dyn int: 0)], [(col("P3")) > (dyn int: 0)]])
-            >>> expr = DerivedPredicateConfig("or(PA, PB)").eval_expr()
-            >>> print(expr)
+            >>> print(DerivedPredicateConfig("or(PA, PB)").eval_expr())
             [(col("PA")) > (dyn int: 0)].any_horizontal([[(col("PB")) > (dyn int: 0)]])
         """
         if self.is_and:
