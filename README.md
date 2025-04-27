@@ -60,8 +60,9 @@ Install with dependencies from the root directory of the cloned repo:
 pip install -e .
 ```
 
-[!NOTE]
-To avoid potential dependency conflicts, please install ESGPT first before installing ACES. This ensures compatibility with the `polars` version required by ACES.
+> [!NOTE]
+> To avoid potential dependency conflicts, please install ESGPT first before installing ACES. This ensures
+> compatibility with the `polars` version required by ACES.
 
 ## Instructions for Use
 
@@ -230,8 +231,12 @@ Fields for a "plain" predicate:
 - `value_max_inclusive` (optional): Must be a boolean specifying whether `value_max` is inclusive or not.
 - `other_cols` (optional): Must be a 1-to-1 dictionary of column name and column value, which places additional constraints on further columns.
 
-[!NOTE]
-For memory optimization, we strongly recommend using either the List of Values or Regular Expression formats whenever possible, especially when needing to match multiple values. Defining each code as an individual string will increase memory usage significantly, as each code generates a separate predicate column. Using a list or regex consolidates multiple matching codes under a single column, reducing the overall memory footprint.
+> [!NOTE]
+> For memory optimization, we strongly recommend using either the List of Values or Regular Expression formats
+> whenever possible, especially when needing to match multiple values. Defining each code as an individual
+> string will increase memory usage significantly, as each code generates a separate predicate column. Using a
+> list or regex consolidates multiple matching codes under a single column, reducing the overall memory
+> footprint.
 
 #### Derived Predicates
 

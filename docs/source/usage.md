@@ -61,8 +61,16 @@ windows:
     label: death
 ```
 
-[!NOTE]
-Each configuration file contains [`predicates`](https://eventstreamaces.readthedocs.io/en/latest/readme.html#predicates), a [`trigger`](https://eventstreamaces.readthedocs.io/en/latest/readme.html#trigger-event), and [`windows`](https://eventstreamaces.readthedocs.io/en/latest/readme.html#windows). Additionally, the `label` field is used to extract the predicate count from the window it was defined in, which acts as the task label. This has been set to the `death` predicate from the `target` window in this example. The `index_timestamp` is used to specify the timestamp at which a prediction is made and can be set to `start` or `end` of a particular window. In most tasks, including this one, it can be set to `end` in the window containing input data (`input` in this example).
+> [!NOTE]
+> Each configuration file contains
+> [`predicates`](https://eventstreamaces.readthedocs.io/en/latest/readme.html#predicates), a
+> [`trigger`](https://eventstreamaces.readthedocs.io/en/latest/readme.html#trigger-event), and
+> [`windows`](https://eventstreamaces.readthedocs.io/en/latest/readme.html#windows). Additionally, the `label`
+> field is used to extract the predicate count from the window it was defined in, which acts as the task
+> label. This has been set to the `death` predicate from the `target` window in this example. The
+> `index_timestamp` is used to specify the timestamp at which a prediction is made and can be set to `start`
+> or `end` of a particular window. In most tasks, including this one, it can be set to `end` in the window
+> containing input data (`input` in this example).
 
 ### Run the CLI
 
@@ -231,8 +239,9 @@ Shell completion can be enabled for the Hydra configuration fields. For Bash, pl
 eval "$(aces-cli -sc install=bash)"
 ```
 
-[!NOTE]
-you may have to run this command for every terminal - please visit [Hydra's Documentation](https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/) for more details.
+> [!NOTE]
+> you may have to run this command for every terminal - please visit [Hydra's
+> Documentation](https://hydra.cc/docs/tutorials/basic/running_your_app/tab_completion/) for more details.
 
 ### MEDS
 
