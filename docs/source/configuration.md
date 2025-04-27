@@ -161,22 +161,22 @@ following rules:
       > `$REFERENCED` is the `end` field, then `$TIME_DELTA` must be negative to preserve the time ordering of
       > the window fields.
 
-3. `$REFERENCING = $REFERENCED -> $PREDICATE`, `$REFERENCING = $REFERENCED <- $PREDICATE`
-   In this case, the referencing event will be defined as the next or previous event satisfying the
-   predicate, `$PREDICATE`.
+   2. `$REFERENCING = $REFERENCED -> $PREDICATE`, `$REFERENCING = $REFERENCED <- $PREDICATE`
+      In this case, the referencing event will be defined as the next or previous event satisfying the
+      predicate, `$PREDICATE`.
 
-   > [!NOTE]
-   > If the `$REFERENCED` is the `start` field, then the "next predicate
-   > ordering" (`$REFERENCED -> $PREDICATE`) must be used, and if the `$REFERENCED` is the `end` field, then
-   > the "previous predicate ordering" (`$REFERENCED <- $PREDICATE`) must be used to preserve the time
-   > ordering of the window fields. These forms can lead to windows being defined as single point events, if
-   > the `$REFERENCED` event itself satisfies `$PREDICATE` and the appropriate constraints are satisfied and
-   > inclusive values are set.
+      > [!NOTE]
+      > If the `$REFERENCED` is the `start` field, then the "next predicate
+      > ordering" (`$REFERENCED -> $PREDICATE`) must be used, and if the `$REFERENCED` is the `end` field, then
+      > the "previous predicate ordering" (`$REFERENCED <- $PREDICATE`) must be used to preserve the time
+      > ordering of the window fields. These forms can lead to windows being defined as single point events, if
+      > the `$REFERENCED` event itself satisfies `$PREDICATE` and the appropriate constraints are satisfied and
+      > inclusive values are set.
 
-4. `$REFERENCING = $REFERENCED`
-   In this case, the referencing event will be defined as the same event as the referenced event.
+   3. `$REFERENCING = $REFERENCED`
+      In this case, the referencing event will be defined as the same event as the referenced event.
 
-5. _`null`/`None`/omitted_: If `start` is `null`/`None`/omitted, then the window will start at the beginning of
+3. _`null`/`None`/omitted_: If `start` is `null`/`None`/omitted, then the window will start at the beginning of
    the patient's record. If `end` is `null`/`None`/omitted, then the window will end at the end of the patient's
    record. In either of these cases, the other field must reference an external event, per rule 1.
 
