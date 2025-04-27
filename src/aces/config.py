@@ -1030,14 +1030,13 @@ class TaskExtractorConfig:
         ValueError: Unrecognized keys in configuration file: 'foo, trigger'
         >>> predicates = {"foo bar": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("foo")
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
+        >>> TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
         Traceback (most recent call last):
             ...
         ValueError: Predicate name 'foo bar' is invalid; must be composed of alphanumeric or '_' characters.
         >>> predicates = {"foo": str("foo")}
         >>> trigger = EventConfig("foo")
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
-        ...
+        >>> TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
         Traceback (most recent call last):
             ...
         ValueError: Invalid predicate configuration for 'foo': foo. Must be either a PlainPredicateConfig or
@@ -1047,24 +1046,24 @@ class TaskExtractorConfig:
         ...     "foobar": DerivedPredicateConfig("or(foo, bar)"),
         ... }
         >>> trigger = EventConfig("foo")
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
+        >>> TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
         Traceback (most recent call last):
             ...
         KeyError: "Missing 1 relationships: Derived predicate 'foobar' references undefined predicate 'bar'"
         >>> predicates = {"foo": PlainPredicateConfig("foo")}
         >>> trigger = EventConfig("foo")
         >>> windows = {"foo bar": WindowConfig("gap.end", "start + 24h", True, True)}
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        >>> TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
         Traceback (most recent call last):
             ...
         ValueError: Window name 'foo bar' is invalid; must be composed of alphanumeric or '_' characters.
         >>> windows = {"foo": WindowConfig("gap.end", "start + 24h", True, True, {}, "bar")}
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        >>> TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
         Traceback (most recent call last):
             ...
         ValueError: Label must be one of the defined predicates. Got: bar for window 'foo'
         >>> windows = {"foo": WindowConfig("gap.end", "start + 24h", True, True, {}, "foo", "bar")}
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        >>> TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
         Traceback (most recent call last):
             ...
         ValueError: Index timestamp must be either 'start' or 'end'. Got: bar for window 'foo'
@@ -1072,7 +1071,7 @@ class TaskExtractorConfig:
         ...     "foo": WindowConfig("gap.end", "start + 24h", True, True, {}, "foo"),
         ...     "bar": WindowConfig("gap.end", "start + 24h", True, True, {}, "foo")
         ... }
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
+        >>> TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
         Traceback (most recent call last):
             ...
         ValueError: Only one window can be labeled, found 2 labeled windows: foo, bar
@@ -1080,15 +1079,13 @@ class TaskExtractorConfig:
         ...     "foo": WindowConfig("gap.end", "start + 24h", True, True, {}, "foo", "start"),
         ...     "bar": WindowConfig("gap.end", "start + 24h", True, True, {}, index_timestamp="start")
         ... }
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
-        ...
+        >>> TaskExtractorConfig(predicates=predicates, trigger=trigger, windows=windows)
         Traceback (most recent call last):
             ...
         ValueError: Only the 'start'/'end' of one window can be used as the index timestamp, found
         2 windows with index_timestamp: foo, bar
         >>> predicates = {"foo": PlainPredicateConfig("foo")}
-        >>> trigger = EventConfig("bar")
-        >>> config = TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
+        >>> TaskExtractorConfig(predicates=predicates, trigger=EventConfig("bar"), windows={})
         Traceback (most recent call last):
             ...
         KeyError: "Trigger event predicate 'bar' not found in predicates: foo"
