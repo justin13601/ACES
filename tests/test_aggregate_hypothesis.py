@@ -1,7 +1,3 @@
-import rootutils
-
-root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
-
 from datetime import datetime, timedelta
 
 import polars as pl
@@ -102,15 +98,9 @@ def test_aggregate_temporal_window(
             start = row["timestamp_at_start"]
             end = row["timestamp_at_end"]
 
-            if left_inclusive:
-                st_filter = pl.col("timestamp") >= start
-            else:
-                st_filter = pl.col("timestamp") > start
+            st_filter = pl.col("timestamp") >= start if left_inclusive else pl.col("timestamp") > start
 
-            if right_inclusive:
-                et_filter = pl.col("timestamp") <= end
-            else:
-                et_filter = pl.col("timestamp") < end
+            et_filter = pl.col("timestamp") <= end if right_inclusive else pl.col("timestamp") < end
 
             raw_filtered = raw_subj.filter(st_filter & et_filter)
             if len(raw_filtered) == 0:

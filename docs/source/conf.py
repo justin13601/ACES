@@ -4,6 +4,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from sphinx.ext import apidoc
+
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -54,8 +56,6 @@ def ensure_pandoc_installed(_):
 # This ensures we don't need to run apidoc manually.
 
 # TODO: use https://github.com/sphinx-extensions2/sphinx-autodoc2
-
-from sphinx.ext import apidoc
 
 output_dir = __location__ / "api"
 module_dir = __src__ / "src/aces"

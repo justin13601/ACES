@@ -16,7 +16,7 @@ def check_constraints(
 
     Args:
         window_constraints: constraints on counts of predicates that must
-            be satsified, organized as a dictionary from predicate column name to the lowerbound and upper
+            be satisfied, organized as a dictionary from predicate column name to the lowerbound and upper
             bound range required for that constraint to be satisfied.
         summary_df: A dataframe containing a row for every possible prospective window to be analyzed. The
             only columns expected are predicate columns within the ``window_constraints`` dictionary.
@@ -27,7 +27,6 @@ def check_constraints(
         ValueError: If the constraint for a column is empty.
 
     Examples:
-        >>> from datetime import datetime
         >>> df = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 1, 2, 2],
         ...     "timestamp": [
@@ -96,9 +95,9 @@ def check_constraints(
     should_drop = pl.lit(False)
 
     for col, (valid_min_inc, valid_max_inc) in window_constraints.items():
-        if valid_min_inc is None and valid_max_inc is None:
-            raise ValueError(f"Invalid constraint for '{col}': {valid_min_inc} - {valid_max_inc}")
-        elif valid_min_inc is not None and valid_max_inc is not None and valid_max_inc < valid_min_inc:
+        if (valid_min_inc is None and valid_max_inc is None) or (
+            valid_min_inc is not None and valid_max_inc is not None and valid_max_inc < valid_min_inc
+        ):
             raise ValueError(f"Invalid constraint for '{col}': {valid_min_inc} - {valid_max_inc}")
 
         if col == "*":
@@ -133,7 +132,6 @@ def check_static_variables(patient_demographics: list[str], predicates_df: pl.Da
         ValueError: If the static predicate used by constraint is not in the predicates dataframe.
 
     Examples:
-        >>> from datetime import datetime
         >>> predicates_df = pl.DataFrame({
         ...     "subject_id": [1, 1, 1, 1, 1, 2, 2, 2],
         ...     "timestamp": [

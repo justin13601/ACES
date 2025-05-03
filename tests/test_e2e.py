@@ -1,9 +1,5 @@
 """Tests the full end-to-end extraction process."""
 
-import rootutils
-
-root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
-
 from datetime import datetime
 
 import polars as pl

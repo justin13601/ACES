@@ -1,10 +1,5 @@
 """Tests the full end-to-end extraction process."""
 
-
-import rootutils
-
-root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
-
 import logging
 import tempfile
 from io import StringIO
@@ -592,9 +587,9 @@ def test_meds_window_storage():
         if len(wrote_files) > 1:
             extraction_config_kwargs["data"] = "sharded"
             extraction_config_kwargs["data.root"] = str(data_dir.resolve())
-            extraction_config_kwargs['"data.shard'] = f'$(expand_shards {str(data_dir.resolve())})"'
+            extraction_config_kwargs['"data.shard'] = f'$(expand_shards {data_dir.resolve()!s})"'
         else:
-            extraction_config_kwargs["data.path"] = str(list(wrote_files.values())[0].resolve())
+            extraction_config_kwargs["data.path"] = str(next(iter(wrote_files.values())).resolve())
 
         stderr, stdout = run_command(command, extraction_config_kwargs, f"CLI should run for {task}")
 
@@ -612,9 +607,9 @@ def test_meds_window_storage():
                         f"No output files found for task '{task}'. Found files: {all_directory_contents}"
                     )
 
-                assert len(all_out_fps) == len(
-                    want_outputs
-                ), f"Expected {len(want_outputs)} outputs, got {len(all_out_fps)}: {all_out_fps_str}"
+                assert len(all_out_fps) == len(want_outputs), (
+                    f"Expected {len(want_outputs)} outputs, got {len(all_out_fps)}: {all_out_fps_str}"
+                )
 
             for want_fp, want_df in want_outputs.items():
                 out_shard = want_fp.relative_to(cohort_dir)
@@ -626,9 +621,9 @@ def test_meds_window_storage():
                 )
             assert window_dir.exists(), f"Expected window stats directory {window_dir} to exist."
             out_fps = list(window_dir.glob("**/*.parquet"))
-            assert len(out_fps) == len(
-                want_window_outputs
-            ), f"Expected {len(want_window_outputs)} window output files, got {len(out_fps)}"
+            assert len(out_fps) == len(want_window_outputs), (
+                f"Expected {len(want_window_outputs)} window output files, got {len(out_fps)}"
+            )
 
             for want_fp, want_df in want_window_outputs.items():
                 out_shard = want_fp.relative_to(window_dir)

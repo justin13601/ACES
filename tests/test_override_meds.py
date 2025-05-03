@@ -1,11 +1,5 @@
 """Tests the full end-to-end extraction process."""
 
-
-import rootutils
-
-root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
-
-
 import polars as pl
 
 from .test_meds import parse_labels_yaml, parse_shards_yaml
@@ -375,7 +369,7 @@ TASK_OVERRIDES = {
             code: DISCHARGE//ASSISTED LIVING
           hospital_discharge_13:
             code: DISCHARGE//HEALTHCARE FACILITY
-      """,  # noqa: E501
+      """,
 }
 
 WANT_SHARDS = {

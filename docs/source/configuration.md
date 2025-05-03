@@ -50,9 +50,10 @@ These configs consist of the following four fields:
   expression (satisfied if the regular expression evaluates to True), or a `any` key and the value being a
   list of strings (satisfied if there is an occurrence for any code in the list).
 
-  **Note**: Each individual definition of `PlainPredicateConfig` and `code` will generate a separate predicate
-  column. Thus, for memory optimization, it is strongly recommended to match multiple values using either the
-  List of Values or Regular Expression formats whenever possible.
+  > [!NOTE]
+  > Each individual definition of `PlainPredicateConfig` and `code` will generate a separate predicate
+  > column. Thus, for memory optimization, it is strongly recommended to match multiple values using either
+  > the List of Values or Regular Expression formats whenever possible.
 
 - `value_min`: If specified, an observation will only satisfy this predicate if the occurrence of the
   underlying `code` with a reported numerical value that is either greater than or greater than or equal to
@@ -82,10 +83,11 @@ on its source format.
    (recommended), then the `code` will be checked directly against MEDS' `code` field and the `value_min`
    and `value_max` constraints will be compared against MEDS' `numeric_value` field.
 
-   **Note**: This syntax does not currently support defining predicates that also rely on matching other,
-   optional fields in the MEDS syntax; if this is a desired feature for you, please let us know by filing a
-   GitHub issue or pull request or upvoting any existing issue/PR that requests/implements this feature,
-   and we will add support for this capability.
+   > [!NOTE]
+   > This syntax does not currently support defining predicates that also rely on matching other, optional
+   > fields in the MEDS syntax; if this is a desired feature for you, please let us know by filing a GitHub
+   > issue or pull request or upvoting any existing issue/PR that requests/implements this feature, and we
+   > will add support for this capability.
 
 2. If the source data is in [ESGPT](https://eventstreamml.readthedocs.io/en/latest/) format, then the
    `code` will be interpreted in the following manner:
@@ -109,8 +111,9 @@ accepted operations that can be applied to other predicates, containing precisel
 - `and(pred_1_name, pred_2_name, ...)`: Asserts that all of the specified predicates must be true.
 - `or(pred_1_name, pred_2_name, ...)`: Asserts that any of the specified predicates must be true.
 
-**Note**: Currently, `and`'s and `or`'s cannot be nested. Upon user request, we may support further advanced
-analytic operations over predicates.
+> [!NOTE]
+> Currently, `and`'s and `or`'s cannot be nested. Upon user request, we may support further advanced
+> analytic operations over predicates.
 
 ______________________________________________________________________
 
@@ -153,20 +156,22 @@ following rules:
       exactly `$TIME_DELTA` either after or before the event being referenced (either the external event or the
       end or start of the window).
 
-      **Note**: If `$REFERENCED` is the `start` field, then `$TIME_DELTA` must be positive, and if
-      `$REFERENCED` is the `end` field, then `$TIME_DELTA` must be negative to preserve the time ordering of
-      the window fields.
+      > [!NOTE]
+      > If `$REFERENCED` is the `start` field, then `$TIME_DELTA` must be positive, and if
+      > `$REFERENCED` is the `end` field, then `$TIME_DELTA` must be negative to preserve the time ordering of
+      > the window fields.
 
    2. `$REFERENCING = $REFERENCED -> $PREDICATE`, `$REFERENCING = $REFERENCED <- $PREDICATE`
       In this case, the referencing event will be defined as the next or previous event satisfying the
       predicate, `$PREDICATE`.
 
-      **Note**: If the `$REFERENCED` is the `start` field, then the "next predicate
-      ordering" (`$REFERENCED -> $PREDICATE`) must be used, and if the `$REFERENCED` is the `end` field, then the
-      "previous predicate ordering" (`$REFERENCED <- $PREDICATE`) must be used to preserve the time ordering of
-      the window fields. These forms can lead to windows being defined as single point events, if the
-      `$REFERENCED` event itself satisfies `$PREDICATE` and the appropriate constraints are satisfied and
-      inclusive values are set.
+      > [!NOTE]
+      > If the `$REFERENCED` is the `start` field, then the "next predicate
+      > ordering" (`$REFERENCED -> $PREDICATE`) must be used, and if the `$REFERENCED` is the `end` field, then
+      > the "previous predicate ordering" (`$REFERENCED <- $PREDICATE`) must be used to preserve the time
+      > ordering of the window fields. These forms can lead to windows being defined as single point events, if
+      > the `$REFERENCED` event itself satisfies `$PREDICATE` and the appropriate constraints are satisfied and
+      > inclusive values are set.
 
    3. `$REFERENCING = $REFERENCED`
       In this case, the referencing event will be defined as the same event as the referenced event.
@@ -196,9 +201,10 @@ that define the valid range the count of observations of the named predicate tha
 for it to be considered valid. Either `min_valid` or `max_valid` constraints can be `None`, in which case
 those endpoints are left unconstrained. Likewise, unreferenced predicates are also left unconstrained.
 
-**Note**: As predicate counts are always integral, this specification does not need an additional
-inclusive/exclusive endpoint field, as one can simply increment the bound by one in the appropriate direction
-to achieve the result. Instead, this bound is always interpreted to be inclusive, so a window would satisfy
-the constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of predicate
-`name` in a window was either 1 or 2. All constraints in the dictionary must be satisfied on a window for it
-to be included.
+> [!NOTE]
+> As predicate counts are always integral, this specification does not need an additional
+> inclusive/exclusive endpoint field, as one can simply increment the bound by one in the appropriate direction
+> to achieve the result. Instead, this bound is always interpreted to be inclusive, so a window would satisfy
+> the constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of predicate
+> `name` in a window was either 1 or 2. All constraints in the dictionary must be satisfied on a window for it
+> to be included.

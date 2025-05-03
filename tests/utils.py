@@ -1,9 +1,5 @@
 """Test utilities."""
 
-import rootutils
-
-root = rootutils.setup_root(__file__, dotenv=True, pythonpath=True, cwd=True)
-
 import logging
 import subprocess
 import tempfile
@@ -30,7 +26,7 @@ def run_command(script: str, hydra_kwargs: dict[str, str], test_name: str, expec
     return stderr, stdout
 
 
-def assert_df_equal(want: pl.DataFrame, got: pl.DataFrame, msg: str = None, **kwargs):
+def assert_df_equal(want: pl.DataFrame, got: pl.DataFrame, msg: str | None = None, **kwargs):
     try:
         assert_frame_equal(want, got, **kwargs)
     except AssertionError as e:
@@ -82,7 +78,7 @@ def cli_test(
     task_configs: dict[str, str],
     want_outputs_by_task: dict[str, dict[str, pl.DataFrame]],
     data_standard: str,
-    predicate_files: str = None,
+    predicate_files: str | None = None,
 ):
     if data_standard not in ["meds", "direct"]:
         raise ValueError(f"Invalid data standard: {data_standard}")
@@ -124,9 +120,9 @@ def cli_test(
             if len(wrote_files) > 1:
                 extraction_config_kwargs["data"] = "sharded"
                 extraction_config_kwargs["data.root"] = str(data_dir.resolve())
-                extraction_config_kwargs['"data.shard'] = f'$(expand_shards {str(data_dir.resolve())})"'
+                extraction_config_kwargs['"data.shard'] = f'$(expand_shards {data_dir.resolve()!s})"'
             else:
-                extraction_config_kwargs["data.path"] = str(list(wrote_files.values())[0].resolve())
+                extraction_config_kwargs["data.path"] = str(next(iter(wrote_files.values())).resolve())
 
             if predicate_files is not None:
                 extraction_config_kwargs["predicates_path"] = str(
@@ -149,9 +145,9 @@ def cli_test(
                             f"No output files found for task '{task}'. Found files: {all_directory_contents}"
                         )
 
-                    assert len(all_out_fps) == len(
-                        want_outputs
-                    ), f"Expected {len(want_outputs)} outputs, got {len(all_out_fps)}: {all_out_fps_str}"
+                    assert len(all_out_fps) == len(want_outputs), (
+                        f"Expected {len(want_outputs)} outputs, got {len(all_out_fps)}: {all_out_fps_str}"
+                    )
 
                 for want_fp, want_df in want_outputs.items():
                     out_shard = want_fp.relative_to(cohort_dir)

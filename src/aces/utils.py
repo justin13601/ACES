@@ -11,7 +11,7 @@ from pytimeparse import parse
 logger = logging.getLogger(__name__)
 
 
-def parse_timedelta(time_str: str = None) -> timedelta:
+def parse_timedelta(time_str: str | None = None) -> timedelta:
     """Parse a time string and return a timedelta object.
 
     Using time expression parser: https://github.com/wroberts/pytimeparse

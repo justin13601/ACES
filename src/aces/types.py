@@ -39,7 +39,7 @@ class TemporalWindowBounds:
         ...     right_inclusive=False,
         ...     offset=timedelta(hours=1)
         ... )
-        >>> bounds # doctest: +NORMALIZE_WHITESPACE
+        >>> bounds
         TemporalWindowBounds(left_inclusive=True,
                              window_size=datetime.timedelta(days=1),
                              right_inclusive=False,
@@ -82,7 +82,7 @@ class TemporalWindowBounds:
             ...     window_size=timedelta(days=1),
             ...     right_inclusive=True,
             ...     offset=None
-            ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
+            ... ).polars_gp_rolling_kwargs
             {'period': datetime.timedelta(days=1),
              'offset': datetime.timedelta(0),
              'closed': 'both'}
@@ -91,7 +91,7 @@ class TemporalWindowBounds:
             ...     window_size=timedelta(days=1),
             ...     right_inclusive=True,
             ...     offset=timedelta(hours=1)
-            ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
+            ... ).polars_gp_rolling_kwargs
             {'period': datetime.timedelta(days=1),
              'offset': datetime.timedelta(seconds=3600),
              'closed': 'both'}
@@ -100,7 +100,7 @@ class TemporalWindowBounds:
             ...     window_size=timedelta(days=2),
             ...     right_inclusive=False,
             ...     offset=timedelta(minutes=1)
-            ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
+            ... ).polars_gp_rolling_kwargs
             {'period': datetime.timedelta(days=2),
              'offset': datetime.timedelta(seconds=60),
              'closed': 'none'}
@@ -109,7 +109,7 @@ class TemporalWindowBounds:
             ...     window_size=timedelta(days=2),
             ...     right_inclusive=False,
             ...     offset=timedelta(minutes=1)
-            ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
+            ... ).polars_gp_rolling_kwargs
             {'period': datetime.timedelta(days=2),
              'offset': datetime.timedelta(seconds=60),
              'closed': 'left'}
@@ -118,7 +118,7 @@ class TemporalWindowBounds:
             ...     window_size=timedelta(days=2),
             ...     right_inclusive=True,
             ...     offset=timedelta(minutes=1)
-            ... ).polars_gp_rolling_kwargs # doctest: +NORMALIZE_WHITESPACE
+            ... ).polars_gp_rolling_kwargs
             {'period': datetime.timedelta(days=2),
              'offset': datetime.timedelta(seconds=60),
              'closed': 'right'}
@@ -166,7 +166,7 @@ class ToEventWindowBounds:
         ...     right_inclusive=False,
         ...     offset=timedelta(hours=1)
         ... )
-        >>> bounds # doctest: +NORMALIZE_WHITESPACE
+        >>> bounds
         ToEventWindowBounds(left_inclusive=True,
                             end_event='foo',
                             right_inclusive=False,
@@ -180,7 +180,7 @@ class ToEventWindowBounds:
         False
         >>> offset
         datetime.timedelta(seconds=3600)
-        >>> bounds = ToEventWindowBounds(
+        >>> ToEventWindowBounds(
         ...     left_inclusive=True,
         ...     end_event="",
         ...     right_inclusive=False,
@@ -189,23 +189,23 @@ class ToEventWindowBounds:
         Traceback (most recent call last):
             ...
         ValueError: The 'end_event' must be a non-empty string.
-        >>> bounds = ToEventWindowBounds(
+        >>> ToEventWindowBounds(
         ...     left_inclusive=True,
         ...     end_event="_RECORD_START",
         ...     right_inclusive=False,
         ...     offset=timedelta(hours=1)
-        ... ) # doctest: +NORMALIZE_WHITESPACE
+        ... )
         Traceback (most recent call last):
             ...
         ValueError: It doesn't make sense to have the start of the record _RECORD_START be an end event. Did
         you mean to make that be the start event (which should result in the `end_event` parameter being
         '-_RECORD_START')?
-        >>> bounds = ToEventWindowBounds(
+        >>> ToEventWindowBounds(
         ...     left_inclusive=True,
         ...     end_event="-_RECORD_END",
         ...     right_inclusive=False,
         ...     offset=timedelta(hours=1)
-        ... ) # doctest: +NORMALIZE_WHITESPACE
+        ... )
         Traceback (most recent call last):
             ...
         ValueError: It doesn't make sense to have the end of the record _RECORD_END be a start event. Did
@@ -256,21 +256,21 @@ class ToEventWindowBounds:
             ...         print(f"{key}: {value}")
             >>> print_kwargs(ToEventWindowBounds(
             ...     left_inclusive=True, end_event="is_A", right_inclusive=False, offset=None
-            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            ... ).boolean_expr_bound_sum_kwargs)
             boundary_expr: [(col("is_A")) > (dyn int: 0)]
             mode: row_to_bound
             closed: left
             offset: 0:00:00
             >>> print_kwargs(ToEventWindowBounds(
             ...     left_inclusive=False, end_event="-is_B", right_inclusive=True, offset=None
-            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            ... ).boolean_expr_bound_sum_kwargs)
             boundary_expr: [(col("is_B")) > (dyn int: 0)]
             mode: bound_to_row
             closed: right
             offset: 0:00:00
             >>> print_kwargs(ToEventWindowBounds(
             ...     left_inclusive=False, end_event="is_B", right_inclusive=False, offset=timedelta(hours=-3)
-            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            ... ).boolean_expr_bound_sum_kwargs)
             boundary_expr: [(col("is_B")) > (dyn int: 0)]
             mode: row_to_bound
             closed: none
@@ -280,7 +280,7 @@ class ToEventWindowBounds:
             ...     end_event="-_RECORD_START",
             ...     right_inclusive=True,
             ...     offset=timedelta(days=2),
-            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            ... ).boolean_expr_bound_sum_kwargs)
             boundary_expr: [(col("timestamp")) == (col("timestamp").min().over([col("subject_id")]))]
             mode: bound_to_row
             closed: both
@@ -290,7 +290,7 @@ class ToEventWindowBounds:
             ...     end_event="_RECORD_END",
             ...     right_inclusive=True,
             ...     offset=timedelta(days=1),
-            ... ).boolean_expr_bound_sum_kwargs) # doctest: +NORMALIZE_WHITESPACE
+            ... ).boolean_expr_bound_sum_kwargs)
             boundary_expr: [(col("timestamp")) == (col("timestamp").max().over([col("subject_id")]))]
             mode: row_to_bound
             closed: right
@@ -308,10 +308,7 @@ class ToEventWindowBounds:
 
         mode = "bound_to_row" if self.end_event.startswith("-") else "row_to_bound"
 
-        if mode == "bound_to_row":
-            end_event = self.end_event[1:]
-        else:
-            end_event = self.end_event
+        end_event = self.end_event[1:] if mode == "bound_to_row" else self.end_event
 
         if end_event == START_OF_RECORD_KEY:
             boundary_expr = pl.col("timestamp") == pl.col("timestamp").min().over("subject_id")
