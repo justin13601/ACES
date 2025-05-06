@@ -1108,7 +1108,7 @@ class TaskExtractorConfig:
         Args:
             cls: The TaskExtractorConfig class that is instantiated.
             config_path: The path to which a configuration object will be read from in YAML form.
-            predicates_path: The path to which a predicates configuration object will be read from in 
+            predicates_path: The path to which a predicates configuration object will be read from in
                 YAML form. Used to override predicates in the original configuration file.
 
         Raises:
