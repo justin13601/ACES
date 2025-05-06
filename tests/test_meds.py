@@ -7,7 +7,7 @@ from pathlib import Path
 
 import polars as pl
 import pyarrow as pa
-from meds import label_schema, subject_id_field
+from meds import DataSchema, LabelSchema
 from yaml import load as load_yaml
 
 from .utils import (
@@ -36,24 +36,23 @@ DEFAULT_CSV_TS_FORMAT = "%m/%d/%Y %H:%M"
 
 # TODO: Make use meds library
 MEDS_PL_SCHEMA = {
-    subject_id_field: pl.Int64,
-    "time": pl.Datetime("us"),
-    "code": pl.Utf8,
-    "numeric_value": pl.Float32,
-    "numeric_value/is_inlier": pl.Boolean,
+    DataSchema.subject_id_name: pl.Int64,
+    DataSchema.time_name: pl.Datetime("us"),
+    DataSchema.code_name: pl.Utf8,
+    DataSchema.numeric_value_name: pl.Float32,
 }
 
 
 MEDS_LABEL_MANDATORY_TYPES = {
-    subject_id_field: pl.Int64,
+    LabelSchema.subject_id_name: pl.Int64,
 }
 
 MEDS_LABEL_OPTIONAL_TYPES = {
-    "boolean_value": pl.Boolean,
-    "integer_value": pl.Int64,
-    "float_value": pl.Float64,
-    "categorical_value": pl.String,
-    "prediction_time": pl.Datetime("us"),
+    LabelSchema.boolean_value_name: pl.Boolean,
+    LabelSchema.integer_value_name: pl.Int64,
+    LabelSchema.float_value_name: pl.Float64,
+    LabelSchema.categorical_value_name: pl.String,
+    LabelSchema.prediction_time_name: pl.Datetime("us"),
 }
 
 
@@ -113,16 +112,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         )
         df = df.drop(extra_cols)
 
-    df = df.select(
-        subject_id_field,
-        "prediction_time",
-        "boolean_value",
-        "integer_value",
-        "float_value",
-        "categorical_value",
-    )
-
-    return df.to_arrow().cast(label_schema)
+    return LabelSchema.align(df.to_arrow())
 
 
 def parse_meds_csvs(
@@ -140,7 +130,7 @@ def parse_meds_csvs(
         cols = csv_str.strip().split("\n")[0].split(",")
         read_schema = {k: v for k, v in default_read_schema.items() if k in cols}
         return pl.read_csv(StringIO(csv_str), schema=read_schema).with_columns(
-            pl.col("time").str.strptime(MEDS_PL_SCHEMA["time"], DEFAULT_CSV_TS_FORMAT)
+            pl.col("time").str.strptime(MEDS_PL_SCHEMA[DataSchema.time_name], DEFAULT_CSV_TS_FORMAT)
         )
 
     if isinstance(csvs, str):
@@ -169,9 +159,9 @@ def parse_labels_yaml(yaml_str: str) -> dict[str, pl.DataFrame]:
 
 # Data (input)
 MEDS_SHARDS = parse_shards_yaml(
-    f"""
+    """
   "train/0": |-
-    {subject_id_field},time,code,numeric_value
+    subject_id,time,code,numeric_value
     2,,SNP//rs234567,
     2,,SNP//rs345678,
     2,,GENDER//FEMALE,
@@ -196,7 +186,7 @@ MEDS_SHARDS = parse_shards_yaml(
     2,6/8/1996 3:00,DEATH,
 
   "train/1": |-2
-    {subject_id_field},time,code,numeric_value
+    subject_id,time,code,numeric_value
     4,,GENDER//MALE,
     4,,SNP//rs123456,
     4,12/1/1989 12:03,ADMISSION//CARDIAC,
@@ -246,7 +236,7 @@ MEDS_SHARDS = parse_shards_yaml(
     6,3/12/1996 0:00,DEATH,
 
   "held_out/0/0": |-2
-    {subject_id_field},time,code,numeric_value
+    subject_id,time,code,numeric_value
     3,,GENDER//FEMALE,
     3,,SNP//rs234567,
     3,,SNP//rs345678,
@@ -261,10 +251,10 @@ MEDS_SHARDS = parse_shards_yaml(
     3,3/12/1996 0:00,DEATH,
 
   "empty_shard": |-2
-    {subject_id_field},time,code,numeric_value
+    subject_id,time,code,numeric_value
 
   "held_out": |-2
-    {subject_id_field},time,code,numeric_value
+    subject_id,time,code,numeric_value
     1,,GENDER//MALE,
     1,,SNP//rs123456,
     1,12/1/1989 12:03,ADMISSION//CARDIAC,
@@ -349,22 +339,22 @@ windows:
 """
 
 WANT_SHARDS = parse_labels_yaml(
-    f"""
+    """
   "train/0": |-2
-    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
 
   "train/1": |-2
-    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     4,1/28/1991 23:32,False,,,,
 
   "held_out/0/0": |-2
-    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
 
   "empty_shard": |-2
-    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
 
   "held_out": |-2
-    {subject_id_field},prediction_time,boolean_value,integer_value,float_value,categorical_value
+    subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
     1,1/28/1991 23:32,False,,,,
     """
 )
