@@ -11,7 +11,7 @@ import hydra
 import polars as pl
 import pyarrow as pa
 import pyarrow.parquet as pq
-from meds import label_schema, prediction_time_field, subject_id_field
+from meds import LabelSchema
 from omegaconf import DictConfig, OmegaConf
 
 from . import config, predicates, query
@@ -20,15 +20,15 @@ logger = logging.getLogger(__name__)
 config_yaml = files("aces").joinpath("configs/_aces.yaml")
 
 MEDS_LABEL_MANDATORY_TYPES = {
-    subject_id_field: pl.Int64,
+    LabelSchema.subject_id_name: pl.Int64,
 }
 
 MEDS_LABEL_OPTIONAL_TYPES = {
-    "boolean_value": pl.Boolean,
-    "integer_value": pl.Int64,
-    "float_value": pl.Float64,
-    "categorical_value": pl.String,
-    prediction_time_field: pl.Datetime("us"),
+    LabelSchema.prediction_time_name: pl.Datetime("us"),
+    LabelSchema.boolean_value_name: pl.Boolean,
+    LabelSchema.integer_value_name: pl.Int64,
+    LabelSchema.float_value_name: pl.Float64,
+    LabelSchema.categorical_value_name: pl.String,
 }
 
 
@@ -56,9 +56,9 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         >>> get_and_validate_label_schema(df)
         Traceback (most recent call last):
             ...
-        ValueError: MEDS Data DataFrame must have a 'subject_id' column of type Int64.
+        ValueError: MEDS Label DataFrame must have a 'subject_id' column of type Int64.
         >>> df = pl.DataFrame({
-        ...     subject_id_field: pl.Series([1, 3, 2], dtype=pl.UInt32),
+        ...     "subject_id": pl.Series([1, 3, 2], dtype=pl.UInt32),
         ...     "time": [datetime(2021, 1, 1), datetime(2021, 1, 2), datetime(2021, 1, 3)],
         ...     "boolean_value": [1, 0, 100],
         ... })
@@ -68,7 +68,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         prediction_time: timestamp[us]
         boolean_value: bool
         integer_value: int64
-        float_value: double
+        float_value: float
         categorical_value: string
         ----
         subject_id: [[1,3,2]]
@@ -80,7 +80,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
     """
 
     schema = df.schema
-    if "prediction_time" not in schema:
+    if LabelSchema.prediction_time_name not in schema:
         logger.warning(
             "Output DataFrame is missing a 'prediction_time' column. If this is not intentional, add a "
             "'index_timestamp' (yes, it should be different) key to the task configuration identifying "
@@ -92,7 +92,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         if col in schema and schema[col] != dtype:
             df = df.with_columns(pl.col(col).cast(dtype, strict=False))
         elif col not in schema:
-            errors.append(f"MEDS Data DataFrame must have a '{col}' column of type {dtype}.")
+            errors.append(f"MEDS Label DataFrame must have a '{col}' column of type {dtype}.")
 
     if errors:
         raise ValueError("\n".join(errors))
@@ -115,16 +115,7 @@ def get_and_validate_label_schema(df: pl.DataFrame) -> pa.Table:
         )
         df = df.drop(extra_cols)
 
-    df = df.select(
-        subject_id_field,
-        "prediction_time",
-        "boolean_value",
-        "integer_value",
-        "float_value",
-        "categorical_value",
-    )
-
-    return df.to_arrow().cast(label_schema)
+    return LabelSchema.align(df.to_arrow())
 
 
 @hydra.main(version_base=None, config_path=str(config_yaml.parent.resolve()), config_name=config_yaml.stem)
@@ -154,18 +145,18 @@ def main(cfg: DictConfig) -> None:  # pragma: no cover
 
     if cfg.data.standard.lower() == "meds":
         for in_col, out_col in [
-            ("subject_id", subject_id_field),
-            ("index_timestamp", "prediction_time"),
-            ("label", "boolean_value"),
+            ("subject_id", LabelSchema.subject_id_name),
+            ("index_timestamp", LabelSchema.prediction_time_name),
+            ("label", LabelSchema.boolean_value_name),
         ]:
             if in_col in result.columns:
                 result = result.rename({in_col: out_col})
-        if subject_id_field not in result.columns:
+        if LabelSchema.subject_id_name not in result.columns:
             if not result_is_empty:
                 raise ValueError("Output dataframe is missing a 'subject_id' column.")
             else:
                 logger.warning("Output dataframe is empty; adding an empty patient ID column.")
-                result = result.with_columns(pl.lit(None, dtype=pl.Int64).alias(subject_id_field))
+                result = result.with_columns(pl.lit(None, dtype=pl.Int64).alias(LabelSchema.subject_id_name))
                 result = result.head(0)
         if cfg.window_stats_dir:
             Path(cfg.window_stats_filepath).parent.mkdir(exist_ok=True, parents=True)
