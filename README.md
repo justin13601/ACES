@@ -6,6 +6,7 @@
   <a href="https://www.python.org/downloads/release/python-3100/"><img alt="Python" src="https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white"></a>
   <a href="https://pypi.org/project/es-aces/"><img alt="PyPI" src="https://img.shields.io/pypi/v/es-aces"></a>
   <a href="https://hydra.cc/"><img alt="Hydra" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd"></a>
+  <a href="https://medical-event-data-standard.github.io/"><img alt="Hydra" src="https://img.shields.io/badge/MEDS-0.4.0-blue"></a>
   <a href="https://codecov.io/gh/justin13601/ACES"><img alt="Codecov" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV"></a>
   <a href="https://github.com/justin13601/ACES/actions/workflows/tests.yaml"><img alt="Tests" src="https://github.com/justin13601/ACES/actions/workflows/tests.yaml/badge.svg"></a>
   <a href="https://github.com/justin13601/ACES/actions/workflows/code-quality-main.yaml"><img alt="Code Quality" src="https://github.com/justin13601/ACES/actions/workflows/code-quality-main.yaml/badge.svg"></a>
