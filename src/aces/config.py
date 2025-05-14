@@ -1106,7 +1106,10 @@ class TaskExtractorConfig:
         """Load a configuration file from the given path and return it as a dict.
 
         Args:
+            cls: The TaskExtractorConfig class that is instantiated.
             config_path: The path to which a configuration object will be read from in YAML form.
+            predicates_path: The path to which a predicates configuration object will be read from in
+                YAML form. Used to override predicates in the original configuration file.
 
         Raises:
             FileNotFoundError: If the file does not exist.

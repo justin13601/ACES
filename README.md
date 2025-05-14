@@ -6,6 +6,7 @@
   <a href="https://www.python.org/downloads/release/python-3100/"><img alt="Python" src="https://img.shields.io/badge/-Python_3.10+-blue?logo=python&logoColor=white"></a>
   <a href="https://pypi.org/project/es-aces/"><img alt="PyPI" src="https://img.shields.io/pypi/v/es-aces"></a>
   <a href="https://hydra.cc/"><img alt="Hydra" src="https://img.shields.io/badge/Config-Hydra_1.3-89b8cd"></a>
+  <a href="https://medical-event-data-standard.github.io/"><img alt="Hydra" src="https://img.shields.io/badge/MEDS-0.4.0-blue"></a>
   <a href="https://codecov.io/gh/justin13601/ACES"><img alt="Codecov" src="https://codecov.io/gh/justin13601/ACES/graph/badge.svg?token=6EA84VFXOV"></a>
   <a href="https://github.com/justin13601/ACES/actions/workflows/tests.yaml"><img alt="Tests" src="https://github.com/justin13601/ACES/actions/workflows/tests.yaml/badge.svg"></a>
   <a href="https://github.com/justin13601/ACES/actions/workflows/code-quality-main.yaml"><img alt="Code Quality" src="https://github.com/justin13601/ACES/actions/workflows/code-quality-main.yaml/badge.svg"></a>
@@ -19,11 +20,11 @@
 
 **Updates**
 
-- **[2025-01-22]** ACES accepted to ICLR'25!
-- **[2024-12-10]** Latest `polars` version (`1.17.1`) is now supported.
+- **[2025-05-29]** Latest `MEDS` version (`0.4.0`) is now supported.
+- **[2025-04-25]** ACES presented at ICLR'25 in Singapore!
+- **[2025-04-20]** `polars` version (`1.27.1`) is now supported.
 - **[2024-10-28]** Nested derived predicates and derived predicates between static variables and plain predicates can now be defined.
 - **[2024-09-01]** Predicates can now be defined in a configuration file separate to task criteria files.
-- **[2024-08-29]** Latest `MEDS` version (`0.3.3`) is now supported.
 - **[2024-08-10]** Expanded predicates configuration language to support regular expressions, multi-column constraints, and multi-value constraints.
 - **[2024-07-30]** Added ability to place constraints on static variables, such as patient demographics.
 - **[2024-06-28]** Paper available at [arXiv:2406.19653](https://arxiv.org/abs/2406.19653).
@@ -38,7 +39,7 @@ This README provides a brief overview of this tool, instructions for use, and a 
 
 ## Installation
 
-### For MEDS v0.3.3
+### For MEDS v0.4.0
 
 ```bash
 pip install es-aces
