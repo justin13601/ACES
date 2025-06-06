@@ -93,7 +93,7 @@ class PlainPredicateConfig:
             col("code").str.contains(["^foo.*"]).all_horizontal([[(col("numeric_value")) >
             (dyn int: 120)]])
             >>> print(PlainPredicateConfig(code={'any': ['foo', 'bar']}).MEDS_eval_expr())
-            col("code").is_in([Series])
+            col("code").is_in([["foo", "bar"]])
         """
         criteria = []
         if isinstance(self.code, dict):

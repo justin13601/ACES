@@ -18,14 +18,14 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "polars ~= 1.27.1",
+    "polars ~= 1.30.0",
     "numpy < 1.29.0",
     "bigtree == 0.18.*",
     "ruamel.yaml == 0.18.*",
     "hydra-core ~= 1.3.2",
     "pytimeparse == 1.1.*",
     "networkx == 3.3.*",
-    "pyarrow == 17.*",
+    "pyarrow",
     "meds ~= 0.4.0",
 ]
 

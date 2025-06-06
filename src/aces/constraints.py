@@ -169,21 +169,17 @@ def check_static_variables(patient_demographics: list[str], predicates_df: pl.Da
             ...
         ValueError: Static predicate 'female' not found in the predicates dataframe.
     """
+
+    predicates_constraints = []
+
     for demographic in patient_demographics:
         if demographic not in predicates_df.columns:
             raise ValueError(f"Static predicate '{demographic}' not found in the predicates dataframe.")
 
-        keep_expr = ((pl.col("timestamp").is_null()) & (pl.col(demographic) == 1)).alias("keep_expr")
-
-        exclude_expr = ~keep_expr
-        exclude_count = predicates_df.filter(exclude_expr).shape[0]
-
-        logger.info(f"Excluding {exclude_count:,} rows due to the '{demographic}' criteria.")
-
-        predicates_df = predicates_df.filter(
-            pl.col("subject_id").is_in(predicates_df.filter(keep_expr).select("subject_id").unique())
+        predicates_constraints.append(
+            (pl.col("timestamp").is_null() & (pl.col(demographic) > 0)).any().over("subject_id")
         )
 
-    return predicates_df.drop_nulls(subset=["timestamp"]).drop(
-        *[x for x in patient_demographics if x in predicates_df.columns]
-    )
+    predicate_filter = pl.all_horizontal(predicates_constraints)
+
+    return predicates_df.filter(predicate_filter).drop_nulls(subset=["timestamp"]).drop(patient_demographics)
