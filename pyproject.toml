@@ -18,10 +18,14 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    # Kept tight for now; see https://github.com/justin13601/ACES/issues/201 for the plan
-    # to relax polars and meds once doctests are decoupled from polars' expr printing.
-    "polars ~= 1.30.0",
-    "meds ~= 0.4.0",
+    # Polars / MEDS: ceilings relaxed so downstream MEDS tooling (MEDS-Transforms,
+    # MEDS-Extract, MEDS_trajectory_evaluation, etc.) can co-install without being
+    # pinned to the exact 1.30 / 0.4 release. Doctests are still written against
+    # polars 1.30's expression repr, so when a newer polars changes that repr the
+    # doctests will need updating — tracked in
+    # https://github.com/justin13601/ACES/issues/201.
+    "polars >= 1.30, < 2",
+    "meds >= 0.4, < 0.6",
     # Numeric / arrow: loose floors only. numpy 1.26 is the oldest version that ships
     # wheels for py 3.12+ (earlier versions need distutils at build time).
     "numpy >= 1.26",
