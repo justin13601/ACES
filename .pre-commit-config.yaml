@@ -3,7 +3,7 @@ default_language_version:
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       # list of supported hooks: https://pre-commit.com/hooks.html
       - id: trailing-whitespace
@@ -20,7 +20,7 @@ repos:
 
   # python code formatting, linting, and import sorting using ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.7
+    rev: v0.15.11
     hooks:
       # Run the formatter
       - id: ruff-format
@@ -28,45 +28,51 @@ repos:
       - id: ruff
         args: ["--fix", "--exit-non-zero-on-fix"]
 
-  # python docstring formatting
-  - repo: https://github.com/myint/docformatter
-    rev: v1.7.5
+  # python docstring formatting.
+  # Held at v1.7.7: v1.7.5 still ships a `docformatter-venv` hook with the
+  # removed `language: python_venv`, which pre-commit 4 rejects. v1.7.8 regressed
+  # on multi-line string literals used as positional args (e.g. fixture YAML
+  # passed to parse_shards_yaml in tests), rewriting them into broken syntax.
+  - repo: https://github.com/PyCQA/docformatter
+    rev: v1.7.7
     hooks:
       - id: docformatter
         args: [--in-place, --wrap-summaries=110, --wrap-descriptions=110]
 
-  # yaml formatting
-  - repo: https://github.com/pre-commit/mirrors-prettier
-    rev: v4.0.0-alpha.8
+  # yaml formatting (pre-commit/mirrors-prettier is archived; using the community fork)
+  - repo: https://github.com/rbubley/mirrors-prettier
+    rev: v3.8.3
     hooks:
       - id: prettier
         types: [yaml]
 
   # shell scripts linter
   - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
+    rev: v0.11.0.1
     hooks:
       - id: shellcheck
 
-  # md formatting
+  # md formatting (all nested plugins pinned to avoid float drift in CI).
+  # Held at mdformat 0.7.x because mdformat-tables 1.0.0 still pins `mdformat<0.8`;
+  # revisit once the plugin ecosystem catches up with mdformat 1.x.
   - repo: https://github.com/executablebooks/mdformat
     rev: 0.7.22
     hooks:
       - id: mdformat
         args: ["--number"]
         additional_dependencies:
-          - mdformat-ruff
-          - mdformat-gfm
-          - mdformat-gfm-alerts
-          - mdformat-tables
-          - mdformat_frontmatter
-          - mdformat-config
-          - mdformat-myst
-          - mdformat-toc
+          - mdformat-ruff==0.1.3
+          - mdformat-gfm==1.0.0
+          - mdformat-gfm-alerts==2.0.0
+          - mdformat-tables==1.0.0
+          - mdformat-frontmatter==2.0.10
+          - mdformat-config==0.2.1
+          - mdformat-myst==0.3.0
+          - mdformat-toc==0.5.0
 
   # word spelling linter
   - repo: https://github.com/codespell-project/codespell
-    rev: v2.4.1
+    rev: v2.4.2
     hooks:
       - id: codespell
         args:
@@ -75,7 +81,7 @@ repos:
 
   # jupyter notebook cell output clearing
   - repo: https://github.com/kynan/nbstripout
-    rev: 0.8.1
+    rev: 0.9.1
     hooks:
       - id: nbstripout
 

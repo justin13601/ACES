@@ -54,12 +54,12 @@ profiling = ["psutil >= 5.9"]
 
 [dependency-groups]
 dev = [
-    "pre-commit<4",
-    "ruff",
-    "pytest >= 7.4",
-    "pytest-cov >= 4",
-    "pytest-subtests >= 0.11",
-    "hypothesis >= 6.100",
+    "pre-commit >= 4.5, < 5",
+    "ruff >= 0.15, < 1",
+    "pytest >= 8.4, < 10",
+    "pytest-cov >= 7, < 8",
+    "pytest-subtests >= 0.15, < 1",
+    "hypothesis >= 6.150, < 7",
 ]
 
 [project.urls]
