@@ -39,3 +39,29 @@ jobs:
         uses: codecov/codecov-action@v4.0.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  run_tests_min_deps:
+    # Verifies that the lower bounds declared in pyproject.toml are actually installable
+    # and pass the test suite. Keeps us honest about the floor advertised in metadata.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Install at minimum-direct versions
+        run: |
+          uv sync --extra tests --resolution lowest-direct
+
+      - name: Run tests
+        run: |
+          uv run --extra tests --resolution lowest-direct pytest -v
