@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 
+import meds
 import polars as pl
 from omegaconf import DictConfig
 from polars.exceptions import ColumnNotFoundError
@@ -270,10 +271,22 @@ def generate_plain_predicates_from_meds(
     logger.info("Loading MEDS data...")
     data = pl.read_parquet(data_path, use_pyarrow=True).rename({"time": "timestamp"})
 
+    # Cast `code` to Utf8 once up front. Older MEDS schemas sometimes emitted `code` as
+    # a categorical / enum dtype, and both the birth-row filter below and the per-predicate
+    # expression loop assume a string column. (Previously the cast was repeated once per
+    # predicate inside the loop; hoisting it avoids that redundant work.)
+    data = data.with_columns(pl.col("code").cast(pl.Utf8))
+
+    # Drop MEDS birth rows before predicate evaluation. The birth code is a
+    # quasi-static demographic marker anchored at the patient's birth timestamp;
+    # it shouldn't count toward predicate matches or the implicit _ANY_EVENT
+    # column. Static rows (null timestamp) are already excluded; this extends
+    # the same treatment to MEDS_BIRTH. See issue #168.
+    data = data.filter(pl.col("code") != meds.birth_code)
+
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
     for name, plain_predicate in predicates.items():
-        data = data.with_columns(data["code"].cast(pl.Utf8).alias("code"))  # may remove after MEDS v0.3
         data = data.with_columns(plain_predicate.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name))
         logger.info(f"Added predicate column '{name}'.")
 
