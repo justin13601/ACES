@@ -50,14 +50,17 @@ aces-cli = "aces.run:cli"
 expand_shards = "aces.expand_shards:main"
 
 [project.optional-dependencies]
-dev = ["pre-commit<4", "ruff"]
-tests = [
+profiling = ["psutil >= 5.9"]
+
+[dependency-groups]
+dev = [
+    "pre-commit<4",
+    "ruff",
     "pytest >= 7.4",
     "pytest-cov >= 4",
     "pytest-subtests >= 0.11",
     "hypothesis >= 6.100",
 ]
-profiling = ["psutil >= 5.9"]
 
 [project.urls]
 Homepage = "https://github.com/justin13601/ACES"

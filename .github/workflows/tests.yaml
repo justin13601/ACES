@@ -12,28 +12,22 @@ jobs:
 
     strategy:
       fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     timeout-minutes: 30
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+      - name: Setup package
+        uses: ./.github/actions/setup
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.python-version }}
 
-      - name: Install packages
-        run: |
-          pip install -e .[dev,tests]
-
-      #----------------------------------------------
-      #              run test suite
-      #----------------------------------------------
       - name: Run tests
-        run: |
-          pytest -v --cov=src
+        run: >
+          uv run pytest -v --cov=src
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -47,11 +41,9 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
@@ -60,8 +52,8 @@ jobs:
 
       - name: Install at minimum-direct versions
         run: |
-          uv sync --extra tests --resolution lowest-direct
+          uv sync --group dev --resolution lowest-direct
 
       - name: Run tests
         run: |
-          uv run --extra tests --resolution lowest-direct pytest -v
+          uv run --group dev --resolution lowest-direct pytest -v
