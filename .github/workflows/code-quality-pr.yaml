@@ -8,13 +8,14 @@ name: Code Quality PR
 
 on:
   pull_request:
+    branches: [main, "release/*", "dev"]
 
 jobs:
   code-quality:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6.0.2
 
       - name: Setup package
         uses: ./.github/actions/setup
@@ -23,7 +24,7 @@ jobs:
 
       - name: Find modified files
         id: file_changes
-        uses: tj-actions/changed-files@v46.0.5
+        uses: tj-actions/changed-files@v47.0.6
 
       - name: List all changed files
         run: echo '${{ steps.file_changes.outputs.all_changed_files }}'
@@ -31,4 +32,4 @@ jobs:
       - name: Run pre-commits
         run: >
           uv run pre-commit run --show-diff-on-failure
-          --files ${{ steps.file_changes.outputs.all_changed_files}}
+          --files ${{ steps.file_changes.outputs.all_changed_files }}

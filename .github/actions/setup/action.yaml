@@ -4,20 +4,20 @@ inputs:
   python-version:
     description: The Python version to use for the setup.
     required: true
-    default: "3.11"
+    default: "3.12"
   group:
-    description: The dependency group to install (benchmarks, dev, docs)
+    description: The dependency group to install (dev, tests, profiling)
     required: false
     default: "dev"
 runs:
   using: "composite"
   steps:
-    - uses: actions/setup-python@v5
+    - uses: actions/setup-python@v6.2.0
       with:
         python-version: "${{ inputs.python-version }}"
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v6
+      uses: astral-sh/setup-uv@v8.1.0
       with:
         enable-cache: true
         cache-suffix: "py${{ inputs.python-version }}"
