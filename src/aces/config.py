@@ -48,6 +48,9 @@ class PlainPredicateConfig:
         expected outputs have been validated on polars version 0.20.30.
 
         Examples:
+            >>> print(PlainPredicateConfig(None, value_min=120, value_min_inclusive=False).MEDS_eval_expr())
+            [(col("numeric_value")) > (dyn int: 120)]
+
             >>> print(PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr())
             [(col("code")) == ("BP//systolic")].all_horizontal([[(col("numeric_value")) >=
                (dyn int: 120)], [(col("numeric_value")) < (dyn int: 140)]])
