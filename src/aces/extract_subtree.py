@@ -1,5 +1,6 @@
 """This module contains the functions for extracting constraint hierarchy subtrees."""
 
+import dataclasses
 import logging
 from datetime import timedelta
 
@@ -284,12 +285,17 @@ def extract_subtree(
     for child in subtree.children:
         logger.info(f"Summarizing subtree rooted at '{child.name}'...")
 
-        # Step 1: Summarize the window from the subtree.root to child
+        # Step 1: Summarize the window from the subtree.root to child.
+        # Construct a new endpoint_expr with the accumulated offset instead of mutating
+        # child.endpoint_expr in place — the child node is reused across calls, so mutating
+        # it would cause subtree_root_offset to compound on every invocation.
         endpoint_expr = child.endpoint_expr
         if type(endpoint_expr) is tuple:
             endpoint_expr = (*endpoint_expr, subtree_root_offset)
         else:
-            endpoint_expr.offset += subtree_root_offset
+            endpoint_expr = dataclasses.replace(
+                endpoint_expr, offset=endpoint_expr.offset + subtree_root_offset
+            )
 
         match endpoint_expr[1]:
             case timedelta():

@@ -45,7 +45,7 @@ class PlainPredicateConfig:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
 
         Note: The output syntax for the following examples is dependent on the polars version used. The
-        expected outputs have been validated on polars version 0.20.30.
+        expected outputs may vary depending on the installed polars version.
 
         Examples:
             >>> print(PlainPredicateConfig(None, value_min=120, value_min_inclusive=False).MEDS_eval_expr())
@@ -154,7 +154,7 @@ class PlainPredicateConfig:
         """Returns a Polars expression that evaluates this predicate for a ESGPT formatted dataset.
 
         Note: The output syntax for the following examples is dependent on the polars version used. The
-        expected outputs have been validated on polars version 0.20.30.
+        expected outputs may vary depending on the installed polars version.
 
         Examples:
             >>> cfg = PlainPredicateConfig("HR", value_min=120, value_min_inclusive=False)
@@ -200,7 +200,7 @@ class PlainPredicateConfig:
             measurement_name = codes.pop(0)
             code = "//".join(codes) if len(codes) > 1 else codes[0]
             if measurement_name.lower() == "event_type":
-                criteria = [pl.col("event_type").cast(pl.Utf8).str.split("&").list.contains(code)]
+                criteria = [pl.col("event_type").cast(pl.String).str.split("&").list.contains(code)]
             else:
                 criteria = [pl.col(measurement_name) == code]
         elif (self.value_min is None) and (self.value_max is None):
@@ -299,7 +299,7 @@ class DerivedPredicateConfig:
         """Returns a Polars expression that evaluates this predicate against necessary dependent predicates.
 
         Note: The output syntax for the following examples is dependent on the polars version used. The
-        expected outputs have been validated on polars version 0.20.30.
+        expected outputs may vary depending on the installed polars version.
 
         Examples:
             >>> print(DerivedPredicateConfig("and(P1, P2, P3)").eval_expr())
