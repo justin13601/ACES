@@ -13,7 +13,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        # 3.14 runs the same suite as every other version. The CLI cannot start there -- hydra cannot
+        # build its argument parser under 3.14's stricter argparse (facebookresearch/hydra#3121) -- so
+        # the tests that shell out to `aces-cli` carry a strict xfail that resolves by probing the real
+        # behavior. If hydra ships a fix, those XPASS and this lane fails, which is the cue to drop the
+        # guard in `src/aces/run.py`.
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     timeout-minutes: 30
 
@@ -33,100 +38,6 @@ jobs:
         uses: codecov/codecov-action@v6.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  run_tests_py314:
-    # Python 3.14 is not a supported target yet: hydra cannot build its CLI parser under 3.14's stricter
-    # argparse validation (facebookresearch/hydra#3121), so `aces-cli` cannot start. The library itself is
-    # unaffected. This lane pins down that split -- library green, CLI failing with our explanatory message
-    # rather than a hydra traceback -- so neither half can drift unnoticed.
-    #
-    # Informational only: `continue-on-error` keeps it from gating merges while 3.14 is unsupported. When
-    # the CLI step starts failing because hydra shipped a fix, that is the signal to drop the guard in
-    # `src/aces/run.py` and promote 3.14 into the matrix above.
-    name: python-3.14 (unsupported, informational)
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    timeout-minutes: 30
-
-    steps:
-      - uses: actions/checkout@v6.0.2
-
-      - uses: actions/setup-python@v6.2.0
-        with:
-          python-version: "3.14"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v8.1.0
-
-      - name: Install on 3.14
-        # Deliberately not `--locked`: uv.lock is resolved for the supported matrix, and 3.14 needs a
-        # fresh resolution to pick up wheels built for it.
-        run: uv sync --group dev --python 3.14
-
-      - name: Library test suite must pass on 3.14
-        # The doctests under src/aces carry most of the library's coverage. The CLI-driven end-to-end
-        # suites (test_e2e, test_meds, test_other_meds, test_override_meds, test_help_message) are
-        # excluded because they shell out to `aces-cli`, which cannot start here; the step below asserts
-        # that failure is the controlled one.
-        run: >
-          uv run --python 3.14 pytest -v
-          src/aces
-          tests/test_aggregate_hypothesis.py
-          tests/test_extract_subtree_idempotency.py
-          tests/test_expand_shards.py
-
-      - name: CLI reports the incompatibility instead of a hydra traceback
-        run: |
-          set -euo pipefail
-
-          expected="hydra's argument parser is incompatible"
-          hydra_issue="https://github.com/facebookresearch/hydra/issues/3121"
-
-          # Both help and normal invocations must hit the guard: hydra builds its argument parser before
-          # it ever looks at argv, so the failure does not depend on which arguments were passed.
-          check_guarded() {
-            desc="$1"
-            shift
-            echo "::group::aces-cli ${desc}"
-            set +e
-            uv run --python 3.14 aces-cli "$@" >cli_out.txt 2>cli_err.txt
-            code=$?
-            set -e
-            cat cli_out.txt cli_err.txt
-
-            if [ "${code}" -ne 1 ]; then
-              echo "::error::aces-cli ${desc} exited ${code}, expected 1"
-              exit 1
-            fi
-            if ! grep -qF "${expected}" cli_err.txt; then
-              echo "::error::aces-cli ${desc} did not report the hydra incompatibility on stderr."
-              echo "If hydra has fixed ${hydra_issue}, remove the guard in src/aces/run.py and promote"
-              echo "3.14 into the supported matrix in this workflow."
-              exit 1
-            fi
-            if grep -qF "Traceback (most recent call last)" cli_err.txt; then
-              echo "::error::aces-cli ${desc} leaked a traceback instead of the guard message"
-              exit 1
-            fi
-            echo "::endgroup::"
-          }
-
-          check_guarded "--help" --help
-          check_guarded "with task arguments" cohort_name=x cohort_dir=/tmp/aces-py314-check
-
-          # The no-argument usage path returns before hydra is touched, so it must be unaffected.
-          echo "::group::aces-cli (no arguments)"
-          set +e
-          uv run --python 3.14 aces-cli >noargs_out.txt 2>noargs_err.txt
-          noargs_code=$?
-          set -e
-          cat noargs_out.txt noargs_err.txt
-
-          if [ "${noargs_code}" -ne 1 ] || ! grep -qF "Usage: aces-cli [OPTIONS]" noargs_out.txt; then
-            echo "::error::the no-argument usage path regressed (exit ${noargs_code})"
-            exit 1
-          fi
-          echo "::endgroup::"
 
   run_tests_min_deps:
     # Verifies that the lower bounds declared in pyproject.toml are actually installable

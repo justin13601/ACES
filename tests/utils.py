@@ -1,14 +1,48 @@
 """Test utilities."""
 
+import functools
 import logging
 import subprocess
 import tempfile
 from pathlib import Path
 
 import polars as pl
+import pytest
 from polars.testing import assert_frame_equal
 
+from aces.run import HYDRA_ARGPARSE_ISSUE_URL
+
 logger = logging.getLogger(__name__)
+
+# The distinguishing phrase from the message `aces.run.cli` emits when hydra cannot build its parser.
+HYDRA_CLI_INCOMPATIBLE_MARKER = "hydra's argument parser is incompatible"
+
+
+@functools.cache
+def hydra_cli_unavailable() -> bool:
+    """Whether ``aces-cli`` cannot start because hydra's parser is unusable on this interpreter.
+
+    Python 3.14 tightened argparse's validation of ``help`` arguments in a way hydra's
+    ``--shell-completion`` flag does not satisfy, so hydra cannot construct its parser at all
+    (facebookresearch/hydra#3121). ``aces.run.cli`` detects that and exits with an explanatory message
+    instead of a traceback.
+
+    Probing for the real behavior rather than checking ``sys.version_info`` keeps this in step with the
+    guard itself: when hydra ships a fix, this returns False again with no test changes needed, and the
+    strict xfails below turn into failures that say so.
+    """
+    probe = subprocess.run(["aces-cli", "--help"], capture_output=True)
+    return probe.returncode != 0 and HYDRA_CLI_INCOMPATIBLE_MARKER in probe.stderr.decode()
+
+
+# Applied to tests that shell out to `aces-cli`. `strict=True` is the point: if hydra fixes #3121 and
+# the CLI starts working, these XPASS and the suite fails, prompting removal of the guard in
+# `aces.run.cli` rather than letting a stale workaround sit unnoticed.
+needs_working_cli = pytest.mark.xfail(
+    hydra_cli_unavailable(),
+    reason=f"hydra cannot build its CLI parser on this interpreter; see {HYDRA_ARGPARSE_ISSUE_URL}",
+    strict=True,
+)
 
 
 def run_command(script: str, hydra_kwargs: dict[str, str], test_name: str, expected_returncode: int = 0):

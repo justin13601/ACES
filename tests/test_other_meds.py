@@ -3,7 +3,7 @@
 import polars as pl
 
 from .test_meds import parse_labels_yaml, parse_shards_yaml
-from .utils import cli_test
+from .utils import cli_test, needs_working_cli
 
 pl.enable_string_cache()
 
@@ -394,6 +394,7 @@ WANT_SHARDS = {
 }
 
 
+@needs_working_cli
 def test_meds():
     cli_test(
         input_files=MEDS_SHARDS,

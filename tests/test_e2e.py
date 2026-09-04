@@ -4,7 +4,7 @@ from datetime import datetime
 
 import polars as pl
 
-from .utils import cli_test
+from .utils import cli_test, needs_working_cli
 
 pl.enable_string_cache()
 
@@ -182,6 +182,7 @@ EXPECTED_OUTPUT = {
 }
 
 
+@needs_working_cli
 def test_e2e():
     cli_test(
         input_files={"sample_data": PREDICATES_CSV},
