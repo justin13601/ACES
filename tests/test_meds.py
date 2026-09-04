@@ -304,6 +304,14 @@ predicates:
     code: {regex: DISCHARGE.*}
   death:
     code: DEATH
+  over_ninety_eight:
+    code: null
+    value_min: 98
+    value_min_inclusive: False
+  code_is_HR:
+    code: LAB//HR
+  high_HR:
+    expr: and(code_is_HR, over_ninety_eight)
   discharge_or_death:
     expr: or(discharge, death)
 
@@ -373,6 +381,7 @@ WANT_NON_EMPTY_WINDOW_SCHEMA = {
             pl.Field("admission", pl.Int64),
             pl.Field("discharge", pl.Int64),
             pl.Field("death", pl.Int64),
+            pl.Field("high_HR", pl.Int64),
             pl.Field("discharge_or_death", pl.Int64),
             pl.Field("_ANY_EVENT", pl.Int64),
         ]
@@ -429,6 +438,7 @@ WANT_TRAIN_WINDOW_DATA = """
             "admission": 0,
             "discharge": 0,
             "death": 0,
+            "high_HR": 0,
             "discharge_or_death": 0,
             "_ANY_EVENT": 4
         },
