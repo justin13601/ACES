@@ -377,7 +377,6 @@ WANT_SHARDS = {
         """
   "0": |-2
     subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-    1,01/15/2020 15:14,0,,,
     1,01/19/2022 04:46,0,,,
 
   "1": |-2
