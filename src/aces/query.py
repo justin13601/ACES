@@ -78,6 +78,34 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         True
         >>> "label" in result.columns
         True
+
+        A window may be defined backwards from its end (``start: end - 1 day, end: trigger``). The
+        ``index_timestamp`` must still resolve to the boundary the config names -- ``end`` is the trigger,
+        not the point a day earlier. See issue #196:
+
+        >>> backward_df = pl.DataFrame({
+        ...     "subject_id": [1],
+        ...     "timestamp": [datetime(2010, 6, 20)],
+        ...     "_ANY_EVENT": [True],
+        ... })
+        >>> def index_timestamp_for(index_timestamp: str) -> datetime:
+        ...     '''Run a backward-defined input window and return its resolved index_timestamp.'''
+        ...     cfg = TaskExtractorConfig(
+        ...         predicates={},
+        ...         trigger=EventConfig("_ANY_EVENT"),
+        ...         windows={
+        ...             "input": WindowConfig(
+        ...                 "end - 1 day", "trigger", True, True, index_timestamp=index_timestamp
+        ...             ),
+        ...         },
+        ...     )
+        ...     with caplog.at_level(logging.INFO):
+        ...         return query(cfg, backward_df)["index_timestamp"].item()
+        >>> index_timestamp_for("end")
+        datetime.datetime(2010, 6, 20, 0, 0)
+        >>> index_timestamp_for("start")
+        datetime.datetime(2010, 6, 19, 0, 0)
+
         >>> cfg = TaskExtractorConfig(
         ...     predicates={"A": PlainPredicateConfig("A", static=True)},
         ...     trigger=EventConfig("_ANY_EVENT"),

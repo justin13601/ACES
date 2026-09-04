@@ -50,6 +50,36 @@ def _aggregate_singleton_temporal(
         ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
         │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 1989-12-08 12:03:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+
+        A backward window (negative ``window_size``) extends into the past, so the anchor row sits on the
+        window's chronologically *later* boundary. It is therefore ``right_inclusive`` -- not
+        ``left_inclusive`` -- that decides whether the anchor's own predicates are counted, matching the
+        ``closed=`` semantics polars applies on the rolling path in
+        [`aggregate_temporal_window`][aces.aggregate.aggregate_temporal_window]. The emitted boundaries stay
+        in chronological order, so ``timestamp_at_start`` is still the earlier of the two:
+
+        >>> _aggregate_singleton_temporal(df, TemporalWindowBounds(False, timedelta(days=-7), True, None))
+        shape: (1, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-11-24 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 1    ┆ 0    ┆ 1    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+
+        Flipping the two flags excludes the anchor, confirming ``left_inclusive`` does not govern it:
+
+        >>> _aggregate_singleton_temporal(df, TemporalWindowBounds(True, timedelta(days=-7), False, None))
+        shape: (1, 7)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B ┆ is_C │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-11-24 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 0    ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+
         >>> _aggregate_singleton_temporal(df[:0], TemporalWindowBounds(False, timedelta(days=7), True, None))
         shape: (0, 7)
         ┌────────────┬──────────────┬────────────────────┬──────────────────┬──────┬──────┬──────┐
@@ -66,8 +96,8 @@ def _aggregate_singleton_temporal(
     possible_out = predicates_df.select(
         "subject_id",
         "timestamp",
-        (pl.col("timestamp") + endpoint_expr.offset).alias("timestamp_at_start"),
-        (pl.col("timestamp") + endpoint_expr.offset + endpoint_expr.window_size).alias("timestamp_at_end"),
+        (pl.col("timestamp") + endpoint_expr.start_offset).alias("timestamp_at_start"),
+        (pl.col("timestamp") + endpoint_expr.end_offset).alias("timestamp_at_end"),
         *[pl.col(c).cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols],
     )
 
@@ -78,6 +108,11 @@ def _aggregate_singleton_temporal(
     st = possible_out["timestamp_at_start"].item()
     end = possible_out["timestamp_at_end"].item()
 
+    # `st` and `end` are ordered chronologically (see TemporalWindowBounds.start_offset), so
+    # `left_inclusive` governs whichever boundary is earlier in time and `right_inclusive` whichever is
+    # later -- matching the `closed=` semantics polars applies on the rolling path in
+    # `aggregate_temporal_window`. For a backward window the anchor row sits on the *later* boundary, so it
+    # is `right_inclusive` that decides whether it counts.
     if (
         (st < ts and ts < end)
         or (ts == st and endpoint_expr.left_inclusive)
@@ -225,12 +260,12 @@ def aggregate_temporal_window(
         │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
         │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
         ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
-        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 1989-11-30 12:03:00 ┆ 0    ┆ 0    ┆ 0    │
-        │ 1          ┆ 1989-12-02 05:17:00 ┆ 1989-12-02 05:17:00 ┆ 1989-12-01 05:17:00 ┆ 1    ┆ 0    ┆ 1    │
-        │ 1          ┆ 1989-12-02 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 0    ┆ 1    ┆ 1    │
-        │ 1          ┆ 1989-12-06 11:00:00 ┆ 1989-12-06 11:00:00 ┆ 1989-12-05 11:00:00 ┆ 0    ┆ 0    ┆ 0    │
-        │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 1989-11-30 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
-        │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 1989-12-02 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-11-30 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-02 05:17:00 ┆ 1989-12-01 05:17:00 ┆ 1989-12-02 05:17:00 ┆ 1    ┆ 0    ┆ 1    │
+        │ 1          ┆ 1989-12-02 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-06 11:00:00 ┆ 1989-12-05 11:00:00 ┆ 1989-12-06 11:00:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-11-30 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-02 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
         >>> aggregate_temporal_window(df, (
         ... False, timedelta(hours=12), False, timedelta(hours=12)))
@@ -259,12 +294,12 @@ def aggregate_temporal_window(
         │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
         │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
         ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
-        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 1    ┆ 1    ┆ 1    │
-        │ 1          ┆ 1989-12-02 05:17:00 ┆ 1989-12-03 05:17:00 ┆ 1989-12-02 05:17:00 ┆ 1    ┆ 0    ┆ 0    │
-        │ 1          ┆ 1989-12-02 12:03:00 ┆ 1989-12-03 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 0    ┆ 0    ┆ 0    │
-        │ 1          ┆ 1989-12-06 11:00:00 ┆ 1989-12-07 11:00:00 ┆ 1989-12-06 11:00:00 ┆ 0    ┆ 0    ┆ 0    │
-        │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-02 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
-        │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-04 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-02 05:17:00 ┆ 1989-12-02 05:17:00 ┆ 1989-12-03 05:17:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-02 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 1989-12-03 12:03:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-06 11:00:00 ┆ 1989-12-06 11:00:00 ┆ 1989-12-07 11:00:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 1989-12-02 13:14:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 1989-12-04 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
         >>> aggregate_temporal_window(df, (
         ... True, timedelta(days=-1), False, timedelta(days=1)))
@@ -274,13 +309,47 @@ def aggregate_temporal_window(
         │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  ┆ ---  │
         │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  ┆ i64  │
         ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╪══════╡
-        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 1    ┆ 1    ┆ 2    │
-        │ 1          ┆ 1989-12-02 05:17:00 ┆ 1989-12-03 05:17:00 ┆ 1989-12-02 05:17:00 ┆ 1    ┆ 1    ┆ 1    │
-        │ 1          ┆ 1989-12-02 12:03:00 ┆ 1989-12-03 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 1    ┆ 0    ┆ 0    │
-        │ 1          ┆ 1989-12-06 11:00:00 ┆ 1989-12-07 11:00:00 ┆ 1989-12-06 11:00:00 ┆ 0    ┆ 1    ┆ 0    │
-        │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-02 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
-        │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-04 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-01 12:03:00 ┆ 1989-12-01 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 1    ┆ 1    ┆ 2    │
+        │ 1          ┆ 1989-12-02 05:17:00 ┆ 1989-12-02 05:17:00 ┆ 1989-12-03 05:17:00 ┆ 1    ┆ 1    ┆ 1    │
+        │ 1          ┆ 1989-12-02 12:03:00 ┆ 1989-12-02 12:03:00 ┆ 1989-12-03 12:03:00 ┆ 1    ┆ 0    ┆ 0    │
+        │ 1          ┆ 1989-12-06 11:00:00 ┆ 1989-12-06 11:00:00 ┆ 1989-12-07 11:00:00 ┆ 0    ┆ 1    ┆ 0    │
+        │ 2          ┆ 1989-12-01 13:14:00 ┆ 1989-12-01 13:14:00 ┆ 1989-12-02 13:14:00 ┆ 0    ┆ 1    ┆ 1    │
+        │ 2          ┆ 1989-12-03 15:17:00 ┆ 1989-12-03 15:17:00 ┆ 1989-12-04 15:17:00 ┆ 0    ┆ 0    ┆ 0    │
         └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┴──────┘
+
+        The emitted boundaries are always in chronological order, whatever the sign of ``window_size``:
+
+        >>> for window_size in (timedelta(days=1), timedelta(days=-1)):
+        ...     out = aggregate_temporal_window(df, TemporalWindowBounds(True, window_size, True, None))
+        ...     assert (out["timestamp_at_start"] <= out["timestamp_at_end"]).all(), window_size
+
+        A subject with a single event takes a separate code path
+        ([`_aggregate_singleton_temporal`][aces.aggregate._aggregate_singleton_temporal]) from the polars
+        rolling path used when there are several. The two must agree on what the inclusivity flags mean.
+        For backward windows they once did not -- the singleton path read the flags relative to the anchor
+        row while polars applied them chronologically -- so check all four combinations agree:
+
+        >>> lone = pl.DataFrame({"subject_id": [1], "timestamp": [datetime(1989, 12, 10)], "is_A": [1]})
+        >>> paired = pl.DataFrame({
+        ...     "subject_id": [1, 1],
+        ...     "timestamp": [datetime(1989, 12, 10), datetime(1999, 1, 1)],
+        ...     "is_A": [1, 0],
+        ... })
+        >>> def paths_agree(bounds: TemporalWindowBounds) -> bool:
+        ...     '''Whether the singleton and rolling paths count the anchor row identically.'''
+        ...     singleton = aggregate_temporal_window(lone, bounds)["is_A"].item()
+        ...     rolling = (
+        ...         aggregate_temporal_window(paired, bounds)
+        ...         .filter(pl.col("timestamp") == datetime(1989, 12, 10))["is_A"]
+        ...         .item()
+        ...     )
+        ...     return singleton == rolling
+        >>> all(
+        ...     paths_agree(TemporalWindowBounds(left_inc, timedelta(days=-1), right_inc, None))
+        ...     for left_inc in (True, False)
+        ...     for right_inc in (True, False)
+        ... )
+        True
     """
     if not isinstance(endpoint_expr, TemporalWindowBounds):
         endpoint_expr = TemporalWindowBounds(*endpoint_expr)
@@ -305,10 +374,8 @@ def aggregate_temporal_window(
             .select(
                 "subject_id",
                 "timestamp",
-                (pl.col("timestamp") + endpoint_expr.offset).alias("timestamp_at_start"),
-                (pl.col("timestamp") + endpoint_expr.offset + endpoint_expr.window_size).alias(
-                    "timestamp_at_end"
-                ),
+                (pl.col("timestamp") + endpoint_expr.start_offset).alias("timestamp_at_start"),
+                (pl.col("timestamp") + endpoint_expr.end_offset).alias("timestamp_at_end"),
                 *predicate_cols,
             )
             .fill_null(0)
