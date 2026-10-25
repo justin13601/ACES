@@ -862,7 +862,7 @@ class IndexSelectionConfig:
     The selection is applied after all window constraints, so it picks among the valid rows: ``first`` and
     ``last`` keep the row with the earliest or latest trigger, and ``random`` keeps the row with the
     smallest hash of ``(subject_id, trigger)`` under ``seed``. A subject's pick therefore does not depend on
-    the other subjects in the shard, and is reproducible for a given polars version.
+    the other subjects in the shard, and is reproducible for a given polars version and column dtypes.
 
     Examples:
         >>> IndexSelectionConfig("first")

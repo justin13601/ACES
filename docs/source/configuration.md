@@ -232,7 +232,7 @@ index_selection:
 
 `first` and `last` keep the row with the earliest or latest `trigger` timestamp. `random` keeps the row with
 the smallest hash of `(subject_id, trigger)` under `seed`, so a subject's choice does not depend on which other
-subjects are in the same shard, and is reproducible for a given polars version.
+subjects are in the same shard, and is reproducible for a given polars version and column dtypes.
 
 Note that this differs from excluding every trigger but the first with a window from the start of the record
 up to (but excluding) the trigger that has `trigger_predicate: (None, 0)`. That window drops the subject
