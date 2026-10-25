@@ -111,9 +111,24 @@ accepted operations that can be applied to other predicates, containing precisel
 - `and(pred_1_name, pred_2_name, ...)`: Asserts that all of the specified predicates must be true.
 - `or(pred_1_name, pred_2_name, ...)`: Asserts that any of the specified predicates must be true.
 
+`and`'s and `or`'s cannot be written inside one another in a single `expr`, but a derived predicate can use
+other derived predicates as inputs, to any depth (e.g., `or(abnormal_lab_male, abnormal_lab_female)`, where both
+inputs are themselves derived predicates). A derived predicate can also combine predicates from
+`patient_demographics` with plain predicates (e.g., `and(abnormal_lab_male_range, male)`), in which case the
+demographic's value applies to all of the subject's events.
+
 > [!NOTE]
-> Currently, `and`'s and `or`'s cannot be nested. Upon user request, we may support further advanced
-> analytic operations over predicates.
+> Derived predicates are evaluated per event, i.e., per unique `(subject_id, timestamp)`, _after_ the counts
+> of the plain predicates have been summed over all rows (measurements) that share that timestamp. This has
+> two consequences:
+>
+> - `and(A, B)` is true at a timestamp if `A` and `B` are each satisfied by some row at that timestamp, not
+>   necessarily by the same row. For example, `and(creatinine, high_potassium)` is true when a creatinine and a
+>   high potassium are recorded at the same time. To require a code and a value range on the same
+>   measurement, put both in one plain predicate (`code` together with `value_min`/`value_max`).
+> - A derived predicate counts at most once per timestamp, whereas a plain predicate counts every matching
+>   row. For example, two high potassium measurements at one timestamp count 2 for `high_potassium` but 1
+>   for `and(creatinine, high_potassium)`.
 
 ______________________________________________________________________
 
