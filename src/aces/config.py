@@ -386,9 +386,10 @@ class WindowConfig:
             'start' or 'end', an error is also raised. If no 'index_timestamp' is defined, there will be no
             'index_timestamp' column.
         censoring: How to treat a row whose label is negative but whose subject's record ends before this
-            window does, i.e. the outcome could not be observed for the whole window. Can only be set on the
-            window with the `label`. If `None` (the default), such rows keep their negative label. If
-            'drop', they are removed. If 'flag', they are kept and a boolean 'censored' column is added.
+            window does (or whose window ends at an event that never occurs), i.e. the outcome could not be
+            observed for the whole window. Can only be set on the window with the `label`. If `None` (the
+            default), such rows keep their label. If 'drop', they are removed. If 'flag', they are kept and a
+            boolean 'censored' column is added.
 
     Raises:
         ValueError: If the window is misconfigured in any of a variety of ways; see below for examples.

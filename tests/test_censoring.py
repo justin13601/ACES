@@ -87,3 +87,48 @@ def test_flag_adds_censored_column(tmp_path, predicates_df):
     result = query(load_config(tmp_path, "flag"), predicates_df).sort("subject_id")
     assert result["subject_id"].to_list() == [1, 2, 3, 4]
     assert result["censored"].to_list() == [True, False, False, False]
+
+
+UNTIL_DISCHARGE_YAML = """
+predicates:
+  admission:
+    code: admission
+  discharge:
+    code: discharge
+  death:
+    code: death
+  discharge_or_death:
+    expr: or(discharge, death)
+trigger: admission
+windows:
+  target:
+    start: trigger
+    end: start -> discharge_or_death
+    start_inclusive: False
+    end_inclusive: True
+    label: death
+    censoring: {censoring}
+"""
+
+
+@pytest.mark.parametrize(("censoring", "expected"), [("drop", [1, 2]), ("flag", [1, 2, 3])])
+def test_event_bound_window_that_never_ends_is_censored(tmp_path, censoring, expected):
+    """Subject 1 is discharged and 2 dies, but 3's record ends before any discharge or death."""
+    config_path = tmp_path / "inhospital_mortality.yaml"
+    config_path.write_text(UNTIL_DISCHARGE_YAML.format(censoring=censoring))
+    rows = [(1, 1, "admission"), (1, 5, "discharge"), (2, 1, "admission"), (2, 3, "death")]
+    rows += [(3, 1, "admission"), (3, 4, "lab")]
+    predicates_df = pl.DataFrame(
+        {
+            "subject_id": [s for s, _, _ in rows],
+            "timestamp": [datetime(2020, 1, d) for _, d, _ in rows],
+            **{c: [int(code == c) for _, _, code in rows] for c in ["admission", "discharge", "death"]},
+        }
+    ).with_columns((pl.col("discharge") + pl.col("death")).alias("discharge_or_death"))
+
+    result = query(TaskExtractorConfig.load(config_path), predicates_df).sort("subject_id")
+
+    assert result["subject_id"].to_list() == expected
+    assert result["label"].to_list()[:2] == [0, 1]
+    if censoring == "flag":
+        assert result["censored"].to_list() == [False, False, True]

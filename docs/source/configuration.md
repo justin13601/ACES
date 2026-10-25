@@ -217,11 +217,13 @@ window. The optional `censoring` field on the window with the `label` changes th
 
 - not set (default): such rows keep their negative label.
 - `drop`: such rows are removed.
-- `flag`: such rows are kept, and a boolean `censored` column is added to the output.
+- `flag`: such rows are kept, and a boolean `censored` column is added to the output. In MEDS output mode,
+  the label file only has MEDS label columns, so this column is only kept in the `window_stats_dir` output.
 
 A row is censored if its label is negative and the subject's last event is before the end of the label
-window. Rows with a positive label are never censored, and neither are windows that end at an event or at the
-end of the record, as these cannot extend past the record.
+window, or if the label window ends at an event that never occurs (e.g., `end: start -> discharge` for a
+subject with no later discharge). Rows with a positive label in a window that ends are never censored, and
+neither are windows that end at the end of the record.
 
 ```yaml
 target:
