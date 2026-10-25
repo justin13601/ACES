@@ -180,6 +180,10 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
 
     result = result.rename({"subtree_anchor_timestamp": "trigger"})
 
+    if cfg.index_selection:
+        logger.info(f"Keeping the {cfg.index_selection.strategy} valid row per subject...")
+        result = result.filter(cfg.index_selection.filter_expr())
+
     to_return_cols = [
         "subject_id",
         "trigger",

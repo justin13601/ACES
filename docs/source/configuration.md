@@ -33,6 +33,8 @@ In the machine form used by ACES, the configuration file consists of three parts
 - `trigger`, stored as a string to `EventConfig`
 - `windows`, stored as a dictionary from string window names (which must be unique) to {py:class}`aces.config.WindowConfig`
   objects.
+- `index_selection` (optional), stored as an {py:class}`aces.config.IndexSelectionConfig`, which keeps only one
+  valid row per subject.
 
 Below, we will detail each of these configuration objects.
 
@@ -208,3 +210,31 @@ those endpoints are left unconstrained. Likewise, unreferenced predicates are al
 > the constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of predicate
 > `name` in a window was either 1 or 2. All constraints in the dictionary must be satisfied on a window for it
 > to be included.
+
+______________________________________________________________________
+
+### Index Selection: {py:class}`aces.config.IndexSelectionConfig`
+
+By default, every trigger event that satisfies all window constraints yields one output row, so a subject can
+have many prediction times. Many tasks instead use one prediction time per subject (e.g., the first eligible
+admission, or one admission chosen at random). The optional top-level `index_selection` field does this
+selection after all constraints have been applied, so it picks among the valid rows only:
+
+```yaml
+index_selection: first # or `last`
+```
+
+```yaml
+index_selection:
+  strategy: random
+  seed: 42 # optional, defaults to 0
+```
+
+`first` and `last` keep the row with the earliest or latest `trigger` timestamp. `random` keeps the row with
+the smallest hash of `(subject_id, trigger)` under `seed`, so a subject's choice does not depend on which other
+subjects are in the same shard, and is reproducible for a given polars version.
+
+Note that this differs from excluding every trigger but the first with a window from the start of the record
+up to (but excluding) the trigger that has `trigger_predicate: (None, 0)`. That window drops the subject
+entirely when their first trigger event is not valid, whereas `index_selection: first` keeps their first
+_valid_ one.

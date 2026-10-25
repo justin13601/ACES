@@ -856,6 +856,60 @@ class EventConfig:
 
 
 @dataclasses.dataclass
+class IndexSelectionConfig:
+    """A configuration object for keeping one valid prediction time per subject.
+
+    The selection is applied after all window constraints, so it picks among the valid rows: ``first`` and
+    ``last`` keep the row with the earliest or latest trigger, and ``random`` keeps the row with the
+    smallest hash of ``(subject_id, trigger)`` under ``seed``. A subject's pick therefore does not depend on
+    the other subjects in the shard, and is reproducible for a given polars version.
+
+    Examples:
+        >>> IndexSelectionConfig("first")
+        IndexSelectionConfig(strategy='first', seed=0)
+        >>> IndexSelectionConfig("median")
+        Traceback (most recent call last):
+            ...
+        ValueError: Index selection strategy must be one of 'first', 'last', or 'random'. Got: 'median'
+    """
+
+    strategy: str
+    seed: int = 0
+
+    def __post_init__(self) -> None:
+        if self.strategy not in ("first", "last", "random"):
+            raise ValueError(
+                "Index selection strategy must be one of 'first', 'last', or 'random'. "
+                f"Got: '{self.strategy}'"
+            )
+
+    def filter_expr(self) -> pl.Expr:
+        """Returns a Polars expression that is true for the selected row of each subject.
+
+        Examples:
+            >>> df = pl.DataFrame({
+            ...     "subject_id": [1, 1, 1, 2],
+            ...     "trigger": [datetime(2020, 1, 2), datetime(2020, 1, 1), datetime(2020, 1, 3),
+            ...                 datetime(2020, 1, 5)],
+            ... })
+            >>> df.filter(IndexSelectionConfig("first").filter_expr())["trigger"].to_list()
+            [datetime.datetime(2020, 1, 1, 0, 0), datetime.datetime(2020, 1, 5, 0, 0)]
+            >>> df.filter(IndexSelectionConfig("last").filter_expr())["trigger"].to_list()
+            [datetime.datetime(2020, 1, 3, 0, 0), datetime.datetime(2020, 1, 5, 0, 0)]
+            >>> df.filter(IndexSelectionConfig("random").filter_expr())["subject_id"].to_list()
+            [1, 2]
+        """
+        match self.strategy:
+            case "first":
+                return pl.col("trigger") == pl.col("trigger").min().over("subject_id")
+            case "last":
+                return pl.col("trigger") == pl.col("trigger").max().over("subject_id")
+            case "random":
+                row_hash = pl.struct("subject_id", "trigger").hash(self.seed)
+                return row_hash == row_hash.min().over("subject_id")
+
+
+@dataclasses.dataclass
 class TaskExtractorConfig:
     """A configuration object for parsing the plain-data stored in a task extractor config.
 
@@ -875,6 +929,8 @@ class TaskExtractorConfig:
             serves as the root of the window tree.
         windows: A dictionary of window configurations. Each window configuration is a simple dataclass with
             that can be materialized to/from a simple, POD dictionary.
+        index_selection: An optional configuration for keeping only one valid row (prediction time) per
+            subject. See `IndexSelectionConfig`.
 
     Raises:
         ValueError: If any window or predicate names are not composed of alphanumeric or "_" characters.
@@ -1096,6 +1152,7 @@ class TaskExtractorConfig:
     windows: dict[str, WindowConfig] | None
     label_window: str | None = None
     index_timestamp_window: str | None = None
+    index_selection: IndexSelectionConfig | None = None
 
     @classmethod
     def load(
@@ -1142,7 +1199,8 @@ class TaskExtractorConfig:
                                 windows={'start': WindowConfig(start=None, end='trigger + 24h',
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
-                                label_window=None, index_timestamp_window=None)
+                                label_window=None, index_timestamp_window=None,
+                                index_selection=None)
 
             >>> predicates_dict = {
             ...     "metadata": {'description': 'A test predicates file'},
@@ -1172,7 +1230,8 @@ class TaskExtractorConfig:
                                 windows={'start': WindowConfig(start=None, end='trigger + 24h',
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
-                                label_window=None, index_timestamp_window=None)
+                                label_window=None, index_timestamp_window=None,
+                                index_selection=None)
 
             >>> config_dict = {
             ...     "metadata": {'description': 'A test configuration file'},
@@ -1330,6 +1389,7 @@ class TaskExtractorConfig:
 
         trigger = loaded_dict.pop("trigger")
         windows = loaded_dict.pop("windows", None)
+        index_selection = loaded_dict.pop("index_selection", None)
 
         predicates = loaded_dict.pop("predicates", {})
         patient_demographics = loaded_dict.pop("patient_demographics", {})
@@ -1416,7 +1476,14 @@ class TaskExtractorConfig:
             }
             predicate_objs.update(final_demographics)
 
-        return cls(predicates=predicate_objs, trigger=trigger, windows=windows)
+        if isinstance(index_selection, str):
+            index_selection = {"strategy": index_selection}
+        if index_selection is not None:
+            index_selection = IndexSelectionConfig(**index_selection)
+
+        return cls(
+            predicates=predicate_objs, trigger=trigger, windows=windows, index_selection=index_selection
+        )
 
     def _initialize_predicates(self) -> None:
         """Initialize the predicates tree from the configuration object and check validity.
