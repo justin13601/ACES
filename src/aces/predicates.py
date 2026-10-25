@@ -244,6 +244,7 @@ def expand_descendant_codes(
         The predicates, with every ``descendants_of`` code replaced by the equivalent ``any`` list.
 
     Raises:
+        ValueError: If ``descendants_of`` is not a non-empty list of codes.
         FileNotFoundError: If a predicate uses ``descendants_of`` but no code metadata file is found.
 
     Examples:
@@ -269,6 +270,11 @@ def expand_descendant_codes(
             ...
         FileNotFoundError: Predicate(s) 'mi' use 'descendants_of', which needs MEDS code metadata, but
         no 'metadata/codes.parquet' was found in any parent directory of .../data/0.parquet.
+        >>> expand_descendant_codes({"mi": PlainPredicateConfig({"descendants_of": "ICD10//I21"})}, Path("."))
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid specification in the code field! Got: {'descendants_of': 'ICD10//I21'}.
+        Expected a list of strings for 'descendants_of'.
     """
     to_expand = {
         name: pred
@@ -278,10 +284,17 @@ def expand_descendant_codes(
     if not to_expand:
         return predicates
 
+    for pred in to_expand.values():
+        if not pred.code["descendants_of"] or not isinstance(pred.code["descendants_of"], list):
+            raise ValueError(
+                f"Invalid specification in the code field! Got: {pred.code}. "
+                "Expected a list of strings for 'descendants_of'."
+            )
+
     codes_fp = next(
         (
             d / "metadata" / "codes.parquet"
-            for d in data_path.parents
+            for d in data_path.resolve().parents
             if (d / "metadata" / "codes.parquet").is_file()
         ),
         None,

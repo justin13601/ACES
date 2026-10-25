@@ -79,3 +79,14 @@ def test_descendants_of_needs_code_metadata(tmp_path, meds_root):
     data_config = DictConfig({"path": str(meds_root / "data" / "train" / "0.parquet"), "standard": "meds"})
     with pytest.raises(FileNotFoundError, match="descendants_of"):
         get_predicates_df(cfg, data_config)
+
+
+def test_descendants_of_with_relative_data_path(tmp_path, meds_root, monkeypatch):
+    config_path = tmp_path / "task.yaml"
+    config_path.write_text(TASK_YAML)
+    cfg = TaskExtractorConfig.load(config_path)
+
+    monkeypatch.chdir(meds_root / "data" / "train")
+    result = query(cfg, get_predicates_df(cfg, DictConfig({"path": "0.parquet", "standard": "meds"})))
+
+    assert sorted(result["subject_id"].to_list()) == [1, 2, 4]
