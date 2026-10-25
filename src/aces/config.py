@@ -385,6 +385,10 @@ class WindowConfig:
             'index_timestamp' is specified, an error is raised. If the specified 'index_timestamp' is not
             'start' or 'end', an error is also raised. If no 'index_timestamp' is defined, there will be no
             'index_timestamp' column.
+        censoring: How to treat a row whose label is negative but whose subject's record ends before this
+            window does, i.e. the outcome could not be observed for the whole window. Can only be set on the
+            window with the `label`. If `None` (the default), such rows keep their negative label. If
+            'drop', they are removed. If 'flag', they are kept and a boolean 'censored' column is added.
 
     Raises:
         ValueError: If the window is misconfigured in any of a variety of ways; see below for examples.
@@ -616,6 +620,14 @@ class WindowConfig:
             ...
         ValueError: Invalid constraint format: discharge.
         Expected format: '(min, max)'. Got: '(0)'
+        >>> invalid_window = WindowConfig("input.end", "start + 30d", False, True, label="A", censoring="x")
+        Traceback (most recent call last):
+            ...
+        ValueError: Censoring must be one of 'drop' or 'flag'. Got: 'x'
+        >>> invalid_window = WindowConfig("input.end", "start + 30d", False, True, censoring="drop")
+        Traceback (most recent call last):
+            ...
+        ValueError: Censoring can only be set on the window with the label.
     """
 
     start: str | None
@@ -625,6 +637,7 @@ class WindowConfig:
     has: dict[str, str] = field(default_factory=dict)
     label: str | None = None
     index_timestamp: str | None = None
+    censoring: str | None = None
 
     @classmethod
     def _check_reference(cls, reference: str) -> None:
@@ -702,6 +715,11 @@ class WindowConfig:
                 self.has[each_constraint] = tuple(
                     int(element) if element not in ("None", "") else None for element in elements
                 )
+
+        if self.censoring not in (None, "drop", "flag"):
+            raise ValueError(f"Censoring must be one of 'drop' or 'flag'. Got: '{self.censoring}'")
+        if self.censoring and self.label is None:
+            raise ValueError("Censoring can only be set on the window with the label.")
 
         if self.start is None and self.end is None:
             raise ValueError("Window cannot progress from the start of the record to the end of the record.")
@@ -1141,7 +1159,8 @@ class TaskExtractorConfig:
                                 trigger=EventConfig(predicate='admission'),
                                 windows={'start': WindowConfig(start=None, end='trigger + 24h',
                                                     start_inclusive=True, end_inclusive=True, has={},
-                                                    label=None, index_timestamp=None)},
+                                                    label=None, index_timestamp=None,
+                                                    censoring=None)},
                                 label_window=None, index_timestamp_window=None)
 
             >>> predicates_dict = {
@@ -1171,7 +1190,8 @@ class TaskExtractorConfig:
                                 trigger=EventConfig(predicate='admission'),
                                 windows={'start': WindowConfig(start=None, end='trigger + 24h',
                                                     start_inclusive=True, end_inclusive=True, has={},
-                                                    label=None, index_timestamp=None)},
+                                                    label=None, index_timestamp=None,
+                                                    censoring=None)},
                                 label_window=None, index_timestamp_window=None)
 
             >>> config_dict = {

@@ -199,6 +199,24 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
         )
         to_return_cols.insert(1, "label")
 
+        censoring = cfg.windows[cfg.label_window].censoring
+        if censoring:
+            # A negative label is censored if the subject's record ends before the label window does.
+            record_end = predicates_df.group_by("subject_id").agg(
+                pl.col("timestamp").max().alias("record_end")
+            )
+            window_end = pl.col(f"{cfg.label_window}.{label_col}_summary").struct.field("timestamp_at_end")
+            result = result.join(record_end, on="subject_id", how="left").with_columns(
+                ((pl.col("label") == 0) & (pl.col("record_end") < window_end))
+                .fill_null(False)
+                .alias("censored")
+            )
+            logger.info(f"Applying censoring '{censoring}' to {result['censored'].sum():,} censored rows...")
+            if censoring == "drop":
+                result = result.filter(~pl.col("censored"))
+            else:
+                to_return_cols.insert(2, "censored")
+
         if result["label"].n_unique() == 1:  # pragma: no cover
             logger.warning(
                 f"All labels in the extracted cohort are the same: '{result['label'][0]}'. "

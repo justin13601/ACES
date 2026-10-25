@@ -208,3 +208,27 @@ those endpoints are left unconstrained. Likewise, unreferenced predicates are al
 > the constraint for predicate `name` with constraint `name: (1, 2)` if the count of observations of predicate
 > `name` in a window was either 1 or 2. All constraints in the dictionary must be satisfied on a window for it
 > to be included.
+
+#### Censoring Field
+
+With a fixed-length label window (e.g., `end: start + 30 days`), a subject whose record ends before the window
+does and who has no label event gets a negative label, even though the outcome was not observed for the whole
+window. The optional `censoring` field on the window with the `label` changes this:
+
+- not set (default): such rows keep their negative label.
+- `drop`: such rows are removed.
+- `flag`: such rows are kept, and a boolean `censored` column is added to the output.
+
+A row is censored if its label is negative and the subject's last event is before the end of the label
+window. Rows with a positive label are never censored, and neither are windows that end at an event or at the
+end of the record, as these cannot extend past the record.
+
+```yaml
+target:
+  start: input.end
+  end: start + 30 days
+  start_inclusive: false
+  end_inclusive: true
+  label: readmission
+  censoring: drop
+```
