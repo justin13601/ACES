@@ -48,7 +48,12 @@ These configs consist of the following four fields:
   observation will only satisfy this predicate if there is an occurrence of this code in the observation.
   The field can additionally be a dictionary with either a `regex` key and the value being a regular
   expression (satisfied if the regular expression evaluates to True), or a `any` key and the value being a
-  list of strings (satisfied if there is an occurrence for any code in the list).
+  list of strings (satisfied if there is an occurrence for any code in the list). For MEDS data, it can also
+  be a dictionary with a `descendants_of` key and a list of codes, which is satisfied by those codes and all
+  of their descendants: ACES follows the `parent_codes` links in the dataset's `metadata/codes.parquet` file
+  (looked up in the parent directories of the data path) and rewrites the predicate as an `any` list. Only
+  links present in that file are followed, so how complete the expansion is depends on how the MEDS ETL
+  filled in `parent_codes`. The number of matched codes is logged.
 
   > [!NOTE]
   > Each individual definition of `PlainPredicateConfig` and `code` will generate a separate predicate
