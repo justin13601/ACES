@@ -136,9 +136,11 @@ trigger:
 ```
 
 Each `predicate` event then starts a series of trigger times every `every`, starting at the event itself and
-running up to (but excluding) the next `until` event, or the end of the subject's record if there is none (or
-if `until` is not set). Trigger times that do not coincide with an existing event are added as empty events,
-so they do not change any window's predicate counts. To skip the first hours of a stay, add a window
+running up to (but excluding) the next `until` or `predicate` event, whichever comes first, or up to (and
+including) the end of the subject's record if neither follows. An `until` event at the same time as the
+`predicate` event does not end its series (e.g., a transfer recorded as a discharge and an admission at the
+same time). Trigger times that do not coincide with an existing event are added as empty events, so they do
+not change any window's predicate counts. To skip the first hours of a stay, add a window
 constraint, e.g. a window `start: end - 4h, end: trigger` with `icu_admission: (None, 0)`.
 
 ______________________________________________________________________

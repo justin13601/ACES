@@ -22,9 +22,10 @@ TRIGGER_GRID_COLUMN = "_TRIGGER_GRID"
 def add_trigger_grid(trigger: EventConfig, predicates_df: pl.DataFrame) -> pl.DataFrame:
     """Marks a row every ``trigger.every`` from each trigger event in a new ``TRIGGER_GRID_COLUMN`` column.
 
-    The grid of each ``trigger.predicate`` event runs up to (but excluding) the next ``trigger.until`` event,
-    or the end of the subject's record if there is none. Grid times that do not fall on an existing event
-    are added as new rows with all predicate counts zero, so they do not change any window's counts.
+    The grid of each ``trigger.predicate`` event starts at the event and runs up to (but excluding) the next
+    ``trigger.until`` or ``trigger.predicate`` event, or up to (and including) the end of the subject's record
+    if neither follows. Grid times that do not fall on an existing event are added as new rows with all
+    predicate counts zero, so they do not change any window's counts.
 
     Examples:
         >>> predicates_df = pl.DataFrame({
@@ -49,25 +50,33 @@ def add_trigger_grid(trigger: EventConfig, predicates_df: pl.DataFrame) -> pl.Da
         │ 1          ┆ 2020-01-02 00:00:00 ┆ 0             ┆ 0             ┆ 0             │
         └────────────┴─────────────────────┴───────────────┴───────────────┴───────────────┘
     """
-    grid_end = pl.col("timestamp").max().over("subject_id")
-    if trigger.until:
-        # The first `until` event strictly after each row, as rows are sorted with unique timestamps.
-        next_stop = pl.when(pl.col(trigger.until) > 0).then(pl.col("timestamp")).shift(-1).backward_fill()
-        grid_end = pl.coalesce(next_stop.over("subject_id"), grid_end)
 
+    def next_event(predicate: str) -> pl.Expr:
+        """The first ``predicate`` event strictly after each row (rows are sorted with unique timestamps)."""
+        return pl.when(pl.col(predicate) > 0).then(pl.col("timestamp")).shift(-1).backward_fill()
+
+    stop = next_event(trigger.predicate)
+    if trigger.until:
+        stop = pl.min_horizontal(stop, next_event(trigger.until))
+
+    every = parse_timedelta(trigger.every)
     grid = (
         predicates_df.sort("subject_id", "timestamp")
-        .with_columns(grid_end.alias("grid_end"))
+        .with_columns(
+            stop.over("subject_id").alias("stop"),
+            pl.col("timestamp").max().over("subject_id").alias("record_end"),
+        )
         .filter(pl.col(trigger.predicate) > 0)
         .select(
             "subject_id",
-            pl.datetime_ranges("timestamp", "grid_end", parse_timedelta(trigger.every), closed="left").alias(
+            "stop",
+            pl.datetime_ranges("timestamp", pl.coalesce("stop", "record_end"), every, closed="both").alias(
                 "timestamp"
             ),
         )
         .explode("timestamp")
-        .drop_nulls()
-        .unique()
+        .filter(pl.col("stop").is_null() | (pl.col("timestamp") < pl.col("stop")))
+        .select("subject_id", "timestamp")
         .with_columns(pl.lit(1, dtype=PRED_CNT_TYPE).alias(TRIGGER_GRID_COLUMN))
     )
 

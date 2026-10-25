@@ -849,8 +849,8 @@ class EventConfig:
     Args:
         predicate: The predicate that defines the trigger events.
         every: If set, the trigger instead fires every ``every`` (a timedelta string, e.g. ``1h``) from each
-            ``predicate`` event, up to (but excluding) the next ``until`` event, or the end of the subject's
-            record if there is none (or ``until`` is not set).
+            ``predicate`` event, up to (but excluding) the next ``until`` or ``predicate`` event, or up to
+            (and including) the end of the subject's record if neither follows.
         until: The predicate that ends the series of trigger times started by a ``predicate`` event. Can only
             be used together with ``every``.
 
