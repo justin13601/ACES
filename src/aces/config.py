@@ -41,11 +41,15 @@ class PlainPredicateConfig:
     static: bool = False
     other_cols: dict[str, str] = field(default_factory=dict)
 
-    def MEDS_eval_expr(self) -> pl.Expr:
+    def MEDS_eval_expr(self, ignore_numeric_value: bool = False) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a MEDS formatted dataset.
 
         Note: The output syntax for the following examples is dependent on the polars version used. The
         expected outputs may vary depending on the installed polars version.
+
+        Args:
+            ignore_numeric_value: If True, the ``value_min`` and ``value_max`` criteria are left out, e.g. to
+                find which codes of a MEDS code metadata table (which has no ``numeric_value``) can match.
 
         Examples:
             >>> print(PlainPredicateConfig("BP//systolic", 120, 140, True, False).MEDS_eval_expr())
@@ -94,6 +98,21 @@ class PlainPredicateConfig:
             (dyn int: 120)]])
             >>> print(PlainPredicateConfig(code={'any': ['foo', 'bar']}).MEDS_eval_expr())
             col("code").is_in([["foo", "bar"]])
+
+            >>> cfg = PlainPredicateConfig({'regex': '^BP//'}, value_min=120, other_cols={"unit": "mmHg"})
+            >>> codes = pl.DataFrame({
+            ...     "code": ["BP//systolic", "BP//systolic", "HR"],
+            ...     "unit": ["mmHg", "kPa", None],
+            ... })
+            >>> codes.filter(cfg.MEDS_eval_expr(ignore_numeric_value=True))
+            shape: (1, 2)
+            ┌──────────────┬──────┐
+            │ code         ┆ unit │
+            │ ---          ┆ ---  │
+            │ str          ┆ str  │
+            ╞══════════════╪══════╡
+            │ BP//systolic ┆ mmHg │
+            └──────────────┴──────┘
         """
         criteria = []
         if isinstance(self.code, dict):
@@ -128,12 +147,12 @@ class PlainPredicateConfig:
         else:
             criteria.append(pl.col("code") == self.code)
 
-        if self.value_min is not None:
+        if self.value_min is not None and not ignore_numeric_value:
             if self.value_min_inclusive:
                 criteria.append(pl.col("numeric_value") >= self.value_min)
             else:
                 criteria.append(pl.col("numeric_value") > self.value_min)
-        if self.value_max is not None:
+        if self.value_max is not None and not ignore_numeric_value:
             if self.value_max_inclusive:
                 criteria.append(pl.col("numeric_value") <= self.value_max)
             else:
