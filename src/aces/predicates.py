@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 
+import meds
 import polars as pl
 from omegaconf import DictConfig
 from polars.exceptions import ColumnNotFoundError
@@ -31,7 +32,6 @@ def direct_load_plain_predicates(
     Args:
         data_path: The path to the CSV file.
         predicates: The list of columns to read from the CSV file.
-        ts_format: The format string for parsing timestamps, or None if timestamps are already temporal.
 
     Returns:
         The Polars DataFrame containing the specified columns.
@@ -205,7 +205,7 @@ def direct_load_plain_predicates(
 
     data = data.select(columns)
     ts_type = data.collect_schema()["timestamp"]
-    if ts_type == pl.String:
+    if ts_type == pl.Utf8:
         if ts_format is None:
             raise ValueError("Must provide a timestamp format for direct predicates with str timestamps.")
         data = data.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format=ts_format))
@@ -271,10 +271,22 @@ def generate_plain_predicates_from_meds(
     logger.info("Loading MEDS data...")
     data = pl.read_parquet(data_path, use_pyarrow=True).rename({"time": "timestamp"})
 
+    # Cast `code` to Utf8 once up front. Older MEDS schemas sometimes emitted `code` as
+    # a categorical / enum dtype, and both the birth-row filter below and the per-predicate
+    # expression loop assume a string column. (Previously the cast was repeated once per
+    # predicate inside the loop; hoisting it avoids that redundant work.)
+    data = data.with_columns(pl.col("code").cast(pl.Utf8))
+
+    # Drop MEDS birth rows before predicate evaluation. The birth code is a
+    # quasi-static demographic marker anchored at the patient's birth timestamp;
+    # it shouldn't count toward predicate matches or the implicit _ANY_EVENT
+    # column. Static rows (null timestamp) are already excluded; this extends
+    # the same treatment to MEDS_BIRTH. See issue #168.
+    data = data.filter(pl.col("code") != meds.birth_code)
+
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
     for name, plain_predicate in predicates.items():
-        data = data.with_columns(data["code"].cast(pl.String).alias("code"))  # may remove after MEDS v0.3
         data = data.with_columns(plain_predicate.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name))
         logger.info(f"Added predicate column '{name}'.")
 
@@ -298,12 +310,8 @@ def process_esgpt_data(
     """Process ESGPT data to generate plain predicate columns.
 
     Args:
-        subjects_df: The Polars DataFrame containing the subjects/demographics data.
         events_df: The Polars DataFrame containing the events data.
         dynamic_measurements_df: The Polars DataFrame containing the dynamic measurements data.
-        value_columns: A dictionary mapping predicate names to the column name containing numeric values
-            for that predicate, or None if the predicate does not have an associated value column.
-        predicates: A dictionary mapping predicate names to their PlainPredicateConfig objects.
 
     Returns:
         The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
