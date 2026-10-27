@@ -94,39 +94,27 @@ class PlainPredicateConfig:
             (dyn int: 120)]])
             >>> print(PlainPredicateConfig(code={'any': ['foo', 'bar']}).MEDS_eval_expr())
             col("code").is_in([["foo", "bar"]])
-        """
-        criteria = []
-        if isinstance(self.code, dict):
-            if len(self.code) > 1:
-                raise ValueError(
-                    "Only one of 'regex' or 'any' can be specified in the code field! "
-                    f"Got: {list(self.code.keys())}."
-                )
 
-            if "regex" in self.code:
-                if not self.code["regex"] or not isinstance(self.code["regex"], str):
-                    raise ValueError(
-                        "Invalid specification in the code field! "
-                        f"Got: {self.code}. "
-                        "Expected a non-empty string for 'regex'."
-                    )
-                criteria.append(pl.col("code").str.contains(self.code["regex"]))
-            elif "any" in self.code:
-                if not self.code["any"] or not isinstance(self.code["any"], list):
-                    raise ValueError(
-                        "Invalid specification in the code field! "
-                        f"Got: {self.code}. "
-                        f"Expected a list of strings for 'any'."
-                    )
-                criteria.append(pl.Expr.is_in(pl.col("code"), self.code["any"]))
-            else:
-                raise ValueError(
-                    "Invalid specification in the code field! "
-                    f"Got: {self.code}. "
-                    "Expected one of 'regex', 'any'."
-                )
-        else:
-            criteria.append(pl.col("code") == self.code)
+            Other columns accept the same 'regex' and 'any' forms as the code field:
+
+            >>> data = pl.DataFrame({
+            ...     "code": ["BP", "BP", "BP"],
+            ...     "text_value": ["150/90", "120/80", None],
+            ...     "unit": ["mmHg", "kPa", "mmHg"],
+            ... })
+            >>> cfg = PlainPredicateConfig("BP", other_cols={"text_value": {"regex": "^1[4-9][0-9]/"}})
+            >>> data.select(cfg.MEDS_eval_expr())["code"].to_list()
+            [True, False, None]
+            >>> cfg = PlainPredicateConfig("BP", other_cols={"unit": {"any": ["mmHg", "mm[Hg]"]}})
+            >>> data.select(cfg.MEDS_eval_expr())["code"].to_list()
+            [True, False, True]
+            >>> PlainPredicateConfig("BP", other_cols={"unit": {"any": "mmHg"}}).MEDS_eval_expr()
+            Traceback (most recent call last):
+                ...
+            ValueError: Invalid specification in the unit field! Got: {'any': 'mmHg'}.
+            Expected a list of strings for 'any'.
+        """
+        criteria = [self._match_expr("code", self.code)]
 
         if self.value_min is not None:
             if self.value_min_inclusive:
@@ -140,12 +128,45 @@ class PlainPredicateConfig:
                 criteria.append(pl.col("numeric_value") < self.value_max)
 
         if self.other_cols:
-            criteria.extend([pl.col(col) == value for col, value in self.other_cols.items()])
+            criteria.extend([self._match_expr(col, value) for col, value in self.other_cols.items()])
 
         if len(criteria) == 1:
             return criteria[0]
         else:
             return pl.all_horizontal(criteria)
+
+    @staticmethod
+    def _match_expr(column: str, spec: str | dict[str, Any]) -> pl.Expr:
+        """Returns an expression matching ``column`` to a value, a ``{regex: ...}`` or an ``{any: [...]}``."""
+        if not isinstance(spec, dict):
+            return pl.col(column) == spec
+
+        if len(spec) > 1:
+            raise ValueError(
+                f"Only one of 'regex' or 'any' can be specified in the {column} field! "
+                f"Got: {list(spec.keys())}."
+            )
+
+        if "regex" in spec:
+            if not spec["regex"] or not isinstance(spec["regex"], str):
+                raise ValueError(
+                    f"Invalid specification in the {column} field! "
+                    f"Got: {spec}. "
+                    "Expected a non-empty string for 'regex'."
+                )
+            return pl.col(column).str.contains(spec["regex"])
+        elif "any" in spec:
+            if not spec["any"] or not isinstance(spec["any"], list):
+                raise ValueError(
+                    f"Invalid specification in the {column} field! "
+                    f"Got: {spec}. "
+                    f"Expected a list of strings for 'any'."
+                )
+            return pl.Expr.is_in(pl.col(column), spec["any"])
+        else:
+            raise ValueError(
+                f"Invalid specification in the {column} field! Got: {spec}. Expected one of 'regex', 'any'."
+            )
 
     def ESGPT_eval_expr(self, values_column: str | None = None) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a ESGPT formatted dataset.

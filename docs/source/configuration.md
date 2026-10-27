@@ -79,7 +79,8 @@ These configs consist of the following four fields:
 - `value_max_inclusive`: See `value_max`
 
 - `other_cols`: This optional field accepts a 1-to-1 dictionary of column names to column values, and can be
-  used to specify further constraints on other columns (ie., not `code`) for this predicate.
+  used to specify further constraints on other columns (ie., not `code`) for this predicate. Like `code`,
+  each value can also be a dictionary with a `regex` or an `any` key (e.g., `text_value: {regex: "^1[4-9][0-9]/"}`).
 
 A given observation will be gauged to satisfy or fail to satisfy this predicate in one of two ways, depending
 on its source format.
