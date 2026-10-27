@@ -1,5 +1,6 @@
 """This module contains functions for generating predicate columns for event sequences."""
 
+import dataclasses
 import logging
 from pathlib import Path
 
@@ -226,6 +227,98 @@ def direct_load_plain_predicates(
     )
 
 
+def expand_descendant_codes(
+    predicates: dict[str, PlainPredicateConfig], data_path: Path
+) -> dict[str, PlainPredicateConfig]:
+    """Rewrites predicates with ``code: {descendants_of: [...]}`` to ``code: {any: [...]}``.
+
+    The descendants of the listed codes (which are included themselves) are found by following the
+    ``parent_codes`` links in the MEDS code metadata file, ``metadata/codes.parquet``, of the first parent
+    directory of ``data_path`` that has one.
+
+    Args:
+        predicates: The dictionary of plain predicate configurations.
+        data_path: The path to the MEDS data file (or shard) the predicates will be evaluated on.
+
+    Returns:
+        The predicates, with every ``descendants_of`` code replaced by the equivalent ``any`` list.
+
+    Raises:
+        ValueError: If ``descendants_of`` is not a non-empty list of codes.
+        FileNotFoundError: If a predicate uses ``descendants_of`` but no code metadata file is found.
+
+    Examples:
+        >>> codes = pl.DataFrame({
+        ...     "code": ["ICD10//I21", "ICD10//I21.0", "ICD10//I21.01", "ICD9//410", "ICD10//I50"],
+        ...     "parent_codes": [None, ["ICD10//I21"], ["ICD10//I21.0"], ["ICD10//I21"], None],
+        ... })
+        >>> predicates = {
+        ...     "mi": PlainPredicateConfig({"descendants_of": ["ICD10//I21"]}),
+        ...     "hf": PlainPredicateConfig("ICD10//I50"),
+        ... }
+        >>> with tempfile.TemporaryDirectory() as root:
+        ...     (Path(root) / "metadata").mkdir()
+        ...     codes.write_parquet(Path(root) / "metadata" / "codes.parquet")
+        ...     expanded = expand_descendant_codes(predicates, Path(root) / "data" / "train" / "0.parquet")
+        >>> expanded["mi"].code
+        {'any': ['ICD10//I21', 'ICD10//I21.0', 'ICD10//I21.01', 'ICD9//410']}
+        >>> expanded["hf"].code
+        'ICD10//I50'
+        >>> with tempfile.TemporaryDirectory() as root:
+        ...     expand_descendant_codes(predicates, Path(root) / "data" / "0.parquet")
+        Traceback (most recent call last):
+            ...
+        FileNotFoundError: Predicate(s) 'mi' use 'descendants_of', which needs MEDS code metadata, but
+        no 'metadata/codes.parquet' was found in any parent directory of .../data/0.parquet.
+        >>> expand_descendant_codes({"mi": PlainPredicateConfig({"descendants_of": "ICD10//I21"})}, Path("."))
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid specification in the code field! Got: {'descendants_of': 'ICD10//I21'}.
+        Expected a list of strings for 'descendants_of'.
+    """
+    to_expand = {
+        name: pred
+        for name, pred in predicates.items()
+        if isinstance(pred.code, dict) and "descendants_of" in pred.code
+    }
+    if not to_expand:
+        return predicates
+
+    for pred in to_expand.values():
+        if not pred.code["descendants_of"] or not isinstance(pred.code["descendants_of"], list):
+            raise ValueError(
+                f"Invalid specification in the code field! Got: {pred.code}. "
+                "Expected a list of strings for 'descendants_of'."
+            )
+
+    codes_fp = next(
+        (
+            d / "metadata" / "codes.parquet"
+            for d in data_path.resolve().parents
+            if (d / "metadata" / "codes.parquet").is_file()
+        ),
+        None,
+    )
+    if codes_fp is None:
+        raise FileNotFoundError(
+            f"Predicate(s) '{', '.join(to_expand)}' use 'descendants_of', which needs MEDS code metadata, "
+            f"but no 'metadata/codes.parquet' was found in any parent directory of {data_path}."
+        )
+
+    edges = pl.read_parquet(codes_fp, columns=["code", "parent_codes"]).explode("parent_codes")
+    expanded = dict(predicates)
+    for name, pred in to_expand.items():
+        codes = set(pred.code["descendants_of"])
+        new_codes = codes
+        while new_codes:
+            children = edges.filter(pl.col("parent_codes").is_in(list(new_codes)))["code"]
+            new_codes = set(children) - codes
+            codes |= new_codes
+        logger.info(f"Expanded predicate '{name}' to {len(codes)} codes using {codes_fp}.")
+        expanded[name] = dataclasses.replace(pred, code={"any": sorted(codes)})
+    return expanded
+
+
 def generate_plain_predicates_from_meds(
     data_path: Path, predicates: dict[str, PlainPredicateConfig]
 ) -> pl.DataFrame:
@@ -270,6 +363,7 @@ def generate_plain_predicates_from_meds(
 
     logger.info("Loading MEDS data...")
     data = pl.read_parquet(data_path, use_pyarrow=True).rename({"time": "timestamp"})
+    predicates = expand_descendant_codes(predicates, data_path)
 
     # Cast `code` to Utf8 once up front. Older MEDS schemas sometimes emitted `code` as
     # a categorical / enum dtype, and both the birth-row filter below and the per-predicate
