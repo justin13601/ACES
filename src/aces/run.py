@@ -168,6 +168,30 @@ def main(cfg: DictConfig) -> None:  # pragma: no cover
     logger.info(f"Completed in {datetime.now() - st}. Results saved to '{cfg.output_filepath}'.")
 
 
+# Python 3.14 added stricter validation of argparse ``help`` arguments (``ArgumentParser._check_help``),
+# which rejects the lazily-rendered object hydra passes for its ``--shell-completion`` flag. Building
+# hydra's CLI parser therefore raises ``ValueError: badly formed help string`` before any ACES code runs.
+# This is an upstream hydra bug (no released fix as of hydra 1.3.6) and is not something ACES can work
+# around -- we do not control how hydra registers its parser.
+HYDRA_ARGPARSE_ISSUE_URL = "https://github.com/facebookresearch/hydra/issues/3121"
+
+
+def _is_hydra_argparse_incompatibility(err: ValueError) -> bool:
+    """Whether ``err`` is hydra failing to build its CLI parser under a stricter argparse.
+
+    The check is made against the observed failure rather than against ``sys.version_info`` alone. A bare
+    version cap would keep rejecting new interpreters even after hydra ships a fix, and would have to be
+    remembered and removed; matching the error means the guard stops firing on its own.
+
+    Examples:
+        >>> _is_hydra_argparse_incompatibility(ValueError("badly formed help string"))
+        True
+        >>> _is_hydra_argparse_incompatibility(ValueError("Invalid predicate name 'foo'"))
+        False
+    """
+    return "badly formed help string" in str(err)
+
+
 def cli():
     """Main entry point for the script, allowing for no-arg help messages."""
 
@@ -177,4 +201,17 @@ def cli():
         print("For more information, visit: https://eventstreamaces.readthedocs.io/en/latest/usage.html")
         sys.exit(1)
 
-    main()
+    try:
+        main()
+    except ValueError as e:
+        if not _is_hydra_argparse_incompatibility(e):
+            raise
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
+        raise SystemExit(
+            f"The ACES command-line interface cannot start under Python {python_version} with "
+            f"hydra {hydra.__version__}: hydra's argument parser is incompatible with this version of "
+            f"Python's argparse. This is an upstream hydra bug, tracked at "
+            f"{HYDRA_ARGPARSE_ISSUE_URL}.\n\n"
+            f"Run the ACES CLI under Python 3.13 or earlier, or upgrade hydra once a fix is released.\n"
+            f"The ACES Python API is unaffected and works normally on Python {python_version}."
+        ) from e

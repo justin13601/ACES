@@ -13,7 +13,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        # 3.14 runs the same suite as every other version. The CLI cannot start there -- hydra cannot
+        # build its argument parser under 3.14's stricter argparse (facebookresearch/hydra#3121) -- so
+        # the tests that shell out to `aces-cli` carry a strict xfail that resolves by probing the real
+        # behavior. If hydra ships a fix, those XPASS and this lane fails, which is the cue to drop the
+        # guard in `src/aces/run.py`.
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     timeout-minutes: 30
 
