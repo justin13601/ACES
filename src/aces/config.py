@@ -846,13 +846,37 @@ class EventConfig:
     tree, and its form is dictated by the fact that we must be able to localize the tree to identify valid
     realizations of the tree.
 
+    Args:
+        predicate: The predicate that defines the trigger events.
+        every: If set, the trigger instead fires every ``every`` (a timedelta string, e.g. ``1h``) from each
+            ``predicate`` event, up to (but excluding) the next ``until`` or ``predicate`` event, or up to
+            (and including) the end of the subject's record if neither follows.
+        until: The predicate that ends the series of trigger times started by a ``predicate`` event. Can only
+            be used together with ``every``.
+
     Examples:
         >>> event = EventConfig("event_type//ADMISSION")
         >>> event.predicate
         'event_type//ADMISSION'
+        >>> EventConfig("icu_admission", until="icu_discharge")
+        Traceback (most recent call last):
+            ...
+        ValueError: The trigger's 'until' can only be used together with 'every'.
+        >>> EventConfig("icu_admission", every="-1h")
+        Traceback (most recent call last):
+            ...
+        ValueError: The trigger's 'every' must be a positive duration. Got: '-1h'
     """
 
     predicate: str
+    every: str | None = None
+    until: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.until and not self.every:
+            raise ValueError("The trigger's 'until' can only be used together with 'every'.")
+        if self.every and parse_timedelta(self.every) <= timedelta(0):
+            raise ValueError(f"The trigger's 'every' must be a positive duration. Got: '{self.every}'")
 
 
 @dataclasses.dataclass
@@ -1138,7 +1162,7 @@ class TaskExtractorConfig:
                                                            value_min=None, value_max=None,
                                                            value_min_inclusive=None, value_max_inclusive=None,
                                                            static=False, other_cols={})},
-                                trigger=EventConfig(predicate='admission'),
+                                trigger=EventConfig(predicate='admission', every=None, until=None),
                                 windows={'start': WindowConfig(start=None, end='trigger + 24h',
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
@@ -1168,7 +1192,7 @@ class TaskExtractorConfig:
                                                             value_min_inclusive=None,
                                                             value_max_inclusive=None, static=True,
                                                             other_cols={})},
-                                trigger=EventConfig(predicate='admission'),
+                                trigger=EventConfig(predicate='admission', every=None, until=None),
                                 windows={'start': WindowConfig(start=None, end='trigger + 24h',
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
@@ -1351,13 +1375,15 @@ class TaskExtractorConfig:
             windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
         logger.info("Parsing trigger event...")
-        trigger = EventConfig(trigger)
+        trigger = EventConfig(**trigger) if isinstance(trigger, dict) else EventConfig(trigger)
 
         # add window referenced predicates
         referenced_predicates = {pred for w in windows.values() for pred in w.referenced_predicates}
 
         # add trigger predicate
         referenced_predicates.add(trigger.predicate)
+        if trigger.until:
+            referenced_predicates.add(trigger.until)
 
         # add label predicate if it exists and not already added
         label_reference = [w.label for w in windows.values() if w.label]
@@ -1568,6 +1594,12 @@ class TaskExtractorConfig:
         ]:
             raise KeyError(
                 f"Trigger event predicate '{self.trigger.predicate}' not found in predicates: "
+                f"{', '.join(self.predicates.keys())}"
+            )
+
+        if self.trigger.until and self.trigger.until not in self.predicates:
+            raise KeyError(
+                f"Trigger 'until' predicate '{self.trigger.until}' not found in predicates: "
                 f"{', '.join(self.predicates.keys())}"
             )
 

@@ -130,6 +130,24 @@ observed with value greater than one to satisfy the event. There can only be one
 
 The value of its field can be any defined predicate.
 
+To predict at regular intervals instead (e.g., every hour of an ICU stay), the trigger can be given as a
+dictionary with an `every` field (a time span, e.g. `1h`) and, optionally, an `until` predicate:
+
+```yaml
+trigger:
+  predicate: icu_admission
+  every: 1h
+  until: icu_discharge
+```
+
+Each `predicate` event then starts a series of trigger times every `every`, starting at the event itself and
+running up to (but excluding) the next `until` or `predicate` event, whichever comes first, or up to (and
+including) the end of the subject's record if neither follows. An `until` event at the same time as the
+`predicate` event does not end its series (e.g., a transfer recorded as a discharge and an admission at the
+same time). Trigger times that do not coincide with an existing event are added as empty events, so they do
+not change any window's predicate counts. To skip the first hours of a stay, add a window
+constraint, e.g. a window `start: end - 4h, end: trigger` with `icu_admission: (None, 0)`.
+
 ______________________________________________________________________
 
 ### Windows: {py:class}`aces.config.WindowConfig`
