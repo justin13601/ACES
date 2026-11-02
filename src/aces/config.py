@@ -901,6 +901,139 @@ class EventConfig:
 
 
 @dataclasses.dataclass
+class NestedPredicateConfig:
+    """A configuration object for nested predicates, which are defined by a task of their own.
+
+    A nested predicate embeds a ``trigger`` and ``windows`` (in the same language as a task configuration)
+    and occurs at the index timestamp of every valid realization of that embedded task, or at its trigger if
+    no window sets an ``index_timestamp``. Its count at a timestamp is the number of realizations indexed
+    there or, if a window sets a ``label``, the sum of their labels. This allows predicates that depend on
+    what happens after an event, e.g., a hospital admission during which heart failure is diagnosed.
+
+    Args:
+        trigger: The trigger event of the embedded task.
+        windows: The windows of the embedded task.
+
+    Raises:
+        ValueError: If the embedded task is misconfigured, in the same ways a task configuration can be.
+
+    Examples:
+        >>> from bigtree import print_tree
+        >>> hf_hospitalization = NestedPredicateConfig(
+        ...     trigger=EventConfig("admission"),
+        ...     windows={
+        ...         "stay": WindowConfig(
+        ...             start="trigger",
+        ...             end="start -> discharge",
+        ...             start_inclusive=True,
+        ...             end_inclusive=True,
+        ...             has={"heart_failure": "(1, None)", "_ANY_EVENT": "(2, None)"},
+        ...             index_timestamp="start",
+        ...         ),
+        ...     },
+        ... )
+        >>> hf_hospitalization.input_predicates
+        ['admission', 'discharge', 'heart_failure']
+        >>> hf_hospitalization.is_plain, hf_hospitalization.static
+        (False, False)
+        >>> print_tree(hf_hospitalization.task.window_tree)
+        trigger
+        └── stay.end
+        >>> NestedPredicateConfig(
+        ...     trigger=EventConfig("admission"),
+        ...     windows={
+        ...         "stay": WindowConfig("trigger", "start -> dis", True, True, index_timestamp="start"),
+        ...         "after": WindowConfig("stay.end", "start + 1d", False, True, index_timestamp="end"),
+        ...     },
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: Only the 'start'/'end' of one window can be used as the index timestamp, found
+        2 windows with index_timestamp: stay, after
+    """
+
+    trigger: EventConfig
+    windows: dict[str, WindowConfig] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # The embedded task is evaluated over predicate columns that have already been computed, so it only
+        # needs to know the names of the predicates it references, not their definitions.
+        self.task = TaskExtractorConfig(
+            predicates={p: PlainPredicateConfig(p) for p in self.input_predicates},
+            trigger=self.trigger,
+            windows=self.windows,
+        )
+
+    @property
+    def input_predicates(self) -> list[str]:
+        """The predicates referenced by the embedded task, other than the special predicates."""
+        predicates = {self.trigger.predicate}
+        if self.trigger.until:
+            predicates.add(self.trigger.until)
+        for window in self.windows.values():
+            predicates |= window.referenced_predicates
+            if window.label:
+                predicates.add(window.label)
+        return sorted(predicates - {ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY})
+
+    @property
+    def static(self) -> bool:
+        return False
+
+    @property
+    def is_plain(self) -> bool:
+        return False
+
+
+def _parse_dependent_predicate(
+    name: str, predicate: dict[str, Any]
+) -> DerivedPredicateConfig | NestedPredicateConfig:
+    """Parses the YAML form of a predicate that depends on other predicates, either derived or nested.
+
+    Examples:
+        >>> _parse_dependent_predicate("A_or_B", {"expr": "or(A, B)"})
+        DerivedPredicateConfig(expr='or(A, B)', static=False)
+        >>> _parse_dependent_predicate("adm_24h", {
+        ...     "trigger": "admission",
+        ...     "windows": {"stay": {"start": "trigger", "end": "start + 24h",
+        ...                          "start_inclusive": True, "end_inclusive": True}},
+        ... }).input_predicates
+        ['admission']
+        >>> _parse_dependent_predicate("adm", {"trigger": {"predicate": "admission"}}).windows
+        {}
+        >>> _parse_dependent_predicate("adm", {"trigger": "admission", "code": "ADMISSION"})
+        Traceback (most recent call last):
+            ...
+        ValueError: Nested predicate 'adm' can only have 'trigger' and 'windows' fields. Got: 'code'
+        >>> _parse_dependent_predicate("adm", {"windows": {}})
+        Traceback (most recent call last):
+            ...
+        ValueError: Nested predicate 'adm' must have a 'trigger' field.
+    """
+    if "expr" in predicate:
+        return DerivedPredicateConfig(**predicate)
+
+    unrecognized = set(predicate) - {"trigger", "windows"}
+    if unrecognized:
+        raise ValueError(
+            f"Nested predicate '{name}' can only have 'trigger' and 'windows' fields. "
+            f"Got: '{', '.join(sorted(unrecognized))}'"
+        )
+    if "trigger" not in predicate:
+        raise ValueError(f"Nested predicate '{name}' must have a 'trigger' field.")
+
+    trigger = predicate["trigger"]
+    trigger = EventConfig(**trigger) if isinstance(trigger, dict) else EventConfig(trigger)
+    windows = {n: WindowConfig(**w) for n, w in (predicate.get("windows") or {}).items()}
+    return NestedPredicateConfig(trigger=trigger, windows=windows)
+
+
+def _is_dependent_predicate(predicate: Any) -> bool:
+    """Whether the YAML form of a predicate defines a derived or nested predicate."""
+    return isinstance(predicate, dict) and bool({"expr", "trigger", "windows"} & set(predicate))
+
+
+@dataclasses.dataclass
 class TaskExtractorConfig:
     """A configuration object for parsing the plain-data stored in a task extractor config.
 
@@ -912,7 +1045,7 @@ class TaskExtractorConfig:
     above.
 
     Args:
-        predicates: A dictionary of predicate configurations, stored as either plain or derived predicate
+        predicates: A dictionary of predicate configurations, stored as plain, derived, or nested predicate
             configuration objects (which are simple dataclasses with utility functions over plain
             dictionaries).
         trigger: The event configuration that triggers the task extraction process. This is a simple
@@ -1084,8 +1217,8 @@ class TaskExtractorConfig:
         >>> TaskExtractorConfig(predicates=predicates, trigger=trigger, windows={})
         Traceback (most recent call last):
             ...
-        ValueError: Invalid predicate configuration for 'foo': foo. Must be either a PlainPredicateConfig or
-        DerivedPredicateConfig object. Got: <class 'str'>
+        ValueError: Invalid predicate configuration for 'foo': foo. Must be a PlainPredicateConfig,
+        DerivedPredicateConfig, or NestedPredicateConfig object. Got: <class 'str'>
         >>> predicates = {
         ...     "foo": PlainPredicateConfig("foo"),
         ...     "foobar": DerivedPredicateConfig("or(foo, bar)"),
@@ -1411,40 +1544,38 @@ class TaskExtractorConfig:
         if label_reference:
             referenced_predicates.update(set(label_reference))
 
+        # Derived and nested predicates are parsed as they are found, to resolve the predicates they use. Each
+        # is parsed only once, as parsing a window consumes the string form of its constraints.
         special_predicates = {ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY}
+        dependent_predicates = {}
         for pred in set(referenced_predicates) - special_predicates:
             if pred not in all_predicates:
                 raise KeyError(
                     f"Something referenced predicate '{pred}' that wasn't defined in the configuration."
                 )
 
-            if "expr" in all_predicates[pred]:
-                stack = list(DerivedPredicateConfig(**all_predicates[pred]).input_predicates)
+            stack = [pred]
+            while stack:
+                name = stack.pop()
+                if name in dependent_predicates or not _is_dependent_predicate(all_predicates[name]):
+                    continue
 
-                while stack:
-                    nested_pred = stack.pop()
-
-                    if nested_pred not in all_predicates:
+                dependent_predicates[name] = _parse_dependent_predicate(name, all_predicates[name])
+                for input_pred in dependent_predicates[name].input_predicates:
+                    if input_pred not in all_predicates:
                         raise KeyError(
-                            f"Predicate '{nested_pred}' referenced in '{pred}' is not defined in the "
+                            f"Predicate '{input_pred}' referenced in '{name}' is not defined in the "
                             "configuration."
                         )
-
-                    # if nested_pred is a DerivedPredicateConfig, unpack input_predicates and add to stack
-                    if "expr" in all_predicates[nested_pred]:
-                        derived_config = DerivedPredicateConfig(**all_predicates[nested_pred])
-                        stack.extend(derived_config.input_predicates)
-                        referenced_predicates.add(nested_pred)  # also add itself to referenced_predicates
-                    else:
-                        # if nested_pred is a PlainPredicateConfig, only add it to referenced_predicates
-                        referenced_predicates.add(nested_pred)
+                    referenced_predicates.add(input_pred)
+                    stack.append(input_pred)
 
         logger.info("Parsing predicates...")
         predicates_to_parse = {k: v for k, v in final_predicates.items() if k in referenced_predicates}
         predicate_objs = {}
         for n, p in predicates_to_parse.items():
-            if "expr" in p:
-                predicate_objs[n] = DerivedPredicateConfig(**p)
+            if n in dependent_predicates:
+                predicate_objs[n] = dependent_predicates[n]
             else:
                 if isinstance(p, str):
                     raise ValueError(
@@ -1499,14 +1630,14 @@ class TaskExtractorConfig:
             match predicate:
                 case PlainPredicateConfig():
                     pass
-                case DerivedPredicateConfig():
+                case DerivedPredicateConfig() | NestedPredicateConfig():
                     for pred in predicate.input_predicates:
                         dag_relationships.append((pred, name))
                 case _:
                     raise ValueError(
                         f"Invalid predicate configuration for '{name}': {predicate}. "
-                        "Must be either a PlainPredicateConfig or DerivedPredicateConfig object. "
-                        f"Got: {type(predicate)}"
+                        "Must be a PlainPredicateConfig, DerivedPredicateConfig, or NestedPredicateConfig "
+                        f"object. Got: {type(predicate)}"
                     )
 
         missing_predicates = []
@@ -1521,6 +1652,11 @@ class TaskExtractorConfig:
             )
 
         self._predicate_dag_graph = nx.DiGraph(dag_relationships)
+        # A nested predicate may use only special predicates (e.g., a trigger of `_ANY_EVENT`), which are not
+        # in the graph, but it must still be in the graph to be evaluated.
+        self._predicate_dag_graph.add_nodes_from(
+            n for n, p in self.predicates.items() if isinstance(p, NestedPredicateConfig)
+        )
         if not nx.is_directed_acyclic_graph(self._predicate_dag_graph):
             raise ValueError(
                 "Predicate graph is not a directed acyclic graph!\n"
@@ -1736,8 +1872,9 @@ class TaskExtractorConfig:
         return {p: cfg for p, cfg in self.predicates.items() if cfg.is_plain}
 
     @property
-    def derived_predicates(self) -> OrderedDict[str, DerivedPredicateConfig]:
-        """Returns an ordered dictionary mapping derived predicates to their configs in a proper order."""
+    def derived_predicates(self) -> OrderedDict[str, DerivedPredicateConfig | NestedPredicateConfig]:
+        """Returns an ordered dictionary mapping derived and nested predicates to their configs, such that
+        each predicate comes after all of the predicates it depends on."""
         return {
             p: self.predicates[p]
             for p in nx.topological_sort(self.predicates_DAG)

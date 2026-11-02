@@ -261,6 +261,26 @@ Field for a "derived" predicate:
 
 A special predicate `_ANY_EVENT` is always defined, which simply represents any event, as the name suggests. This predicate can be used like any other predicate manually defined (ie., setting a constraint on its occurrence or using it as a trigger - more information below!).
 
+#### Nested Predicates
+
+"Nested" predicates are defined by a task of their own, with `trigger` and `windows` fields in the same form as a task configuration (more information below!). They capture concepts that depend on what happens after an event. For instance, the following defines a hospitalization for heart failure (ie., an admission followed by a heart failure diagnosis before discharge):
+
+```yaml
+hf_hospitalization:
+  trigger: admission
+  windows:
+    stay:
+      start: trigger
+      end: start -> discharge
+      start_inclusive: true
+      end_inclusive: true
+      index_timestamp: start
+      has:
+        heart_failure: (1, None)
+```
+
+A nested predicate occurs at the `index_timestamp` (or, if none is set, the trigger) of every valid realization of its task, and can then be used like any other predicate. If one of its windows sets a `label`, its count is the sum of the labels instead of the number of realizations. Please see the [configuration language specification](https://eventstreamaces.readthedocs.io/en/latest/configuration.html) for details.
+
 #### Special Predicates
 
 There are also a few special predicates that you can use. These *do not* need to be defined explicitly in the configuration file, and can be directly used:
@@ -341,7 +361,6 @@ Finally, ACES is not tied to a particular common data model. Built on a flexible
 
 ### Coverage
 
-- Directly support nested configuration files ([#43](https://github.com/justin13601/ACES/issues/43))
 - Support timestamp binning for use in predicates or as qualifiers ([#44](https://github.com/justin13601/ACES/issues/44))
 - Support additional label types ([#45](https://github.com/justin13601/ACES/issues/45))
 - Allow chaining of multiple task configurations ([#49](https://github.com/justin13601/ACES/issues/49))

@@ -9,7 +9,8 @@ import polars as pl
 from omegaconf import DictConfig
 from polars.exceptions import ColumnNotFoundError
 
-from .config import PlainPredicateConfig, TaskExtractorConfig
+from .config import DerivedPredicateConfig, NestedPredicateConfig, PlainPredicateConfig, TaskExtractorConfig
+from .query import query
 from .types import (
     ANY_EVENT_COLUMN,
     END_OF_RECORD_KEY,
@@ -18,6 +19,8 @@ from .types import (
 )
 
 logger = logging.getLogger(__name__)
+
+SPECIAL_PREDICATES = (ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY)
 
 
 def direct_load_plain_predicates(
@@ -576,6 +579,200 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
     return process_esgpt_data(subjects_df, events_df, dynamic_measurements_df, value_columns, predicates)
 
 
+def get_special_predicates(cfg: TaskExtractorConfig) -> list[str]:
+    """Returns the special predicates that need a column to evaluate ``cfg``, including its nested predicates.
+
+    Windows bounded by the start or end of the record do not need a column, as those bounds are found from
+    the timestamps directly.
+
+    Examples:
+        >>> from .config import EventConfig, WindowConfig
+        >>> windows = {"input": WindowConfig(None, "trigger", True, True, has={"_RECORD_END": "(None, 0)"})}
+        >>> get_special_predicates(TaskExtractorConfig(
+        ...     predicates={}, trigger=EventConfig("_ANY_EVENT"), windows=windows
+        ... ))
+        ['_ANY_EVENT', '_RECORD_END']
+        >>> nested = NestedPredicateConfig(
+        ...     trigger=EventConfig("_RECORD_START"),
+        ...     windows={"w": WindowConfig("trigger", "start -> _ANY_EVENT", False, True)},
+        ... )
+        >>> get_special_predicates(TaskExtractorConfig(
+        ...     predicates={"first_event": nested}, trigger=EventConfig("first_event"), windows={}
+        ... ))
+        ['_ANY_EVENT', '_RECORD_START']
+    """
+    tasks = [cfg, *(p.task for p in cfg.predicates.values() if isinstance(p, NestedPredicateConfig))]
+
+    special_predicates = set()
+    for task in tasks:
+        for window in task.windows.values():
+            if ANY_EVENT_COLUMN in window.referenced_predicates:
+                special_predicates.add(ANY_EVENT_COLUMN)
+            special_predicates |= {START_OF_RECORD_KEY, END_OF_RECORD_KEY} & window.constraint_predicates
+        if task.trigger.predicate in SPECIAL_PREDICATES:
+            special_predicates.add(task.trigger.predicate)
+
+    return [p for p in SPECIAL_PREDICATES if p in special_predicates]
+
+
+def add_special_predicates(data: pl.DataFrame, special_predicates: list[str]) -> pl.DataFrame:
+    """Adds columns for the given special predicates to ``data``.
+
+    These are a column of 1s representing any event (null for static rows), a column of 0s with 1 in the first
+    event of each subject representing the start of record, and a column of 0s with 1 in the last event of
+    each subject representing the end of record.
+    """
+    if ANY_EVENT_COLUMN in special_predicates:
+        data = data.with_columns(
+            pl.when(pl.col("timestamp").is_not_null())
+            .then(pl.lit(1))
+            .otherwise(pl.lit(None))
+            .alias(ANY_EVENT_COLUMN)
+            .cast(PRED_CNT_TYPE)
+        )
+        logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
+    if START_OF_RECORD_KEY in special_predicates:
+        data = data.with_columns(
+            [
+                (pl.col("timestamp") == pl.col("timestamp").min().over("subject_id"))
+                .cast(PRED_CNT_TYPE)
+                .alias(START_OF_RECORD_KEY)
+            ]
+        )
+        logger.info(f"Added predicate column '{START_OF_RECORD_KEY}'.")
+    if END_OF_RECORD_KEY in special_predicates:
+        data = data.with_columns(
+            [
+                (pl.col("timestamp") == pl.col("timestamp").max().over("subject_id"))
+                .cast(PRED_CNT_TYPE)
+                .alias(END_OF_RECORD_KEY)
+            ]
+        )
+        logger.info(f"Added predicate column '{END_OF_RECORD_KEY}'.")
+    return data
+
+
+def add_nested_predicate(data: pl.DataFrame, name: str, predicate: NestedPredicateConfig) -> pl.DataFrame:
+    """Adds the column of a nested predicate to ``data``, by extracting the nested predicate's task from it.
+
+    The nested predicate occurs at the index timestamp of each valid realization of its task (or at its
+    trigger, if no window sets an ``index_timestamp``). Its count at a timestamp is the number of realizations
+    indexed there or, if the task has a ``label``, the sum of their labels. An index timestamp that is not the
+    time of an existing event is added as a new event with all other predicate counts zero, so that it does
+    not change any window's counts, unless it is outside the subject's record, in which case it is dropped.
+
+    Args:
+        data: The predicates dataframe, sorted by subject and timestamp, containing (at least) the columns of
+            the predicates and special predicates the nested predicate uses.
+        name: The name of the nested predicate.
+        predicate: The nested predicate configuration.
+
+    Returns:
+        ``data`` with the column ``name`` added, sorted by subject and timestamp.
+
+    Examples:
+        >>> from .config import EventConfig, WindowConfig
+        >>> data = pl.DataFrame({
+        ...     "subject_id": [1, 1, 1, 1, 1, 1, 2, 2],
+        ...     "timestamp": [None, *(datetime(2020, 1, d) for d in (1, 2, 3, 10, 11)),
+        ...                   datetime(2020, 1, 1), datetime(2020, 1, 2)],
+        ...     "adm": [0, 1, 0, 0, 1, 0, 1, 0],
+        ...     "hf":  [0, 0, 1, 0, 0, 0, 1, 0],
+        ...     "dis": [0, 0, 0, 1, 0, 1, 0, 1],
+        ... })
+        >>> hf_hospitalization = NestedPredicateConfig(
+        ...     trigger=EventConfig("adm"),
+        ...     windows={"stay": WindowConfig(
+        ...         "trigger", "start -> dis", True, True, has={"hf": "(1, None)"}, index_timestamp="start",
+        ...     )},
+        ... )
+        >>> add_nested_predicate(data, "hf_hosp", hf_hospitalization)
+        shape: (8, 6)
+        ┌────────────┬─────────────────────┬─────┬─────┬─────┬─────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ hf  ┆ dis ┆ hf_hosp │
+        │ ---        ┆ ---                 ┆ --- ┆ --- ┆ --- ┆ ---     │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64 ┆ i64 ┆ i64     │
+        ╞════════════╪═════════════════════╪═════╪═════╪═════╪═════════╡
+        │ 1          ┆ null                ┆ 0   ┆ 0   ┆ 0   ┆ 0       │
+        │ 1          ┆ 2020-01-01 00:00:00 ┆ 1   ┆ 0   ┆ 0   ┆ 1       │
+        │ 1          ┆ 2020-01-02 00:00:00 ┆ 0   ┆ 1   ┆ 0   ┆ 0       │
+        │ 1          ┆ 2020-01-03 00:00:00 ┆ 0   ┆ 0   ┆ 1   ┆ 0       │
+        │ 1          ┆ 2020-01-10 00:00:00 ┆ 1   ┆ 0   ┆ 0   ┆ 0       │
+        │ 1          ┆ 2020-01-11 00:00:00 ┆ 0   ┆ 0   ┆ 1   ┆ 0       │
+        │ 2          ┆ 2020-01-01 00:00:00 ┆ 1   ┆ 1   ┆ 0   ┆ 1       │
+        │ 2          ┆ 2020-01-02 00:00:00 ┆ 0   ┆ 0   ┆ 1   ┆ 0       │
+        └────────────┴─────────────────────┴─────┴─────┴─────┴─────────┘
+
+        With a label, the nested predicate counts the label instead. Here, it occurs 60 hours after each
+        admission, with its count being the number of discharges in that time. For subject 1's first
+        admission, that time is not an existing event, so it is added as a new one; the other two are after
+        the end of their subject's record, so they are dropped:
+
+        >>> discharges_60h_after_adm = NestedPredicateConfig(
+        ...     trigger=EventConfig("adm"),
+        ...     windows={"after": WindowConfig(
+        ...         "trigger", "start + 60h", False, True, label="dis", index_timestamp="end",
+        ...     )},
+        ... )
+        >>> with caplog.at_level(logging.WARNING):
+        ...     add_nested_predicate(data, "dis_60h", discharges_60h_after_adm)
+        shape: (9, 6)
+        ┌────────────┬─────────────────────┬─────┬─────┬─────┬─────────┐
+        │ subject_id ┆ timestamp           ┆ adm ┆ hf  ┆ dis ┆ dis_60h │
+        │ ---        ┆ ---                 ┆ --- ┆ --- ┆ --- ┆ ---     │
+        │ i64        ┆ datetime[μs]        ┆ i64 ┆ i64 ┆ i64 ┆ i64     │
+        ╞════════════╪═════════════════════╪═════╪═════╪═════╪═════════╡
+        │ 1          ┆ null                ┆ 0   ┆ 0   ┆ 0   ┆ 0       │
+        │ 1          ┆ 2020-01-01 00:00:00 ┆ 1   ┆ 0   ┆ 0   ┆ 0       │
+        │ 1          ┆ 2020-01-02 00:00:00 ┆ 0   ┆ 1   ┆ 0   ┆ 0       │
+        │ 1          ┆ 2020-01-03 00:00:00 ┆ 0   ┆ 0   ┆ 1   ┆ 0       │
+        │ 1          ┆ 2020-01-03 12:00:00 ┆ 0   ┆ 0   ┆ 0   ┆ 1       │
+        │ 1          ┆ 2020-01-10 00:00:00 ┆ 1   ┆ 0   ┆ 0   ┆ 0       │
+        │ 1          ┆ 2020-01-11 00:00:00 ┆ 0   ┆ 0   ┆ 1   ┆ 0       │
+        │ 2          ┆ 2020-01-01 00:00:00 ┆ 1   ┆ 1   ┆ 0   ┆ 0       │
+        │ 2          ┆ 2020-01-02 00:00:00 ┆ 0   ┆ 0   ┆ 1   ┆ 0       │
+        └────────────┴─────────────────────┴─────┴─────┴─────┴─────────┘
+        >>> "Dropped 2 occurrences of nested predicate 'dis_60h'" in caplog.text
+        True
+    """
+    task = predicate.task
+    input_cols = [*predicate.input_predicates, *(c for c in SPECIAL_PREDICATES if c in data.columns)]
+    realizations = query(task, data.select("subject_id", "timestamp", *input_cols))
+
+    if realizations.is_empty():
+        logger.info(f"Added predicate column '{name}', which never occurs.")
+        return data.with_columns(pl.lit(0, dtype=PRED_CNT_TYPE).alias(name))
+
+    timestamp_col = "index_timestamp" if task.index_timestamp_window else "trigger"
+    count = pl.col("label").sum() if task.label_window else pl.len()
+    counts = realizations.group_by("subject_id", pl.col(timestamp_col).alias("timestamp")).agg(
+        count.cast(PRED_CNT_TYPE).alias(name)
+    )
+
+    record_bounds = data.group_by("subject_id").agg(
+        pl.col("timestamp").min().alias("record_start"), pl.col("timestamp").max().alias("record_end")
+    )
+    counts = counts.join(record_bounds, on="subject_id")
+    in_record = pl.col("timestamp").is_between("record_start", "record_end")
+    n_outside_record = counts.filter(~in_record).height
+    if n_outside_record:
+        logger.warning(
+            f"Dropped {n_outside_record:,} occurrences of nested predicate '{name}' that fall outside their "
+            "subject's record."
+        )
+    counts = counts.filter(in_record).drop("record_start", "record_end")
+
+    keys = ["subject_id", "timestamp"]
+    data = data.join(counts, on=keys, how="left").with_columns(pl.col(name).fill_null(0))
+    new_events = counts.join(data, on=keys, how="anti").select(
+        *(pl.col(c) if c in counts.columns else pl.lit(0).cast(t).alias(c) for c, t in data.schema.items())
+    )
+    logger.info(f"Added predicate column '{name}', with {new_events.height:,} new events at its timestamps.")
+    return pl.concat([data, new_events], how="vertical_relaxed").sort(
+        by=["subject_id", "timestamp"], nulls_last=False
+    )
+
+
 def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.DataFrame:
     """Generate predicate columns based on the configuration.
 
@@ -819,75 +1016,32 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
 
     data = data.sort(by=["subject_id", "timestamp"], nulls_last=False)
 
-    # derived predicates
+    # Special predicates are added first, as nested predicates may use them, but are kept as the last columns.
+    # They must reflect only real events, so they cannot be added after nested predicates add new events.
+    logger.info("Generating special predicate columns...")
+    special_predicates = get_special_predicates(cfg)
+    data = add_special_predicates(data, special_predicates)
+
+    # derived and nested predicates
     logger.info("Loaded plain predicates. Generating derived predicate columns...")
     static_variables = [pred for pred in cfg.plain_predicates if cfg.plain_predicates[pred].static]
     for name, code in cfg.derived_predicates.items():
-        if any(x in static_variables for x in code.input_predicates):
-            data = data.with_columns(
-                [
-                    pl.col(static_var)
-                    .first()
-                    .over("subject_id")  # take the first value in each subject_id group and propagate it
-                    .alias(static_var)
-                    for static_var in static_variables
-                ]
-            )
-        data = data.with_columns(code.eval_expr().cast(PRED_CNT_TYPE).alias(name))
-        logger.info(f"Added predicate column '{name}'.")
+        match code:
+            case DerivedPredicateConfig():
+                if any(x in static_variables for x in code.input_predicates):
+                    data = data.with_columns(
+                        [
+                            pl.col(static_var)
+                            .first()
+                            .over("subject_id")  # take the first value in each subject_id group and propagate
+                            .alias(static_var)
+                            for static_var in static_variables
+                        ]
+                    )
+                data = data.with_columns(code.eval_expr().cast(PRED_CNT_TYPE).alias(name))
+                logger.info(f"Added predicate column '{name}'.")
+            case NestedPredicateConfig():
+                data = add_nested_predicate(data, name, code)
         predicate_cols.append(name)
 
-    # add special predicates:
-    # a column of 1s representing any predicate
-    # a column of 0s with 1 in the first event of each subject_id representing the start of record
-    # a column of 0s with 1 in the last event of each subject_id representing the end of record
-    logger.info("Generating special predicate columns...")
-    special_predicates = []
-    for window in cfg.windows.values():
-        if ANY_EVENT_COLUMN in window.referenced_predicates and ANY_EVENT_COLUMN not in special_predicates:
-            special_predicates.append(ANY_EVENT_COLUMN)
-        if (
-            START_OF_RECORD_KEY in window.constraint_predicates
-            and START_OF_RECORD_KEY not in special_predicates
-        ):
-            special_predicates.append(START_OF_RECORD_KEY)
-        if END_OF_RECORD_KEY in window.constraint_predicates and END_OF_RECORD_KEY not in special_predicates:
-            special_predicates.append(END_OF_RECORD_KEY)
-
-    if (
-        cfg.trigger.predicate in [ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY]
-        and cfg.trigger.predicate not in special_predicates
-    ):
-        special_predicates.append(cfg.trigger.predicate)
-
-    if ANY_EVENT_COLUMN in special_predicates:
-        data = data.with_columns(
-            pl.when(pl.col("timestamp").is_not_null())
-            .then(pl.lit(1))
-            .otherwise(pl.lit(None))
-            .alias(ANY_EVENT_COLUMN)
-            .cast(PRED_CNT_TYPE)
-        )
-        logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
-        predicate_cols.append(ANY_EVENT_COLUMN)
-    if START_OF_RECORD_KEY in special_predicates:
-        data = data.with_columns(
-            [
-                (pl.col("timestamp") == pl.col("timestamp").min().over("subject_id"))
-                .cast(PRED_CNT_TYPE)
-                .alias(START_OF_RECORD_KEY)
-            ]
-        )
-        logger.info(f"Added predicate column '{START_OF_RECORD_KEY}'.")
-    if END_OF_RECORD_KEY in special_predicates:
-        data = data.with_columns(
-            [
-                (pl.col("timestamp") == pl.col("timestamp").max().over("subject_id"))
-                .cast(PRED_CNT_TYPE)
-                .alias(END_OF_RECORD_KEY)
-            ]
-        )
-        logger.info(f"Added predicate column '{END_OF_RECORD_KEY}'.")
-    predicate_cols += special_predicates
-
-    return data
+    return data.select("subject_id", "timestamp", *predicate_cols, *special_predicates)

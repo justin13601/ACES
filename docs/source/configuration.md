@@ -28,8 +28,9 @@ ______________________________________________________________________
 In the machine form used by ACES, the configuration file consists of three parts:
 
 - `predicates`, stored as a dictionary from string predicate names (which must be unique) to either
-  {py:class}`aces.config.PlainPredicateConfig` objects, which store raw predicates with no dependencies on other predicates, or
-  {py:class}`aces.config.DerivedPredicateConfig` objects, which store predicates that build on other predicates.
+  {py:class}`aces.config.PlainPredicateConfig` objects, which store raw predicates with no dependencies on other predicates,
+  {py:class}`aces.config.DerivedPredicateConfig` objects, which store predicates that build on other predicates, or
+  {py:class}`aces.config.NestedPredicateConfig` objects, which store predicates defined by a task of their own.
 - `trigger`, stored as a string to `EventConfig`
 - `windows`, stored as a dictionary from string window names (which must be unique) to {py:class}`aces.config.WindowConfig`
   objects.
@@ -38,7 +39,7 @@ Below, we will detail each of these configuration objects.
 
 ______________________________________________________________________
 
-### Predicates: `PlainPredicateConfig` and `DerivedPredicateConfig`
+### Predicates: `PlainPredicateConfig`, `DerivedPredicateConfig`, and `NestedPredicateConfig`
 
 #### {py:class}`aces.config.PlainPredicateConfig`: Configuration of Predicates that can be Computed Directly from Raw Data
 
@@ -120,6 +121,46 @@ accepted operations that can be applied to other predicates, containing precisel
 > [!NOTE]
 > Currently, `and`'s and `or`'s cannot be nested. Upon user request, we may support further advanced
 > analytic operations over predicates.
+
+#### {py:class}`aces.config.NestedPredicateConfig`: Configuration of Predicates Defined by a Task
+
+Some concepts depend on what happens after an event, so they cannot be expressed by the predicates above. For
+example, a hospitalization _for heart failure_ is an admission followed by a heart failure diagnosis before
+the corresponding discharge. These can be defined as nested predicates, which consist of a `trigger` and
+`windows` field, in exactly the same form as the `trigger` and `windows` of a task configuration (see below):
+
+```yaml
+predicates:
+  admission:
+    code: ADMISSION
+  discharge:
+    code: DISCHARGE
+  heart_failure:
+    code: {regex: ^ICD10//I50}
+
+  hf_hospitalization:
+    trigger: admission
+    windows:
+      stay:
+        start: trigger
+        end: start -> discharge
+        start_inclusive: true
+        end_inclusive: true
+        index_timestamp: start
+        has:
+          heart_failure: (1, None)
+```
+
+A nested predicate occurs at the `index_timestamp` of every valid realization of its task (or at its trigger
+if no window sets an `index_timestamp`); above, at the admission of every stay with a heart failure diagnosis.
+Its count at a timestamp is the number of realizations indexed there, or, if a window of the nested predicate
+sets a `label`, the sum of their labels. It can then be used like any other predicate, including as the
+trigger, in window constraints and boundaries, as the label, within derived predicates, and within other
+nested predicates (as long as no predicate depends on itself).
+
+If an index timestamp is not the time of an existing event (e.g., if it is the end of a window ending
+`start + 24h`), it is added as a new event that does not count towards any other predicate, including
+`_ANY_EVENT`. Index timestamps outside a subject's record are dropped.
 
 ______________________________________________________________________
 
