@@ -227,15 +227,21 @@ def direct_load_plain_predicates(
 
 
 def generate_plain_predicates_from_meds(
-    data_path: Path, predicates: dict[str, PlainPredicateConfig]
+    data_path: Path, predicates: dict[str, PlainPredicateConfig], prune: bool = False
 ) -> pl.DataFrame:
     """Generate plain predicate columns from a MEDS dataset.
 
     To learn more about the MEDS format, please visit https://github.com/Medical-Event-Data-Standard/meds
 
+    Only the columns the predicates need are read, and every predicate is evaluated in one pass.
+
     Args:
         data_path: The path to the MEDS dataset file.
         predicates: The dictionary of plain predicate configurations.
+        prune: Keep only the events that can affect a query: events matching some predicate, static
+            (null-time) events, and each subject's first and last timestamps (the record bounds). Every
+            other (subject_id, timestamp) row would have all predicate counts equal to 0. Only safe when the
+            task does not count every event (``_ANY_EVENT``); see ``get_predicates_df``.
 
     Returns:
         The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
@@ -266,25 +272,68 @@ def generate_plain_predicates_from_meds(
         │ 2          ┆ 1989-01-01 02:00:00 ┆ 0         ┆ 0    │
         │ 3          ┆ null                ┆ 0         ┆ 1    │
         └────────────┴─────────────────────┴───────────┴──────┘
+
+        With ``prune=True``, events that match no predicate are dropped unless they are static or at a
+        subject's first or last timestamp (here the "lab" event at 01:00):
+        >>> parquet_data = pl.DataFrame({
+        ...     "subject_id": [1, 1, 1, 1, 2],
+        ...     "time": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 02:00", "1/1/1989 03:00", None],
+        ...     "code": ["admission", "lab", "discharge", "lab", "gender//male"],
+        ... }).with_columns(pl.col("time").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     parquet_data.write_parquet(data_path)
+        ...     generate_plain_predicates_from_meds(
+        ...         data_path, {"discharge": PlainPredicateConfig("discharge")}, prune=True
+        ...     )
+        shape: (4, 3)
+        ┌────────────┬─────────────────────┬───────────┐
+        │ subject_id ┆ timestamp           ┆ discharge │
+        │ ---        ┆ ---                 ┆ ---       │
+        │ i64        ┆ datetime[μs]        ┆ i64       │
+        ╞════════════╪═════════════════════╪═══════════╡
+        │ 1          ┆ 1989-01-01 00:00:00 ┆ 0         │
+        │ 1          ┆ 1989-01-01 02:00:00 ┆ 1         │
+        │ 1          ┆ 1989-01-01 03:00:00 ┆ 0         │
+        │ 2          ┆ null                ┆ 0         │
+        └────────────┴─────────────────────┴───────────┘
     """
 
+    predicate_cols = list(predicates.keys())
+
     logger.info("Loading MEDS data...")
-    data = pl.read_parquet(data_path, use_pyarrow=True).rename({"time": "timestamp"})
+    data = pl.scan_parquet(data_path)
+    available = set(data.collect_schema().names())
+    needed = {"subject_id", "time", "code"}
+    for plain_predicate in predicates.values():
+        if plain_predicate.value_min is not None or plain_predicate.value_max is not None:
+            needed.add("numeric_value")
+        needed.update(plain_predicate.other_cols)
+    # Columns a predicate names but the data lacks are left out so evaluating it raises the usual error.
+    data = data.select(sorted(needed & available)).rename({"time": "timestamp"})
+    data = data.with_columns(pl.col("code").cast(pl.String))  # may remove after MEDS v0.3
 
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
-    for name, plain_predicate in predicates.items():
-        data = data.with_columns(data["code"].cast(pl.String).alias("code"))  # may remove after MEDS v0.3
-        data = data.with_columns(plain_predicate.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name))
-        logger.info(f"Added predicate column '{name}'.")
+    data = data.with_columns(
+        [p.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name) for name, p in predicates.items()]
+    )
+
+    if prune:
+        logger.info("Dropping events that match no predicate (other than static events and record bounds)...")
+        ts = pl.col("timestamp")
+        keep = ts.is_null() | (ts == ts.min().over("subject_id")) | (ts == ts.max().over("subject_id"))
+        if predicate_cols:
+            keep = keep | pl.any_horizontal([pl.col(c) > 0 for c in predicate_cols])
+        data = data.filter(keep)
 
     # clean up predicates_df
     logger.info("Cleaning up predicates dataframe...")
-    predicate_cols = list(predicates.keys())
     return (
         data.select(["subject_id", "timestamp", *predicate_cols])
         .group_by(["subject_id", "timestamp"], maintain_order=True)
         .agg(*(pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols))
+        .collect()
     )
 
 
@@ -472,6 +521,36 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
             value_columns[name] = config.measurement_configs[measurement_name].values_column
 
     return process_esgpt_data(subjects_df, events_df, dynamic_measurements_df, value_columns, predicates)
+
+
+def _special_predicates(cfg: TaskExtractorConfig) -> list[str]:
+    """The special predicate columns (_ANY_EVENT, _RECORD_START, _RECORD_END) a task needs, in order."""
+    special_predicates = []
+    for window in cfg.windows.values():
+        if ANY_EVENT_COLUMN in window.referenced_predicates and ANY_EVENT_COLUMN not in special_predicates:
+            special_predicates.append(ANY_EVENT_COLUMN)
+        if (
+            START_OF_RECORD_KEY in window.constraint_predicates
+            and START_OF_RECORD_KEY not in special_predicates
+        ):
+            special_predicates.append(START_OF_RECORD_KEY)
+        if END_OF_RECORD_KEY in window.constraint_predicates and END_OF_RECORD_KEY not in special_predicates:
+            special_predicates.append(END_OF_RECORD_KEY)
+
+    if (
+        cfg.trigger.predicate in [ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY]
+        and cfg.trigger.predicate not in special_predicates
+    ):
+        special_predicates.append(cfg.trigger.predicate)
+    return special_predicates
+
+
+def _counts_every_event(cfg: TaskExtractorConfig, special_predicates: list[str]) -> bool:
+    """Whether the task counts every event (``_ANY_EVENT``, or a ``"*"`` constraint, which
+    ``check_constraints`` reads as ``_ANY_EVENT``), so events matching no predicate still matter."""
+    return ANY_EVENT_COLUMN in special_predicates or any(
+        "*" in window.referenced_predicates for window in cfg.windows.values()
+    )
 
 
 def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.DataFrame:
@@ -701,6 +780,8 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
             "`data=sharded` will improve efficiency and completeness."
         )
 
+    special_predicates = _special_predicates(cfg)
+
     # plain predicates
     plain_predicates = cfg.plain_predicates
     match standard.lower():
@@ -708,7 +789,11 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
             ts_format = data_config.ts_format
             data = direct_load_plain_predicates(data_path, list(plain_predicates.keys()), ts_format)
         case "meds":
-            data = generate_plain_predicates_from_meds(data_path, plain_predicates)
+            # Rows where every predicate count is 0 change no window count, no event bound (bounds are
+            # predicate rows or record bounds, which are kept) and no static check (null-time rows are kept),
+            # so they can be dropped up front unless the task counts every event.
+            prune = bool(data_config.get("prune", True)) and not _counts_every_event(cfg, special_predicates)
+            data = generate_plain_predicates_from_meds(data_path, plain_predicates, prune=prune)
         case "esgpt":
             data = generate_plain_predicates_from_esgpt(data_path, plain_predicates)
         case _:
@@ -740,24 +825,6 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
     # a column of 0s with 1 in the first event of each subject_id representing the start of record
     # a column of 0s with 1 in the last event of each subject_id representing the end of record
     logger.info("Generating special predicate columns...")
-    special_predicates = []
-    for window in cfg.windows.values():
-        if ANY_EVENT_COLUMN in window.referenced_predicates and ANY_EVENT_COLUMN not in special_predicates:
-            special_predicates.append(ANY_EVENT_COLUMN)
-        if (
-            START_OF_RECORD_KEY in window.constraint_predicates
-            and START_OF_RECORD_KEY not in special_predicates
-        ):
-            special_predicates.append(START_OF_RECORD_KEY)
-        if END_OF_RECORD_KEY in window.constraint_predicates and END_OF_RECORD_KEY not in special_predicates:
-            special_predicates.append(END_OF_RECORD_KEY)
-
-    if (
-        cfg.trigger.predicate in [ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY]
-        and cfg.trigger.predicate not in special_predicates
-    ):
-        special_predicates.append(cfg.trigger.predicate)
-
     if ANY_EVENT_COLUMN in special_predicates:
         data = data.with_columns(
             pl.when(pl.col("timestamp").is_not_null())
