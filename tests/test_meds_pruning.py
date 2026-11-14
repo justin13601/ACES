@@ -32,11 +32,13 @@ def _events(subject_id: int, rows: list[tuple[float | None, str, float | None]])
 
 
 EVENTS = [
-    # Starts and ends with events that match no predicate, so the record bounds are prunable rows.
+    # Starts and ends with events that match no predicate, so the record bounds are prunable rows. The
+    # MEDS_BIRTH row comes first but is excluded from evaluation, so it must not become the record start.
     *_events(
         1,
         [
             (None, "GENDER//M", None),
+            (-9000, "MEDS_BIRTH", None),
             (0, "LAB//other", 1.0),
             (1, "ADMISSION//ER", None),
             (1.5, "LAB//other", 2.0),
@@ -57,10 +59,12 @@ EVENTS = [
         2,
         [
             (None, "GENDER//F", None),
+            (-12000, "MEDS_BIRTH", None),
             (10, "LAB//other", 1.0),
             (11, "ADMISSION//ER", None),
             (11.2, "LAB//spo2", 97.0),
             (12, "LAB//other", 1.0),
+            (13, "DIAGNOSIS//STEMI", None),
             (14, "MEDS_DEATH", None),
         ],
     ),
@@ -148,7 +152,37 @@ windows:
   input: {start: NULL, end: trigger, start_inclusive: True, end_inclusive: True, index_timestamp: end}
   target: {start: trigger, end: start -> vent_end, start_inclusive: False, end_inclusive: True}
 """,
+    "repeated_trigger": f"""
+predicates:
+  {ADM}
+  {DIS}
+  death: {{code: MEDS_DEATH}}
+trigger:
+  predicate: admission
+  every: 12h
+  until: discharge
+windows:
+  input: {{start: NULL, end: trigger, start_inclusive: True, end_inclusive: True, index_timestamp: end}}
+  target: {{start: trigger, end: start + 5 days, start_inclusive: False, end_inclusive: True, label: death}}
+""",
+    "descendant_codes": f"""
+predicates:
+  {DIS}
+  cardiac_dx: {{code: {{descendants_of: [DIAGNOSIS//CARDIAC]}}}}
+trigger: cardiac_dx
+windows:
+  input: {{start: NULL, end: trigger, start_inclusive: True, end_inclusive: True, index_timestamp: end,
+          has: {{discharge: "(None, 0)"}}}}
+""",
 }
+
+# The code hierarchy used by ``descendants_of`` (MEDS metadata/codes.parquet).
+CODE_METADATA = pl.DataFrame(
+    {
+        "code": ["DIAGNOSIS//CARDIAC", "DIAGNOSIS//MI", "DIAGNOSIS//STEMI"],
+        "parent_codes": [None, ["DIAGNOSIS//CARDIAC"], ["DIAGNOSIS//MI"]],
+    }
+)
 
 ANY_EVENT_CONFIG = f"""
 predicates:
@@ -162,7 +196,10 @@ windows:
 
 @pytest.fixture()
 def shard(tmp_path):
-    path = tmp_path / "0.parquet"
+    (tmp_path / "metadata").mkdir()
+    CODE_METADATA.write_parquet(tmp_path / "metadata" / "codes.parquet")
+    (tmp_path / "data").mkdir()
+    path = tmp_path / "data" / "0.parquet"
     pl.DataFrame(
         EVENTS,
         schema={
