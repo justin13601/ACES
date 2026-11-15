@@ -655,6 +655,57 @@ def _counts_every_event(cfg: TaskExtractorConfig, special_predicates: list[str])
     )
 
 
+def _unmatched_events_can_match(cfg: TaskExtractorConfig) -> bool:
+    """Whether a row whose plain predicates are all 0 can still have a non-zero predicate the task uses.
+
+    Pruning assumes it cannot. Static predicates break that: as soon as one derived predicate uses a static
+    predicate, ``get_predicates_df`` copies every static predicate's value onto all of the subject's rows, so
+    e.g. ``or(male, admission)`` is 1 on every event of a male subject. ``and(male, admission)`` is fine, as
+    it still needs an ``admission`` event.
+
+    Rather than restating the semantics of each operator, this evaluates the derived predicates on such a
+    row (static predicates at 1 if they get broadcast, everything else at 0), so a new operator cannot
+    silently make pruning unsafe. It also returns True when static values get broadcast and a window or the
+    trigger uses a static predicate directly.
+
+    Examples:
+        >>> from aces.config import (
+        ...     DerivedPredicateConfig, EventConfig, PlainPredicateConfig, WindowConfig
+        ... )
+        >>> def task(expr):
+        ...     return TaskExtractorConfig(
+        ...         predicates={
+        ...             "adm": PlainPredicateConfig("ADM"),
+        ...             "male": PlainPredicateConfig("M", static=True),
+        ...             "d": DerivedPredicateConfig(expr),
+        ...         },
+        ...         trigger=EventConfig("d"),
+        ...         windows={"w": WindowConfig(None, "trigger", True, True)},
+        ...     )
+        >>> _unmatched_events_can_match(task("or(male, adm)"))
+        True
+        >>> _unmatched_events_can_match(task("and(male, adm)"))
+        False
+    """
+    static = {name for name, p in cfg.plain_predicates.items() if p.static}
+    derived = cfg.derived_predicates
+    # Mirrors the condition under which ``get_predicates_df`` broadcasts static values.
+    broadcast = any(static & set(d.input_predicates) for d in derived.values())
+
+    row = pl.DataFrame({p: [int(broadcast and p in static)] for p in cfg.plain_predicates})
+    for name, d in derived.items():  # topological order, as in ``get_predicates_df``
+        row = row.with_columns(d.eval_expr().cast(PRED_CNT_TYPE).alias(name))
+    if any(row[name].item() > 0 for name in derived):
+        return True
+
+    if not broadcast:
+        return False
+    used = {cfg.trigger.predicate, cfg.trigger.until}
+    for window in cfg.windows.values():
+        used |= window.referenced_predicates | {window.label}
+    return bool(static & used)
+
+
 def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.DataFrame:
     """Generate predicate columns based on the configuration.
 
@@ -893,8 +944,18 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
         case "meds":
             # Rows where every predicate count is 0 change no window count, no event bound (bounds are
             # predicate rows or record bounds, which are kept) and no static check (null-time rows are kept),
-            # so they can be dropped up front unless the task counts every event.
-            prune = bool(data_config.get("prune", True)) and not _counts_every_event(cfg, special_predicates)
+            # so they can be dropped up front unless the task counts every event, or broadcasting static
+            # predicates (below) would make such rows non-zero.
+            prune = bool(data_config.get("prune", True))
+            if prune and _counts_every_event(cfg, special_predicates):
+                logger.info("Not pruning MEDS events: the task counts every event (_ANY_EVENT or '*').")
+                prune = False
+            elif prune and _unmatched_events_can_match(cfg):
+                logger.info(
+                    "Not pruning MEDS events: a derived predicate using a static predicate can match events "
+                    "that match no plain predicate (e.g. 'or(male, admission)')."
+                )
+                prune = False
             data = generate_plain_predicates_from_meds(data_path, plain_predicates, prune=prune)
         case "esgpt":
             data = generate_plain_predicates_from_esgpt(data_path, plain_predicates)

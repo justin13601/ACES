@@ -10,7 +10,7 @@ import polars as pl
 import pytest
 
 from .test_other_meds import MEDS_SHARDS
-from .utils import assert_df_equal, run_command
+from .utils import assert_df_equal, needs_working_cli, run_command
 
 TASKS = {
     "inhospital_mortality": """
@@ -157,6 +157,7 @@ def _run_cli(root: Path, data_fp: Path, task: str, prune: bool) -> pl.DataFrame:
     return pl.read_parquet(cohort_dir / f"{task}.parquet")
 
 
+@needs_working_cli
 @pytest.mark.parametrize("task", sorted(TASKS))
 def test_cli_cohort_is_the_same_with_and_without_pruning(task):
     with tempfile.TemporaryDirectory() as root:

@@ -184,6 +184,58 @@ CODE_METADATA = pl.DataFrame(
     }
 )
 
+# A derived predicate using a static predicate makes ``get_predicates_df`` broadcast static values to every
+# row. ``and(male, admission)`` still needs an admission event, so it stays prunable.
+CONFIGS["static_and_derived"] = f"""
+predicates:
+  {ADM}
+  male_admission: {{expr: "and(male, admission)"}}
+patient_demographics:
+  male: {{code: GENDER//M}}
+trigger: male_admission
+windows:
+  input: {{start: NULL, end: trigger, start_inclusive: True, end_inclusive: True, index_timestamp: end}}
+"""
+
+# ...but ``or(male, ...)`` is 1 on every event of a male subject, including those matching no predicate, so
+# pruning would drop trigger rows and window counts. These tasks must not be pruned.
+STATIC_OR_CONFIGS = {
+    "trigger": f"""
+predicates:
+  {ADM}
+  male_or_admission: {{expr: "or(male, admission)"}}
+patient_demographics:
+  male: {{code: GENDER//M}}
+trigger: male_or_admission
+windows:
+  input: {{start: NULL, end: trigger, start_inclusive: True, end_inclusive: True, index_timestamp: end}}
+""",
+    "window_count": f"""
+predicates:
+  {ADM}
+  {DIS}
+  male_or_discharge: {{expr: "or(male, discharge)"}}
+patient_demographics:
+  male: {{code: GENDER//M}}
+trigger: admission
+windows:
+  input: {{start: trigger, end: start + 4 days, start_inclusive: True, end_inclusive: True,
+          index_timestamp: end, has: {{male_or_discharge: "(5, None)"}}}}
+""",
+    "nested": f"""
+predicates:
+  {ADM}
+  {DIS}
+  male_or_admission: {{expr: "or(male, admission)"}}
+  either: {{expr: "or(male_or_admission, discharge)"}}
+patient_demographics:
+  male: {{code: GENDER//M}}
+trigger: either
+windows:
+  input: {{start: NULL, end: trigger, start_inclusive: True, end_inclusive: True, index_timestamp: end}}
+""",
+}
+
 ANY_EVENT_CONFIG = f"""
 predicates:
   {ADM}
@@ -238,4 +290,14 @@ def test_tasks_counting_every_event_are_not_pruned(tmp_path, shard):
     pruned_predicates, got = _run(ANY_EVENT_CONFIG, tmp_path, shard, prune=True)
 
     assert pruned_predicates.height == full_predicates.height
+    assert got.equals(expected)
+
+
+@pytest.mark.parametrize("name", sorted(STATIC_OR_CONFIGS))
+def test_static_or_derived_predicates_are_not_pruned(name, tmp_path, shard):
+    full_predicates, expected = _run(STATIC_OR_CONFIGS[name], tmp_path, shard, prune=False)
+    pruned_predicates, got = _run(STATIC_OR_CONFIGS[name], tmp_path, shard, prune=True)
+
+    assert pruned_predicates.height == full_predicates.height
+    assert expected.height > 0, "the task should select something"
     assert got.equals(expected)

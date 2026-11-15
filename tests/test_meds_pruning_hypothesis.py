@@ -3,7 +3,8 @@
 The tasks use windows of hours and few constraints so that random data usually selects some subjects, and
 between them they depend on everything pruning must preserve: the record start (``start: NULL`` with
 ``index_timestamp: start``) and end (``_RECORD_END``), forward and backward event bounds, value ranges,
-``and()`` predicates, repeated triggers, static demographics, MEDS_BIRTH rows and ``_ANY_EVENT``.
+``and()`` predicates, repeated triggers, static demographics (also inside ``and()`` / ``or()``), MEDS_BIRTH
+rows and ``_ANY_EVENT``.
 """
 
 import tempfile
@@ -114,6 +115,30 @@ trigger: admission
 windows:
   input: {{start: NULL, end: trigger, start_inclusive: True, end_inclusive: True, index_timestamp: start}}
   target: {{start: trigger, end: start + 24h, start_inclusive: False, end_inclusive: True, label: death}}
+""",
+    "static_and_derived": f"""
+predicates:
+  {ADM}
+  {DEATH}
+  male_admission: {{expr: "and(male, admission)"}}
+patient_demographics:
+  male: {{code: GENDER//M}}
+trigger: male_admission
+windows:
+  target: {{start: trigger, end: start + 24h, start_inclusive: False, end_inclusive: True, label: death,
+           index_timestamp: start}}
+""",
+    "static_or_derived": f"""
+predicates:
+  {ADM}
+  {DIS}
+  male_or_discharge: {{expr: "or(male, discharge)"}}
+patient_demographics:
+  male: {{code: GENDER//M}}
+trigger: admission
+windows:
+  input: {{start: trigger, end: start + 12h, start_inclusive: True, end_inclusive: True,
+          has: {{male_or_discharge: "(3, None)"}}, index_timestamp: end}}
 """,
     "any_event": f"""
 predicates:
