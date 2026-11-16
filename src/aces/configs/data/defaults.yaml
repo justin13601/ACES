@@ -3,3 +3,8 @@ standard: ???
 
 # Timestamp format for direct predicates (if meds or esgpt, this is ignored).
 ts_format: "%m/%d/%Y %H:%M"
+
+# MEDS only: before aggregating, drop events that match no predicate, keeping static events and each
+# subject's first and last timestamps. Results are identical and extraction is much faster. Never applied to
+# tasks that count every event (_ANY_EVENT or "*"). Set to false to disable.
+prune: true
