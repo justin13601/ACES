@@ -94,39 +94,27 @@ class PlainPredicateConfig:
             (dyn int: 120)]])
             >>> print(PlainPredicateConfig(code={'any': ['foo', 'bar']}).MEDS_eval_expr())
             col("code").is_in([["foo", "bar"]])
-        """
-        criteria = []
-        if isinstance(self.code, dict):
-            if len(self.code) > 1:
-                raise ValueError(
-                    "Only one of 'regex' or 'any' can be specified in the code field! "
-                    f"Got: {list(self.code.keys())}."
-                )
 
-            if "regex" in self.code:
-                if not self.code["regex"] or not isinstance(self.code["regex"], str):
-                    raise ValueError(
-                        "Invalid specification in the code field! "
-                        f"Got: {self.code}. "
-                        "Expected a non-empty string for 'regex'."
-                    )
-                criteria.append(pl.col("code").str.contains(self.code["regex"]))
-            elif "any" in self.code:
-                if not self.code["any"] or not isinstance(self.code["any"], list):
-                    raise ValueError(
-                        "Invalid specification in the code field! "
-                        f"Got: {self.code}. "
-                        f"Expected a list of strings for 'any'."
-                    )
-                criteria.append(pl.Expr.is_in(pl.col("code"), self.code["any"]))
-            else:
-                raise ValueError(
-                    "Invalid specification in the code field! "
-                    f"Got: {self.code}. "
-                    "Expected one of 'regex', 'any'."
-                )
-        else:
-            criteria.append(pl.col("code") == self.code)
+            Other columns accept the same 'regex' and 'any' forms as the code field:
+
+            >>> data = pl.DataFrame({
+            ...     "code": ["BP", "BP", "BP"],
+            ...     "text_value": ["150/90", "120/80", None],
+            ...     "unit": ["mmHg", "kPa", "mmHg"],
+            ... })
+            >>> cfg = PlainPredicateConfig("BP", other_cols={"text_value": {"regex": "^1[4-9][0-9]/"}})
+            >>> data.select(cfg.MEDS_eval_expr())["code"].to_list()
+            [True, False, None]
+            >>> cfg = PlainPredicateConfig("BP", other_cols={"unit": {"any": ["mmHg", "mm[Hg]"]}})
+            >>> data.select(cfg.MEDS_eval_expr())["code"].to_list()
+            [True, False, True]
+            >>> PlainPredicateConfig("BP", other_cols={"unit": {"any": "mmHg"}}).MEDS_eval_expr()
+            Traceback (most recent call last):
+                ...
+            ValueError: Invalid specification in the unit field! Got: {'any': 'mmHg'}.
+            Expected a list of strings for 'any'.
+        """
+        criteria = [self._match_expr("code", self.code)]
 
         if self.value_min is not None:
             if self.value_min_inclusive:
@@ -140,12 +128,45 @@ class PlainPredicateConfig:
                 criteria.append(pl.col("numeric_value") < self.value_max)
 
         if self.other_cols:
-            criteria.extend([pl.col(col) == value for col, value in self.other_cols.items()])
+            criteria.extend([self._match_expr(col, value) for col, value in self.other_cols.items()])
 
         if len(criteria) == 1:
             return criteria[0]
         else:
             return pl.all_horizontal(criteria)
+
+    @staticmethod
+    def _match_expr(column: str, spec: str | dict[str, Any]) -> pl.Expr:
+        """Returns an expression matching ``column`` to a value, a ``{regex: ...}`` or an ``{any: [...]}``."""
+        if not isinstance(spec, dict):
+            return pl.col(column) == spec
+
+        if len(spec) > 1:
+            raise ValueError(
+                f"Only one of 'regex' or 'any' can be specified in the {column} field! "
+                f"Got: {list(spec.keys())}."
+            )
+
+        if "regex" in spec:
+            if not spec["regex"] or not isinstance(spec["regex"], str):
+                raise ValueError(
+                    f"Invalid specification in the {column} field! "
+                    f"Got: {spec}. "
+                    "Expected a non-empty string for 'regex'."
+                )
+            return pl.col(column).str.contains(spec["regex"])
+        elif "any" in spec:
+            if not spec["any"] or not isinstance(spec["any"], list):
+                raise ValueError(
+                    f"Invalid specification in the {column} field! "
+                    f"Got: {spec}. "
+                    f"Expected a list of strings for 'any'."
+                )
+            return pl.Expr.is_in(pl.col(column), spec["any"])
+        else:
+            raise ValueError(
+                f"Invalid specification in the {column} field! Got: {spec}. Expected one of 'regex', 'any'."
+            )
 
     def ESGPT_eval_expr(self, values_column: str | None = None) -> pl.Expr:
         """Returns a Polars expression that evaluates this predicate for a ESGPT formatted dataset.
@@ -846,13 +867,37 @@ class EventConfig:
     tree, and its form is dictated by the fact that we must be able to localize the tree to identify valid
     realizations of the tree.
 
+    Args:
+        predicate: The predicate that defines the trigger events.
+        every: If set, the trigger instead fires every ``every`` (a timedelta string, e.g. ``1h``) from each
+            ``predicate`` event, up to (but excluding) the next ``until`` or ``predicate`` event, or up to
+            (and including) the end of the subject's record if neither follows.
+        until: The predicate that ends the series of trigger times started by a ``predicate`` event. Can only
+            be used together with ``every``.
+
     Examples:
         >>> event = EventConfig("event_type//ADMISSION")
         >>> event.predicate
         'event_type//ADMISSION'
+        >>> EventConfig("icu_admission", until="icu_discharge")
+        Traceback (most recent call last):
+            ...
+        ValueError: The trigger's 'until' can only be used together with 'every'.
+        >>> EventConfig("icu_admission", every="-1h")
+        Traceback (most recent call last):
+            ...
+        ValueError: The trigger's 'every' must be a positive duration. Got: '-1h'
     """
 
     predicate: str
+    every: str | None = None
+    until: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.until and not self.every:
+            raise ValueError("The trigger's 'until' can only be used together with 'every'.")
+        if self.every and parse_timedelta(self.every) <= timedelta(0):
+            raise ValueError(f"The trigger's 'every' must be a positive duration. Got: '{self.every}'")
 
 
 @dataclasses.dataclass
@@ -1138,7 +1183,7 @@ class TaskExtractorConfig:
                                                            value_min=None, value_max=None,
                                                            value_min_inclusive=None, value_max_inclusive=None,
                                                            static=False, other_cols={})},
-                                trigger=EventConfig(predicate='admission'),
+                                trigger=EventConfig(predicate='admission', every=None, until=None),
                                 windows={'start': WindowConfig(start=None, end='trigger + 24h',
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
@@ -1168,7 +1213,7 @@ class TaskExtractorConfig:
                                                             value_min_inclusive=None,
                                                             value_max_inclusive=None, static=True,
                                                             other_cols={})},
-                                trigger=EventConfig(predicate='admission'),
+                                trigger=EventConfig(predicate='admission', every=None, until=None),
                                 windows={'start': WindowConfig(start=None, end='trigger + 24h',
                                                     start_inclusive=True, end_inclusive=True, has={},
                                                     label=None, index_timestamp=None)},
@@ -1351,13 +1396,15 @@ class TaskExtractorConfig:
             windows = {n: WindowConfig(**w) for n, w in windows.items()}
 
         logger.info("Parsing trigger event...")
-        trigger = EventConfig(trigger)
+        trigger = EventConfig(**trigger) if isinstance(trigger, dict) else EventConfig(trigger)
 
         # add window referenced predicates
         referenced_predicates = {pred for w in windows.values() for pred in w.referenced_predicates}
 
         # add trigger predicate
         referenced_predicates.add(trigger.predicate)
+        if trigger.until:
+            referenced_predicates.add(trigger.until)
 
         # add label predicate if it exists and not already added
         label_reference = [w.label for w in windows.values() if w.label]
@@ -1569,6 +1616,17 @@ class TaskExtractorConfig:
             raise KeyError(
                 f"Trigger event predicate '{self.trigger.predicate}' not found in predicates: "
                 f"{', '.join(self.predicates.keys())}"
+            )
+
+        if self.trigger.until and self.trigger.until not in self.predicates:
+            raise KeyError(
+                f"Trigger 'until' predicate '{self.trigger.until}' not found in predicates: "
+                f"{', '.join(self.predicates.keys())}"
+            )
+        if self.trigger.until and self.predicates[self.trigger.until].static:
+            raise ValueError(
+                f"Trigger 'until' predicate '{self.trigger.until}' is a static patient demographic; "
+                "'until' must be an event with a timestamp."
             )
 
         trigger_node = Node("trigger")

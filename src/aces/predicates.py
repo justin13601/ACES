@@ -1,8 +1,10 @@
 """This module contains functions for generating predicate columns for event sequences."""
 
+import dataclasses
 import logging
 from pathlib import Path
 
+import meds
 import polars as pl
 from omegaconf import DictConfig
 from polars.exceptions import ColumnNotFoundError
@@ -31,7 +33,6 @@ def direct_load_plain_predicates(
     Args:
         data_path: The path to the CSV file.
         predicates: The list of columns to read from the CSV file.
-        ts_format: The format string for parsing timestamps, or None if timestamps are already temporal.
 
     Returns:
         The Polars DataFrame containing the specified columns.
@@ -205,7 +206,7 @@ def direct_load_plain_predicates(
 
     data = data.select(columns)
     ts_type = data.collect_schema()["timestamp"]
-    if ts_type == pl.String:
+    if ts_type == pl.Utf8:
         if ts_format is None:
             raise ValueError("Must provide a timestamp format for direct predicates with str timestamps.")
         data = data.with_columns(pl.col("timestamp").str.strptime(pl.Datetime, format=ts_format))
@@ -226,16 +227,120 @@ def direct_load_plain_predicates(
     )
 
 
+def expand_descendant_codes(
+    predicates: dict[str, PlainPredicateConfig], data_path: Path
+) -> dict[str, PlainPredicateConfig]:
+    """Rewrites predicates with ``code: {descendants_of: [...]}`` to ``code: {any: [...]}``.
+
+    The descendants of the listed codes (which are included themselves) are found by following the
+    ``parent_codes`` links in the MEDS code metadata file, ``metadata/codes.parquet``, of the first parent
+    directory of ``data_path`` that has one.
+
+    Args:
+        predicates: The dictionary of plain predicate configurations.
+        data_path: The path to the MEDS data file (or shard) the predicates will be evaluated on.
+
+    Returns:
+        The predicates, with every ``descendants_of`` code replaced by the equivalent ``any`` list.
+
+    Raises:
+        ValueError: If ``descendants_of`` is not a non-empty list of codes.
+        FileNotFoundError: If a predicate uses ``descendants_of`` but no code metadata file is found.
+
+    Examples:
+        >>> codes = pl.DataFrame({
+        ...     "code": ["ICD10//I21", "ICD10//I21.0", "ICD10//I21.01", "ICD9//410", "ICD10//I50"],
+        ...     "parent_codes": [None, ["ICD10//I21"], ["ICD10//I21.0"], ["ICD10//I21"], None],
+        ... })
+        >>> predicates = {
+        ...     "mi": PlainPredicateConfig({"descendants_of": ["ICD10//I21"]}),
+        ...     "hf": PlainPredicateConfig("ICD10//I50"),
+        ... }
+        >>> with tempfile.TemporaryDirectory() as root:
+        ...     (Path(root) / "metadata").mkdir()
+        ...     codes.write_parquet(Path(root) / "metadata" / "codes.parquet")
+        ...     expanded = expand_descendant_codes(predicates, Path(root) / "data" / "train" / "0.parquet")
+        >>> expanded["mi"].code
+        {'any': ['ICD10//I21', 'ICD10//I21.0', 'ICD10//I21.01', 'ICD9//410']}
+        >>> expanded["hf"].code
+        'ICD10//I50'
+        >>> with tempfile.TemporaryDirectory() as root:
+        ...     expand_descendant_codes(predicates, Path(root) / "data" / "0.parquet")
+        Traceback (most recent call last):
+            ...
+        FileNotFoundError: Predicate(s) 'mi' use 'descendants_of', which needs MEDS code metadata, but
+        no 'metadata/codes.parquet' was found in any parent directory of .../data/0.parquet.
+        >>> expand_descendant_codes({"mi": PlainPredicateConfig({"descendants_of": "ICD10//I21"})}, Path("."))
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid specification in the code field! Got: {'descendants_of': 'ICD10//I21'}.
+        Expected a list of strings for 'descendants_of'.
+    """
+    to_expand = {
+        name: pred
+        for name, pred in predicates.items()
+        if isinstance(pred.code, dict) and "descendants_of" in pred.code
+    }
+    if not to_expand:
+        return predicates
+
+    for pred in to_expand.values():
+        if len(pred.code) > 1:
+            raise ValueError(
+                f"Only one of 'regex', 'any' or 'descendants_of' can be specified in the code field! "
+                f"Got: {list(pred.code.keys())}."
+            )
+        roots = pred.code["descendants_of"]
+        if not roots or not isinstance(roots, list) or not all(isinstance(r, str) for r in roots):
+            raise ValueError(
+                f"Invalid specification in the code field! Got: {pred.code}. "
+                "Expected a list of strings for 'descendants_of'."
+            )
+
+    codes_fp = next(
+        (
+            d / "metadata" / "codes.parquet"
+            for d in data_path.resolve().parents
+            if (d / "metadata" / "codes.parquet").is_file()
+        ),
+        None,
+    )
+    if codes_fp is None:
+        raise FileNotFoundError(
+            f"Predicate(s) '{', '.join(to_expand)}' use 'descendants_of', which needs MEDS code metadata, "
+            f"but no 'metadata/codes.parquet' was found in any parent directory of {data_path}."
+        )
+
+    edges = pl.read_parquet(codes_fp, columns=["code", "parent_codes"]).explode("parent_codes")
+    expanded = dict(predicates)
+    for name, pred in to_expand.items():
+        codes = set(pred.code["descendants_of"])
+        new_codes = codes
+        while new_codes:
+            children = edges.filter(pl.col("parent_codes").is_in(list(new_codes)))["code"]
+            new_codes = set(children) - codes
+            codes |= new_codes
+        logger.info(f"Expanded predicate '{name}' to {len(codes)} codes using {codes_fp}.")
+        expanded[name] = dataclasses.replace(pred, code={"any": sorted(codes)})
+    return expanded
+
+
 def generate_plain_predicates_from_meds(
-    data_path: Path, predicates: dict[str, PlainPredicateConfig]
+    data_path: Path, predicates: dict[str, PlainPredicateConfig], prune: bool = False
 ) -> pl.DataFrame:
     """Generate plain predicate columns from a MEDS dataset.
 
     To learn more about the MEDS format, please visit https://github.com/Medical-Event-Data-Standard/meds
 
+    Only the columns the predicates need are read, and every predicate is evaluated in one pass.
+
     Args:
         data_path: The path to the MEDS dataset file.
         predicates: The dictionary of plain predicate configurations.
+        prune: Keep only the events that can affect a query: events matching some predicate, static
+            (null-time) events, and each subject's first and last timestamps (the record bounds). Every
+            other (subject_id, timestamp) row would have all predicate counts equal to 0. Only safe when the
+            task does not count every event (``_ANY_EVENT``); see ``get_predicates_df``.
 
     Returns:
         The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
@@ -266,25 +371,81 @@ def generate_plain_predicates_from_meds(
         │ 2          ┆ 1989-01-01 02:00:00 ┆ 0         ┆ 0    │
         │ 3          ┆ null                ┆ 0         ┆ 1    │
         └────────────┴─────────────────────┴───────────┴──────┘
+
+        With ``prune=True``, events that match no predicate are dropped unless they are static or at a
+        subject's first or last timestamp (here the "lab" event at 01:00):
+        >>> parquet_data = pl.DataFrame({
+        ...     "subject_id": [1, 1, 1, 1, 2],
+        ...     "time": ["1/1/1989 00:00", "1/1/1989 01:00", "1/1/1989 02:00", "1/1/1989 03:00", None],
+        ...     "code": ["admission", "lab", "discharge", "lab", "gender//male"],
+        ... }).with_columns(pl.col("time").str.strptime(pl.Datetime, format="%m/%d/%Y %H:%M"))
+        >>> with tempfile.NamedTemporaryFile(mode="w", suffix=".parquet") as f:
+        ...     data_path = Path(f.name)
+        ...     parquet_data.write_parquet(data_path)
+        ...     generate_plain_predicates_from_meds(
+        ...         data_path, {"discharge": PlainPredicateConfig("discharge")}, prune=True
+        ...     )
+        shape: (4, 3)
+        ┌────────────┬─────────────────────┬───────────┐
+        │ subject_id ┆ timestamp           ┆ discharge │
+        │ ---        ┆ ---                 ┆ ---       │
+        │ i64        ┆ datetime[μs]        ┆ i64       │
+        ╞════════════╪═════════════════════╪═══════════╡
+        │ 1          ┆ 1989-01-01 00:00:00 ┆ 0         │
+        │ 1          ┆ 1989-01-01 02:00:00 ┆ 1         │
+        │ 1          ┆ 1989-01-01 03:00:00 ┆ 0         │
+        │ 2          ┆ null                ┆ 0         │
+        └────────────┴─────────────────────┴───────────┘
     """
 
+    predicate_cols = list(predicates.keys())
+    predicates = expand_descendant_codes(predicates, data_path)
+
     logger.info("Loading MEDS data...")
-    data = pl.read_parquet(data_path, use_pyarrow=True).rename({"time": "timestamp"})
+    data = pl.scan_parquet(data_path)
+    available = set(data.collect_schema().names())
+    needed = {"subject_id", "time", "code"}
+    for plain_predicate in predicates.values():
+        if plain_predicate.value_min is not None or plain_predicate.value_max is not None:
+            needed.add("numeric_value")
+        needed.update(plain_predicate.other_cols)
+    # Columns a predicate names but the data lacks are left out so evaluating it raises the usual error.
+    data = data.select(sorted(needed & available)).rename({"time": "timestamp"})
+
+    # Cast `code` to Utf8 once up front. Older MEDS schemas sometimes emitted `code` as
+    # a categorical / enum dtype, and both the birth-row filter below and the predicate
+    # expressions assume a string column.
+    data = data.with_columns(pl.col("code").cast(pl.Utf8))
+
+    # Drop MEDS birth rows before predicate evaluation. The birth code is a
+    # quasi-static demographic marker anchored at the patient's birth timestamp;
+    # it shouldn't count toward predicate matches or the implicit _ANY_EVENT
+    # column. Static rows (null timestamp) are already excluded; this extends
+    # the same treatment to MEDS_BIRTH. See issue #168.
+    data = data.filter(pl.col("code") != meds.birth_code)
 
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
-    for name, plain_predicate in predicates.items():
-        data = data.with_columns(data["code"].cast(pl.String).alias("code"))  # may remove after MEDS v0.3
-        data = data.with_columns(plain_predicate.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name))
-        logger.info(f"Added predicate column '{name}'.")
+    data = data.with_columns(
+        [p.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name) for name, p in predicates.items()]
+    )
+
+    if prune:
+        # After the birth-row filter, so the record bounds are the same as without pruning.
+        logger.info("Dropping events that match no predicate (other than static events and record bounds)...")
+        ts = pl.col("timestamp")
+        keep = ts.is_null() | (ts == ts.min().over("subject_id")) | (ts == ts.max().over("subject_id"))
+        if predicate_cols:
+            keep = keep | pl.any_horizontal([pl.col(c) > 0 for c in predicate_cols])
+        data = data.filter(keep)
 
     # clean up predicates_df
     logger.info("Cleaning up predicates dataframe...")
-    predicate_cols = list(predicates.keys())
     return (
         data.select(["subject_id", "timestamp", *predicate_cols])
         .group_by(["subject_id", "timestamp"], maintain_order=True)
         .agg(*(pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols))
+        .collect()
     )
 
 
@@ -298,12 +459,8 @@ def process_esgpt_data(
     """Process ESGPT data to generate plain predicate columns.
 
     Args:
-        subjects_df: The Polars DataFrame containing the subjects/demographics data.
         events_df: The Polars DataFrame containing the events data.
         dynamic_measurements_df: The Polars DataFrame containing the dynamic measurements data.
-        value_columns: A dictionary mapping predicate names to the column name containing numeric values
-            for that predicate, or None if the predicate does not have an associated value column.
-        predicates: A dictionary mapping predicate names to their PlainPredicateConfig objects.
 
     Returns:
         The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
@@ -472,6 +629,87 @@ def generate_plain_predicates_from_esgpt(data_path: Path, predicates: dict) -> p
             value_columns[name] = config.measurement_configs[measurement_name].values_column
 
     return process_esgpt_data(subjects_df, events_df, dynamic_measurements_df, value_columns, predicates)
+
+
+def _special_predicates(cfg: TaskExtractorConfig) -> list[str]:
+    """The special predicate columns (_ANY_EVENT, _RECORD_START, _RECORD_END) a task needs, in order."""
+    special_predicates = []
+    for window in cfg.windows.values():
+        if ANY_EVENT_COLUMN in window.referenced_predicates and ANY_EVENT_COLUMN not in special_predicates:
+            special_predicates.append(ANY_EVENT_COLUMN)
+        if (
+            START_OF_RECORD_KEY in window.constraint_predicates
+            and START_OF_RECORD_KEY not in special_predicates
+        ):
+            special_predicates.append(START_OF_RECORD_KEY)
+        if END_OF_RECORD_KEY in window.constraint_predicates and END_OF_RECORD_KEY not in special_predicates:
+            special_predicates.append(END_OF_RECORD_KEY)
+
+    if (
+        cfg.trigger.predicate in [ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY]
+        and cfg.trigger.predicate not in special_predicates
+    ):
+        special_predicates.append(cfg.trigger.predicate)
+    return special_predicates
+
+
+def _counts_every_event(cfg: TaskExtractorConfig, special_predicates: list[str]) -> bool:
+    """Whether the task counts every event (``_ANY_EVENT``, or a ``"*"`` constraint, which
+    ``check_constraints`` reads as ``_ANY_EVENT``), so events matching no predicate still matter."""
+    return ANY_EVENT_COLUMN in special_predicates or any(
+        "*" in window.referenced_predicates for window in cfg.windows.values()
+    )
+
+
+def _unmatched_events_can_match(cfg: TaskExtractorConfig) -> bool:
+    """Whether a row whose plain predicates are all 0 can still have a non-zero predicate the task uses.
+
+    Pruning assumes it cannot. Static predicates break that: as soon as one derived predicate uses a static
+    predicate, ``get_predicates_df`` copies every static predicate's value onto all of the subject's rows, so
+    e.g. ``or(male, admission)`` is 1 on every event of a male subject. ``and(male, admission)`` is fine, as
+    it still needs an ``admission`` event.
+
+    Rather than restating the semantics of each operator, this evaluates the derived predicates on such a
+    row (static predicates at 1 if they get broadcast, everything else at 0), so a new operator cannot
+    silently make pruning unsafe. It also returns True when static values get broadcast and a window or the
+    trigger uses a static predicate directly.
+
+    Examples:
+        >>> from aces.config import (
+        ...     DerivedPredicateConfig, EventConfig, PlainPredicateConfig, WindowConfig
+        ... )
+        >>> def task(expr):
+        ...     return TaskExtractorConfig(
+        ...         predicates={
+        ...             "adm": PlainPredicateConfig("ADM"),
+        ...             "male": PlainPredicateConfig("M", static=True),
+        ...             "d": DerivedPredicateConfig(expr),
+        ...         },
+        ...         trigger=EventConfig("d"),
+        ...         windows={"w": WindowConfig(None, "trigger", True, True)},
+        ...     )
+        >>> _unmatched_events_can_match(task("or(male, adm)"))
+        True
+        >>> _unmatched_events_can_match(task("and(male, adm)"))
+        False
+    """
+    static = {name for name, p in cfg.plain_predicates.items() if p.static}
+    derived = cfg.derived_predicates
+    # Mirrors the condition under which ``get_predicates_df`` broadcasts static values.
+    broadcast = any(static & set(d.input_predicates) for d in derived.values())
+
+    row = pl.DataFrame({p: [int(broadcast and p in static)] for p in cfg.plain_predicates})
+    for name, d in derived.items():  # topological order, as in ``get_predicates_df``
+        row = row.with_columns(d.eval_expr().cast(PRED_CNT_TYPE).alias(name))
+    if any(row[name].item() > 0 for name in derived):
+        return True
+
+    if not broadcast:
+        return False
+    used = {cfg.trigger.predicate, cfg.trigger.until}
+    for window in cfg.windows.values():
+        used |= window.referenced_predicates | {window.label}
+    return bool(static & used)
 
 
 def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.DataFrame:
@@ -701,6 +939,8 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
             "`data=sharded` will improve efficiency and completeness."
         )
 
+    special_predicates = _special_predicates(cfg)
+
     # plain predicates
     plain_predicates = cfg.plain_predicates
     match standard.lower():
@@ -708,7 +948,21 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
             ts_format = data_config.ts_format
             data = direct_load_plain_predicates(data_path, list(plain_predicates.keys()), ts_format)
         case "meds":
-            data = generate_plain_predicates_from_meds(data_path, plain_predicates)
+            # Rows where every predicate count is 0 change no window count, no event bound (bounds are
+            # predicate rows or record bounds, which are kept) and no static check (null-time rows are kept),
+            # so they can be dropped up front unless the task counts every event, or broadcasting static
+            # predicates (below) would make such rows non-zero.
+            prune = bool(data_config.get("prune", True))
+            if prune and _counts_every_event(cfg, special_predicates):
+                logger.info("Not pruning MEDS events: the task counts every event (_ANY_EVENT or '*').")
+                prune = False
+            elif prune and _unmatched_events_can_match(cfg):
+                logger.info(
+                    "Not pruning MEDS events: a derived predicate using a static predicate can match events "
+                    "that match no plain predicate (e.g. 'or(male, admission)')."
+                )
+                prune = False
+            data = generate_plain_predicates_from_meds(data_path, plain_predicates, prune=prune)
         case "esgpt":
             data = generate_plain_predicates_from_esgpt(data_path, plain_predicates)
         case _:
@@ -740,24 +994,6 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
     # a column of 0s with 1 in the first event of each subject_id representing the start of record
     # a column of 0s with 1 in the last event of each subject_id representing the end of record
     logger.info("Generating special predicate columns...")
-    special_predicates = []
-    for window in cfg.windows.values():
-        if ANY_EVENT_COLUMN in window.referenced_predicates and ANY_EVENT_COLUMN not in special_predicates:
-            special_predicates.append(ANY_EVENT_COLUMN)
-        if (
-            START_OF_RECORD_KEY in window.constraint_predicates
-            and START_OF_RECORD_KEY not in special_predicates
-        ):
-            special_predicates.append(START_OF_RECORD_KEY)
-        if END_OF_RECORD_KEY in window.constraint_predicates and END_OF_RECORD_KEY not in special_predicates:
-            special_predicates.append(END_OF_RECORD_KEY)
-
-    if (
-        cfg.trigger.predicate in [ANY_EVENT_COLUMN, START_OF_RECORD_KEY, END_OF_RECORD_KEY]
-        and cfg.trigger.predicate not in special_predicates
-    ):
-        special_predicates.append(cfg.trigger.predicate)
-
     if ANY_EVENT_COLUMN in special_predicates:
         data = data.with_columns(
             pl.when(pl.col("timestamp").is_not_null())

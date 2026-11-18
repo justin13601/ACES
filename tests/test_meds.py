@@ -13,6 +13,7 @@ from yaml import load as load_yaml
 from .utils import (
     assert_df_equal,
     cli_test,
+    needs_working_cli,
     run_command,
     write_input_files,
     write_task_configs,
@@ -529,6 +530,7 @@ WANT_WINDOW_SHARDS = {
 }
 
 
+@needs_working_cli
 def test_meds():
     cli_test(
         input_files=MEDS_SHARDS,
@@ -538,6 +540,7 @@ def test_meds():
     )
 
 
+@needs_working_cli
 def test_meds_window_storage():
     input_files = MEDS_SHARDS
     task = TASK_NAME

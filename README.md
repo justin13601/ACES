@@ -271,6 +271,8 @@ There are also a few special predicates that you can use. These *do not* need to
 
 `_RECORD_END`: specifies the end of a patient's record (ie., effectively set to `1` in the last chronological row for every `subject_id`)
 
+For MEDS data, `MEDS_BIRTH` rows are not events: they are dropped before predicates are evaluated, so they do not count toward `_ANY_EVENT` or any predicate, and `_RECORD_START` is the patient's first event other than `MEDS_BIRTH`.
+
 ### Trigger Event
 
 The trigger event is a simple field with a value of a predicate name. For each trigger event, a prediction by a model can be made. For instance, in the following example, the trigger event is an admission. Therefore, in your task, a prediction by a model can be made for each valid admission (ie., samples remaining after extraction according to other task specifications are considered valid). You can also simply filter to a cohort of one event (ie., just a trigger event) should you not have any further criteria in your task.

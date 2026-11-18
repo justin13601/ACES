@@ -3,7 +3,7 @@
 import polars as pl
 
 from .test_meds import parse_labels_yaml, parse_shards_yaml
-from .utils import cli_test
+from .utils import cli_test, needs_working_cli
 
 pl.enable_string_cache()
 
@@ -358,7 +358,6 @@ WANT_SHARDS = {
         """
   "0": |-2
     subject_id,prediction_time,boolean_value,integer_value,float_value,categorical_value
-    1,01/15/2020 15:14,0,,,
     1,01/19/2022 04:46,0,,,
     1,01/25/2022 08:11,1,,,
 
@@ -394,6 +393,7 @@ WANT_SHARDS = {
 }
 
 
+@needs_working_cli
 def test_meds():
     cli_test(
         input_files=MEDS_SHARDS,

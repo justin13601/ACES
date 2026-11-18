@@ -142,6 +142,58 @@ class TemporalWindowBounds:
 
         return {"period": period, "offset": offset, "closed": closed}
 
+    @property
+    def start_offset(self) -> timedelta:
+        """The offset from a row's timestamp to the chronologically earliest boundary of its window.
+
+        A window with a negative ``window_size`` extends *backwards* from the anchor row, so the anchor is
+        the later boundary and ``window_size`` must be folded in to reach the earlier one. This matches the
+        convention used by ``polars_gp_rolling_kwargs``, where ``left_inclusive`` governs the chronologically
+        earlier edge regardless of the sign of ``window_size``.
+
+        Examples:
+            >>> forward = TemporalWindowBounds(True, timedelta(days=1), True, timedelta(hours=1))
+            >>> forward.start_offset
+            datetime.timedelta(seconds=3600)
+            >>> forward.end_offset
+            datetime.timedelta(days=1, seconds=3600)
+
+            For a backward window the two are ordered chronologically, not anchor-first:
+
+            >>> backward = TemporalWindowBounds(True, timedelta(days=-1), True, timedelta(hours=1))
+            >>> backward.start_offset
+            datetime.timedelta(days=-1, seconds=3600)
+            >>> backward.end_offset
+            datetime.timedelta(seconds=3600)
+
+            ``start_offset`` is never later than ``end_offset``, whatever the sign:
+
+            >>> all(
+            ...     b.start_offset <= b.end_offset
+            ...     for b in (forward, backward)
+            ... )
+            True
+        """
+        if self.window_size < timedelta(0):
+            return self.offset + self.window_size
+        return self.offset
+
+    @property
+    def end_offset(self) -> timedelta:
+        """The offset from a row's timestamp to the chronologically latest boundary of its window.
+
+        See [`start_offset`][aces.types.TemporalWindowBounds.start_offset] for the ordering convention.
+
+        Examples:
+            >>> TemporalWindowBounds(True, timedelta(days=2), True, None).end_offset
+            datetime.timedelta(days=2)
+            >>> TemporalWindowBounds(True, timedelta(days=-2), True, None).end_offset
+            datetime.timedelta(0)
+        """
+        if self.window_size < timedelta(0):
+            return self.offset
+        return self.offset + self.window_size
+
 
 @dataclasses.dataclass(order=True)
 class ToEventWindowBounds:

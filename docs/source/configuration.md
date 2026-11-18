@@ -48,7 +48,12 @@ These configs consist of the following four fields:
   observation will only satisfy this predicate if there is an occurrence of this code in the observation.
   The field can additionally be a dictionary with either a `regex` key and the value being a regular
   expression (satisfied if the regular expression evaluates to True), or a `any` key and the value being a
-  list of strings (satisfied if there is an occurrence for any code in the list).
+  list of strings (satisfied if there is an occurrence for any code in the list). For MEDS data, it can also
+  be a dictionary with a `descendants_of` key and a list of codes, which is satisfied by those codes and all
+  of their descendants: ACES follows the `parent_codes` links in the dataset's `metadata/codes.parquet` file
+  (looked up in the parent directories of the data path) and rewrites the predicate as an `any` list. Only
+  links present in that file are followed, so how complete the expansion is depends on how the MEDS ETL
+  filled in `parent_codes`. The number of matched codes is logged.
 
   > [!NOTE]
   > Each individual definition of `PlainPredicateConfig` and `code` will generate a separate predicate
@@ -74,7 +79,9 @@ These configs consist of the following four fields:
 - `value_max_inclusive`: See `value_max`
 
 - `other_cols`: This optional field accepts a 1-to-1 dictionary of column names to column values, and can be
-  used to specify further constraints on other columns (ie., not `code`) for this predicate.
+  used to specify further constraints on other columns (ie., not `code`) for this predicate. For MEDS data,
+  like `code`, each value can also be a dictionary with a `regex` or an `any` key (e.g.,
+  `text_value: {regex: "^1[4-9][0-9]/"}`).
 
 A given observation will be gauged to satisfy or fail to satisfy this predicate in one of two ways, depending
 on its source format.
@@ -124,6 +131,24 @@ observed with value greater than one to satisfy the event. There can only be one
 "EventConfig" in a valid configuration, and it will define the "trigger" event of the cohort.
 
 The value of its field can be any defined predicate.
+
+To predict at regular intervals instead (e.g., every hour of an ICU stay), the trigger can be given as a
+dictionary with an `every` field (a time span, e.g. `1h`) and, optionally, an `until` predicate:
+
+```yaml
+trigger:
+  predicate: icu_admission
+  every: 1h
+  until: icu_discharge
+```
+
+Each `predicate` event then starts a series of trigger times every `every`, starting at the event itself and
+running up to (but excluding) the next `until` or `predicate` event, whichever comes first, or up to (and
+including) the end of the subject's record if neither follows. An `until` event at the same time as the
+`predicate` event does not end its series (e.g., a transfer recorded as a discharge and an admission at the
+same time). Trigger times that do not coincide with an existing event are added as empty events, so they do
+not change any window's predicate counts. To skip the first hours of a stay, add a window
+constraint, e.g. a window `start: end - 4h, end: trigger` with `icu_admission: (None, 0)`.
 
 ______________________________________________________________________
 
