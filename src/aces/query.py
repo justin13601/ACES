@@ -4,6 +4,7 @@ It accepts the configuration file and predicate columns, builds the tree, and re
 """
 
 import logging
+from datetime import timedelta
 
 import polars as pl
 from bigtree import preorder_iter
@@ -50,6 +51,17 @@ def add_trigger_grid(trigger: EventConfig, predicates_df: pl.DataFrame) -> pl.Da
         │ 1          ┆ 2020-01-01 05:00:00 ┆ 0             ┆ 1             ┆ 0            │
         │ 1          ┆ 2020-01-02 00:00:00 ┆ 0             ┆ 0             ┆ 0            │
         └────────────┴─────────────────────┴───────────────┴───────────────┴──────────────┘
+
+        The interval must be a whole number of the timestamps' time unit:
+
+        >>> add_trigger_grid(
+        ...     EventConfig("icu_admission", every="0.0015s"),
+        ...     predicates_df.with_columns(pl.col("timestamp").cast(pl.Datetime("ms"))),
+        ... )
+        Traceback (most recent call last):
+            ...
+        ValueError: The trigger's 'every' (0:00:00.001500) is not a whole number of the timestamps' time
+        unit (ms).
     """
 
     def next_event(predicate: str) -> pl.Expr:
@@ -63,6 +75,13 @@ def add_trigger_grid(trigger: EventConfig, predicates_df: pl.DataFrame) -> pl.Da
     stop_col, end_col = "grid stop", "record end"
 
     every = parse_timedelta(trigger.every)
+    # A timedelta is at most microsecond-precise, so only millisecond timestamps can be too coarse.
+    time_unit = getattr(predicates_df.schema["timestamp"], "time_unit", None)
+    if time_unit == "ms" and every % timedelta(milliseconds=1):
+        raise ValueError(
+            f"The trigger's 'every' ({every}) is not a whole number of the timestamps' time unit "
+            f"({time_unit})."
+        )
     grid = (
         predicates_df.sort("subject_id", "timestamp")
         .with_columns(

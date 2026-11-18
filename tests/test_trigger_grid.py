@@ -146,3 +146,14 @@ def test_trigger_every_summaries_hold_only_configured_predicates(tmp_path, predi
         assert fields[3:] == ["icu_admission", "icu_discharge", "_TRIGGER_GRID"]
     # Only subject 2's death at 02:30 counts, as in test_trigger_every_hour_until_discharge.
     assert result["label"].to_list() == [0, 0, 0, 0, 0, 0, 1, 1, 0]
+
+
+def test_trigger_until_cannot_be_static(tmp_path):
+    config_path = tmp_path / "task.yaml"
+    config_path.write_text(
+        TASK_YAML.replace("until: icu_discharge", "until: enrolled")
+        + "patient_demographics:\n  enrolled:\n    code: ENROLLED\n"
+    )
+
+    with pytest.raises(ValueError, match="'enrolled' is a static patient demographic"):
+        TaskExtractorConfig.load(config_path)

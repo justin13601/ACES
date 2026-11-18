@@ -105,3 +105,17 @@ def test_descendants_of_cannot_be_combined_with_other_matchers(tmp_path, meds_ro
     data_config = DictConfig({"path": str(meds_root / "data" / "train" / "0.parquet"), "standard": "meds"})
     with pytest.raises(ValueError, match="Only one of 'regex', 'any' or 'descendants_of'"):
         get_predicates_df(cfg, data_config)
+
+
+def test_descendants_of_roots_must_be_strings(tmp_path, meds_root):
+    config_path = tmp_path / "task.yaml"
+    config_path.write_text(
+        TASK_YAML.replace(
+            'code: {descendants_of: ["ICD10//I21"]}', 'code: {descendants_of: [["ICD10//I21"]]}'
+        )
+    )
+    cfg = TaskExtractorConfig.load(config_path)
+
+    data_config = DictConfig({"path": str(meds_root / "data" / "train" / "0.parquet"), "standard": "meds"})
+    with pytest.raises(ValueError, match="Expected a list of strings for 'descendants_of'"):
+        get_predicates_df(cfg, data_config)

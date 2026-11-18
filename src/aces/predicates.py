@@ -290,7 +290,8 @@ def expand_descendant_codes(
                 f"Only one of 'regex', 'any' or 'descendants_of' can be specified in the code field! "
                 f"Got: {list(pred.code.keys())}."
             )
-        if not pred.code["descendants_of"] or not isinstance(pred.code["descendants_of"], list):
+        roots = pred.code["descendants_of"]
+        if not roots or not isinstance(roots, list) or not all(isinstance(r, str) for r in roots):
             raise ValueError(
                 f"Invalid specification in the code field! Got: {pred.code}. "
                 "Expected a list of strings for 'descendants_of'."

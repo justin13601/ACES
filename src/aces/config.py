@@ -1623,6 +1623,11 @@ class TaskExtractorConfig:
                 f"Trigger 'until' predicate '{self.trigger.until}' not found in predicates: "
                 f"{', '.join(self.predicates.keys())}"
             )
+        if self.trigger.until and self.predicates[self.trigger.until].static:
+            raise ValueError(
+                f"Trigger 'until' predicate '{self.trigger.until}' is a static patient demographic; "
+                "'until' must be an event with a timestamp."
+            )
 
         trigger_node = Node("trigger")
 
