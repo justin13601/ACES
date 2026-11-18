@@ -90,3 +90,18 @@ def test_descendants_of_with_relative_data_path(tmp_path, meds_root, monkeypatch
     result = query(cfg, get_predicates_df(cfg, DictConfig({"path": "0.parquet", "standard": "meds"})))
 
     assert sorted(result["subject_id"].to_list()) == [1, 2, 4]
+
+
+def test_descendants_of_cannot_be_combined_with_other_matchers(tmp_path, meds_root):
+    config_path = tmp_path / "task.yaml"
+    config_path.write_text(
+        TASK_YAML.replace(
+            'code: {descendants_of: ["ICD10//I21"]}',
+            'code: {descendants_of: ["ICD10//I21"], any: ["ICD10//I50"]}',
+        )
+    )
+    cfg = TaskExtractorConfig.load(config_path)
+
+    data_config = DictConfig({"path": str(meds_root / "data" / "train" / "0.parquet"), "standard": "meds"})
+    with pytest.raises(ValueError, match="Only one of 'regex', 'any' or 'descendants_of'"):
+        get_predicates_df(cfg, data_config)

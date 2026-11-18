@@ -110,3 +110,39 @@ def test_trigger_every_without_until_runs_to_next_trigger_or_record_end(tmp_path
         (2, at(0)),
         (3, at(5)),
     ]
+
+
+@pytest.mark.parametrize("name", ["stop", "record_end"])
+def test_trigger_every_with_predicates_named_like_temporary_columns(tmp_path, predicates_df, name):
+    config_path = tmp_path / "task.yaml"
+    config_path.write_text(TASK_YAML.replace("icu_admission", name))
+    cfg = TaskExtractorConfig.load(config_path)
+
+    result = query(cfg, predicates_df.rename({"icu_admission": name})).sort("subject_id", "trigger")
+
+    assert result.select("subject_id", "trigger").rows() == [
+        (1, at(0)),
+        (1, at(1)),
+        (1, at(2)),
+        (1, at(3)),
+        (1, at(10)),
+        (2, at(0)),
+        (2, at(1)),
+        (2, at(2)),
+        (3, at(5)),
+    ]
+
+
+def test_trigger_every_summaries_hold_only_configured_predicates(tmp_path, predicates_df):
+    """The grid marker is not summarized, and a predicate named like it keeps its own counts."""
+    config_path = tmp_path / "task.yaml"
+    config_path.write_text(TASK_YAML.replace("death", "_TRIGGER_GRID"))
+    cfg = TaskExtractorConfig.load(config_path)
+
+    result = query(cfg, predicates_df.rename({"death": "_TRIGGER_GRID"})).sort("subject_id", "trigger")
+
+    for col in ("input.start_summary", "target.end_summary"):
+        fields = [f.name for f in result.schema[col].fields]
+        assert fields[3:] == ["icu_admission", "icu_discharge", "_TRIGGER_GRID"]
+    # Only subject 2's death at 02:30 counts, as in test_trigger_every_hour_until_discharge.
+    assert result["label"].to_list() == [0, 0, 0, 0, 0, 0, 1, 1, 0]

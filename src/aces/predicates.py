@@ -285,6 +285,11 @@ def expand_descendant_codes(
         return predicates
 
     for pred in to_expand.values():
+        if len(pred.code) > 1:
+            raise ValueError(
+                f"Only one of 'regex', 'any' or 'descendants_of' can be specified in the code field! "
+                f"Got: {list(pred.code.keys())}."
+            )
         if not pred.code["descendants_of"] or not isinstance(pred.code["descendants_of"], list):
             raise ValueError(
                 f"Invalid specification in the code field! Got: {pred.code}. "

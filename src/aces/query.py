@@ -16,7 +16,8 @@ from .utils import log_tree, parse_timedelta
 
 logger = logging.getLogger(__name__)
 
-TRIGGER_GRID_COLUMN = "_TRIGGER_GRID"
+# Predicate names are word characters only, so these column names cannot clash with a predicate.
+TRIGGER_GRID_COLUMN = "trigger grid"
 
 
 def add_trigger_grid(trigger: EventConfig, predicates_df: pl.DataFrame) -> pl.DataFrame:
@@ -38,17 +39,17 @@ def add_trigger_grid(trigger: EventConfig, predicates_df: pl.DataFrame) -> pl.Da
         >>> trigger = EventConfig("icu_admission", every="2h", until="icu_discharge")
         >>> add_trigger_grid(trigger, predicates_df)
         shape: (5, 5)
-        ┌────────────┬─────────────────────┬───────────────┬───────────────┬───────────────┐
-        │ subject_id ┆ timestamp           ┆ icu_admission ┆ icu_discharge ┆ _TRIGGER_GRID │
-        │ ---        ┆ ---                 ┆ ---           ┆ ---           ┆ ---           │
-        │ i64        ┆ datetime[μs]        ┆ i64           ┆ i64           ┆ i64           │
-        ╞════════════╪═════════════════════╪═══════════════╪═══════════════╪═══════════════╡
-        │ 1          ┆ 2020-01-01 00:00:00 ┆ 1             ┆ 0             ┆ 1             │
-        │ 1          ┆ 2020-01-01 02:00:00 ┆ 0             ┆ 0             ┆ 1             │
-        │ 1          ┆ 2020-01-01 04:00:00 ┆ 0             ┆ 0             ┆ 1             │
-        │ 1          ┆ 2020-01-01 05:00:00 ┆ 0             ┆ 1             ┆ 0             │
-        │ 1          ┆ 2020-01-02 00:00:00 ┆ 0             ┆ 0             ┆ 0             │
-        └────────────┴─────────────────────┴───────────────┴───────────────┴───────────────┘
+        ┌────────────┬─────────────────────┬───────────────┬───────────────┬──────────────┐
+        │ subject_id ┆ timestamp           ┆ icu_admission ┆ icu_discharge ┆ trigger grid │
+        │ ---        ┆ ---                 ┆ ---           ┆ ---           ┆ ---          │
+        │ i64        ┆ datetime[μs]        ┆ i64           ┆ i64           ┆ i64          │
+        ╞════════════╪═════════════════════╪═══════════════╪═══════════════╪══════════════╡
+        │ 1          ┆ 2020-01-01 00:00:00 ┆ 1             ┆ 0             ┆ 1            │
+        │ 1          ┆ 2020-01-01 02:00:00 ┆ 0             ┆ 0             ┆ 1            │
+        │ 1          ┆ 2020-01-01 04:00:00 ┆ 0             ┆ 0             ┆ 1            │
+        │ 1          ┆ 2020-01-01 05:00:00 ┆ 0             ┆ 1             ┆ 0            │
+        │ 1          ┆ 2020-01-02 00:00:00 ┆ 0             ┆ 0             ┆ 0            │
+        └────────────┴─────────────────────┴───────────────┴───────────────┴──────────────┘
     """
 
     def next_event(predicate: str) -> pl.Expr:
@@ -59,23 +60,25 @@ def add_trigger_grid(trigger: EventConfig, predicates_df: pl.DataFrame) -> pl.Da
     if trigger.until:
         stop = pl.min_horizontal(stop, next_event(trigger.until))
 
+    stop_col, end_col = "grid stop", "record end"
+
     every = parse_timedelta(trigger.every)
     grid = (
         predicates_df.sort("subject_id", "timestamp")
         .with_columns(
-            stop.over("subject_id").alias("stop"),
-            pl.col("timestamp").max().over("subject_id").alias("record_end"),
+            stop.over("subject_id").alias(stop_col),
+            pl.col("timestamp").max().over("subject_id").alias(end_col),
         )
         .filter(pl.col(trigger.predicate) > 0)
         .select(
             "subject_id",
-            "stop",
-            pl.datetime_ranges("timestamp", pl.coalesce("stop", "record_end"), every, closed="both").alias(
+            stop_col,
+            pl.datetime_ranges("timestamp", pl.coalesce(stop_col, end_col), every, closed="both").alias(
                 "timestamp"
             ),
         )
         .explode("timestamp")
-        .filter(pl.col("stop").is_null() | (pl.col("timestamp") < pl.col("stop")))
+        .filter(pl.col(stop_col).is_null() | (pl.col("timestamp") < pl.col(stop_col)))
         .select("subject_id", "timestamp")
         .with_columns(pl.lit(1, dtype=PRED_CNT_TYPE).alias(TRIGGER_GRID_COLUMN))
     )
@@ -240,6 +243,9 @@ def query(cfg: TaskExtractorConfig, predicates_df: pl.DataFrame) -> pl.DataFrame
     prospective_root_anchors = check_constraints({trigger_column: (1, None)}, predicates_df).select(
         "subject_id", pl.col("timestamp").alias("subtree_anchor_timestamp")
     )
+    if cfg.trigger.every:
+        # The grid rows stay (with zero counts) as anchors; the marker is not a predicate to summarize.
+        predicates_df = predicates_df.drop(TRIGGER_GRID_COLUMN)
 
     if prospective_root_anchors.is_empty():
         logger.warning(f"No valid rows found for the trigger event '{cfg.trigger.predicate}'. Exiting.")
