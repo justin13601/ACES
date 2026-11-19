@@ -336,6 +336,12 @@ def extract_subtree(
         # Step 3: Filter to where constraints are valid
         window_summary_df = check_constraints(child.constraints, window_summary_df)
 
+        # Step 3.5: Drop windows that never close. An event-bound window whose end event never occurs (e.g.
+        # `start -> discharge` for a stay still open at the end of the record) has a null child anchor. It
+        # has no realization, so it must not be passed on: a null anchor matches nothing in the joins below,
+        # and the left joins of Step 6 would keep it as a row that is null but for `subject_id` (#232).
+        window_summary_df = window_summary_df.filter(pl.col("child_anchor_timestamp").is_not_null())
+
         # Step 4: Produce child anchor realizations
         child_anchor_realizations = window_summary_df.select(
             "subject_id",
