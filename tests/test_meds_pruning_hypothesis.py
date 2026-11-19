@@ -1,4 +1,5 @@
-"""Property test: on random MEDS data, every task gives the same result with and without pruning.
+"""Property test: on random MEDS data, every task gives the same result with and without pruning, and every
+returned row is complete (no null subject, trigger, index timestamp or label).
 
 The tasks use windows of hours and few constraints so that random data usually selects some subjects, and
 between them they depend on everything pruning must preserve: the record start (``start: NULL`` with
@@ -66,6 +67,21 @@ windows:
   input: {{start: end <- admission, end: trigger, start_inclusive: False, end_inclusive: True,
           index_timestamp: end}}
   target: {{start: trigger, end: start + 48h, start_inclusive: False, end_inclusive: True, label: death}}
+""",
+    # The event-bound window is the last of a chain with one child per level (no sibling to inner-join
+    # with), so a stay with no later discharge or death leaves it unclosed (#232).
+    "event_bound_label_window": f"""
+predicates:
+  {ADM}
+  {DIS}
+  {DEATH}
+  discharge_or_death: {{expr: "or(discharge, death)"}}
+trigger: admission
+windows:
+  input: {{start: trigger, end: start + 6h, start_inclusive: True, end_inclusive: True,
+          index_timestamp: end}}
+  target: {{start: input.end, end: start -> discharge_or_death, start_inclusive: False,
+           end_inclusive: True, label: death}}
 """,
     "value_ranges": """
 predicates:
@@ -211,6 +227,21 @@ def _run(config_path: Path, shard: Path, prune: bool) -> pl.DataFrame | type[Exc
     return result.sort(sort_by) if sort_by else result
 
 
+def _assert_complete_rows(result: pl.DataFrame | type[Exception], task: str, which: str) -> None:
+    """Every returned row is a realized trigger: subject, trigger time, and (when the task defines them) the
+    index timestamp and label are set.
+
+    The pruned / unpruned comparison alone cannot see a bug both paths share, such as rows null but for
+    ``subject_id`` for windows that never close (#232).
+    """
+    if not isinstance(result, pl.DataFrame) or result.is_empty():
+        return
+    for column in ("subject_id", "trigger", "index_timestamp", "label"):
+        if column in result.columns:
+            nulls = result[column].null_count()
+            assert nulls == 0, f"{task} ({which}): {nulls} row(s) with a null {column}\n{result}"
+
+
 @given(events=meds_events(), task=st.sampled_from(sorted(TASKS)))
 @settings(max_examples=300, deadline=None)
 def test_pruning_never_changes_results(events: list[dict], task: str):
@@ -235,6 +266,9 @@ def test_pruning_never_changes_results(events: list[dict], task: str):
         event(f"{task}: {'some' if expected.height else 'no'} rows")
     else:
         event(f"{task}: {expected.__name__}")
+
+    _assert_complete_rows(expected, task, "without pruning")
+    _assert_complete_rows(got, task, "with pruning")
 
     if isinstance(expected, pl.DataFrame) and isinstance(got, pl.DataFrame):
         assert got.equals(expected), f"{task}: pruned result differs\nwant:\n{expected}\ngot:\n{got}"
