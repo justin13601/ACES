@@ -15,7 +15,10 @@ import networkx as nx
 import polars as pl
 import ruamel.yaml
 from bigtree import Node
+from packaging.specifiers import InvalidSpecifier, SpecifierSet
+from packaging.version import InvalidVersion, Version
 
+from . import __version__
 from .types import (
     ANY_EVENT_COLUMN,
     END_OF_RECORD_KEY,
@@ -29,6 +32,52 @@ if TYPE_CHECKING:
     from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
+
+
+def check_aces_version(required: str, installed: str | None = None) -> None:
+    """Checks that the installed ACES version is in the range a config declares with ``aces_version``.
+
+    Args:
+        required: A PEP 440 version range, e.g. ``">=0.8.2"`` or ``">=0.8.2, <0.9"``.
+        installed: The installed ACES version (by default, ``aces.__version__``). Pre-release and development
+            versions are allowed, so ``0.8.3.dev1`` satisfies ``>=0.8.2``. If it cannot be parsed (e.g.
+            ``"unknown"`` when ACES is not installed as a package), the check is skipped with a warning.
+
+    Raises:
+        ValueError: If ``required`` is not a valid version range, or ``installed`` is not in it.
+
+    Examples:
+        >>> check_aces_version(">=0.8.2", "0.8.2")
+        >>> check_aces_version(">=0.8.2, <0.9", "0.8.3.dev1+g0489867")
+        >>> check_aces_version(">=0.8.2", "unknown")
+        >>> check_aces_version(">=0.8.2", "0.8.1")
+        Traceback (most recent call last):
+            ...
+        ValueError: This config requires ACES >=0.8.2, but 0.8.1 is installed.
+        >>> check_aces_version("0.8.2", "0.8.2")
+        Traceback (most recent call last):
+            ...
+        ValueError: Invalid 'aces_version': '0.8.2'. Expected a version range such as '>=0.8.2'.
+    """
+    try:
+        spec = SpecifierSet(str(required))
+    except InvalidSpecifier as e:
+        raise ValueError(
+            f"Invalid 'aces_version': '{required}'. Expected a version range such as '>=0.8.2'."
+        ) from e
+
+    if installed is None:
+        installed = __version__
+    try:
+        version = Version(installed)
+    except InvalidVersion:
+        logger.warning(
+            f"Could not determine the installed ACES version; not checking 'aces_version: {spec}'."
+        )
+        return
+
+    if not spec.contains(version, prereleases=True):
+        raise ValueError(f"This config requires ACES {required}, but {installed} is installed.")
 
 
 @dataclasses.dataclass
@@ -1372,6 +1421,12 @@ class TaskExtractorConfig:
         # in the YAML
         _ = loaded_dict.pop("description", None)
         _ = loaded_dict.pop("metadata", None)
+
+        # Checked first, so a config written for another ACES version fails with this error rather than an
+        # unrelated one from syntax this version does not support.
+        aces_version = loaded_dict.pop("aces_version", None)
+        if aces_version is not None:
+            check_aces_version(aces_version)
 
         trigger = loaded_dict.pop("trigger")
         windows = loaded_dict.pop("windows", None)

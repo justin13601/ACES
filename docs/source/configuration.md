@@ -36,6 +36,22 @@ In the machine form used by ACES, the configuration file consists of three parts
 
 Below, we will detail each of these configuration objects.
 
+A configuration file can also declare the ACES versions it is written for, with an optional top-level
+`aces_version` key holding a [PEP 440](https://peps.python.org/pep-0440/#version-specifiers) version range.
+Quote it, as YAML reads a leading `>` as the start of a block of text:
+
+```yaml
+aces_version: '>=0.8.2'
+```
+
+When the configuration is loaded, the installed ACES version is checked against this range before anything
+else, and loading fails with a clear error if it does not match (e.g., `This config requires ACES >=0.8.2, but 0.8.1 is installed.`). Releases can change the cohort an unchanged configuration extracts (e.g., the window
+bounds in 0.8.0, or the handling of `MEDS_BIRTH` rows in 0.8.0 to 0.8.2), so declaring a version keeps a
+configuration from silently giving a different cohort elsewhere. ACES versions from before this key was added
+reject it as an unrecognized key, so a configuration that declares a version also fails on those, rather than
+running unchecked. Development builds made after a release satisfy a range starting at that release (e.g.,
+`0.8.3.dev1` satisfies `>=0.8.2`).
+
 ______________________________________________________________________
 
 ### Predicates: `PlainPredicateConfig` and `DerivedPredicateConfig`
