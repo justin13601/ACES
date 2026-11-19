@@ -147,3 +147,28 @@ windows:
         result["history.start_summary"].struct.field("timestamp_at_start").to_list()
         == [datetime(1980, 1, 1)] * 3
     )
+
+
+def test_any_event_with_a_predicate_named_code(tmp_path, data_path):
+    """A predicate named ``code`` replaces that column; the birth check must still read the raw codes."""
+    task = """
+predicates:
+  admission: {code: ADMISSION}
+  code: {code: LAB}
+trigger: admission
+windows:
+  input:
+    start: null
+    end: trigger
+    start_inclusive: True
+    end_inclusive: True
+    has: {_ANY_EVENT: "(1, None)", code: "(1, None)"}
+"""
+    result = run(tmp_path, data_path, task)
+
+    counts = result.select(
+        "subject_id",
+        pl.col("input.start_summary").struct.field("_ANY_EVENT"),
+        pl.col("input.start_summary").struct.field("code"),
+    )
+    assert counts.rows() == [(1, 2, 1), (2, 3, 2), (3, 2, 1), (4, 2, 1)]
