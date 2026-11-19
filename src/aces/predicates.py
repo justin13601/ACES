@@ -429,18 +429,17 @@ def generate_plain_predicates_from_meds(
 
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
-    data = data.with_columns(
-        [p.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name) for name, p in predicates.items()]
-    )
-
+    count_exprs = [p.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name) for name, p in predicates.items()]
     count_cols = list(predicate_cols)
     if count_events:
         # MEDS_BIRTH rows stay in the record (they are its first timestamp and can be matched by predicates,
         # e.g. for age criteria), but they are not events, so _ANY_EVENT must not count them (issue #168).
-        data = data.with_columns(
+        # Evaluated together with the predicates, as a predicate may be named `code` and replace that column.
+        count_exprs.append(
             (pl.col("code") != meds.birth_code).cast(PRED_CNT_TYPE).alias(NON_BIRTH_EVENTS_COLUMN)
         )
         count_cols.append(NON_BIRTH_EVENTS_COLUMN)
+    data = data.with_columns(count_exprs)
 
     if prune:
         logger.info("Dropping events that match no predicate (other than static events and record bounds)...")
