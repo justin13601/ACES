@@ -1076,12 +1076,10 @@ def boolean_expr_bound_sum(
             c: (expr - pl.col(c)).alias(f"{c}_cumsum_at_boundary") for c, expr in cumsum_at_boundary.items()
         }
 
-    timestamp_offset = pl.col("timestamp") - offset
+    # Each boundary event is placed 1 microsecond beside its (offset) timestamp, so it falls between rows.
+    epsilon = timedelta(microseconds=1)
     if mode == "bound_to_row":
-        if closed in ("left", "both"):
-            timestamp_offset -= timedelta(seconds=1e-6)
-        else:
-            timestamp_offset += timedelta(seconds=1e-6)
+        boundary_shift = -epsilon if closed in ("left", "both") else epsilon
 
         fill_strategy = "forward"
         sum_exprs = {
@@ -1097,10 +1095,7 @@ def boolean_expr_bound_sum(
             # cumsum difference.
             sum_exprs = {c: expr - pl.col(c) for c, expr in sum_exprs.items()}
     else:
-        if closed in ("right", "both"):
-            timestamp_offset += timedelta(seconds=1e-6)
-        else:
-            timestamp_offset -= timedelta(seconds=1e-6)
+        boundary_shift = epsilon if closed in ("right", "both") else -epsilon
 
         fill_strategy = "backward"
         sum_exprs = {
@@ -1119,14 +1114,20 @@ def boolean_expr_bound_sum(
     at_boundary_df = df.filter(boundary_expr).select(
         "subject_id",
         pl.col("timestamp").alias("timestamp_at_boundary"),
-        timestamp_offset.alias("timestamp"),
+        (pl.col("timestamp") - offset + boundary_shift).alias("timestamp"),
         *cumsum_at_boundary.values(),
         pl.lit(False).alias("is_real"),
     )
 
     with_at_boundary_events = (
         pl.concat([df.with_columns(pl.lit(True).alias("is_real")), at_boundary_df], how="diagonal")
-        .sort(by=["subject_id", "timestamp"])
+        # A row only 1 microsecond away from a boundary event ties with the shifted boundary row. The shift
+        # stands for less than a microsecond, so the boundary row goes before the real row if it was shifted
+        # later (`is_real` False first) and after it if it was shifted earlier.
+        .sort(
+            by=["subject_id", "timestamp", "is_real"],
+            descending=[False, False, boundary_shift < timedelta(0)],
+        )
         .select(
             "subject_id",
             "timestamp",
