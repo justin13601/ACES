@@ -39,6 +39,7 @@ dependencies = [
     "bigtree >= 0.14, < 1",       # Node, preorder_iter, print_tree have been stable since 0.14
     "ruamel.yaml >= 0.17, < 1",   # YAML(typ="safe", pure=True) API unchanged since 0.17
     "pytimeparse >= 1.1.8, < 2",  # effectively only 1.1.8 works (earlier releases lack top-level parse)
+    "packaging >= 20",            # SpecifierSet / Version for the `aces_version` config key
 ]
 
 [tool.setuptools]
