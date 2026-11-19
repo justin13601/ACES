@@ -101,7 +101,8 @@ def _labels(rows: list[tuple[int, str, bool]]) -> pl.DataFrame:
     ).with_columns(pl.col("prediction_time").str.strptime(pl.Datetime("us"), "%Y-%m-%d %H:%M"))
 
 
-# The expected cohorts, checked by hand against MEDS_SHARDS.
+# The expected cohorts, checked by hand against MEDS_SHARDS. In record_bounds, the prediction time is the
+# record start, which is the MEDS_BIRTH row (subject 1 born 1960-12-18 11:03, subject 3 born 1982-02-28).
 WANT_LABELS = {
     "inhospital_mortality": _labels(
         [
@@ -125,9 +126,9 @@ WANT_LABELS = {
     ),
     "record_bounds": _labels(
         [
-            (1, "1972-08-02 10:00", False),
-            (3, "2020-01-14 15:14", False),
-            (3, "2020-01-14 15:14", False),
+            (1, "1960-12-18 11:03", False),
+            (3, "1982-02-28 00:00", False),
+            (3, "1982-02-28 00:00", False),
         ]
     ),
 }
