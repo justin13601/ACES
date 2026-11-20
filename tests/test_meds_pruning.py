@@ -33,7 +33,7 @@ def _events(subject_id: int, rows: list[tuple[float | None, str, float | None]])
 
 EVENTS = [
     # Starts and ends with events that match no predicate, so the record bounds are prunable rows. The
-    # MEDS_BIRTH row comes first but is excluded from evaluation, so it must not become the record start.
+    # MEDS_BIRTH row comes first, so it is the record start, which pruning must keep.
     *_events(
         1,
         [

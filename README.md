@@ -271,7 +271,7 @@ There are also a few special predicates that you can use. These *do not* need to
 
 `_RECORD_END`: specifies the end of a patient's record (ie., effectively set to `1` in the last chronological row for every `subject_id`)
 
-For MEDS data, `MEDS_BIRTH` rows are not events: they are dropped before predicates are evaluated, so they do not count toward `_ANY_EVENT` or any predicate, and `_RECORD_START` is the patient's first event other than `MEDS_BIRTH`.
+For MEDS data, `MEDS_BIRTH` rows do not count toward `_ANY_EVENT`, as they mark the patient's birth rather than an event. They are otherwise part of the record: `_RECORD_START` is the birth timestamp, and a predicate with `code: MEDS_BIRTH` matches them, e.g. to exclude children with a window `start: end - 6575d, end: trigger` that has `birth: (None, 0)`.
 
 ### Trigger Event
 

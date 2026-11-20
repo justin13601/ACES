@@ -19,6 +19,9 @@ from .types import (
 
 logger = logging.getLogger(__name__)
 
+# Predicate names are word characters only, so this column name cannot clash with a predicate.
+NON_BIRTH_EVENTS_COLUMN = "non-birth events"
+
 
 def direct_load_plain_predicates(
     data_path: Path, predicates: list[str], ts_format: str | None
@@ -326,7 +329,10 @@ def expand_descendant_codes(
 
 
 def generate_plain_predicates_from_meds(
-    data_path: Path, predicates: dict[str, PlainPredicateConfig], prune: bool = False
+    data_path: Path,
+    predicates: dict[str, PlainPredicateConfig],
+    prune: bool = False,
+    count_events: bool = False,
 ) -> pl.DataFrame:
     """Generate plain predicate columns from a MEDS dataset.
 
@@ -341,6 +347,10 @@ def generate_plain_predicates_from_meds(
             (null-time) events, and each subject's first and last timestamps (the record bounds). Every
             other (subject_id, timestamp) row would have all predicate counts equal to 0. Only safe when the
             task does not count every event (``_ANY_EVENT``); see ``get_predicates_df``.
+        count_events: Add a ``NON_BIRTH_EVENTS_COLUMN`` column with the number of events at each
+            (subject_id, timestamp) other than ``MEDS_BIRTH`` rows, which ``get_predicates_df`` uses for
+            ``_ANY_EVENT``. ``MEDS_BIRTH`` rows are kept (they set ``_RECORD_START`` and can be matched by
+            predicates, e.g. for age criteria) but are not events (issue #168).
 
     Returns:
         The Polars DataFrame containing the extracted predicates per subject per timestamp across the entire
@@ -413,25 +423,25 @@ def generate_plain_predicates_from_meds(
     data = data.select(sorted(needed & available)).rename({"time": "timestamp"})
 
     # Cast `code` to Utf8 once up front. Older MEDS schemas sometimes emitted `code` as
-    # a categorical / enum dtype, and both the birth-row filter below and the predicate
+    # a categorical / enum dtype, and both the birth-row check below and the predicate
     # expressions assume a string column.
     data = data.with_columns(pl.col("code").cast(pl.Utf8))
 
-    # Drop MEDS birth rows before predicate evaluation. The birth code is a
-    # quasi-static demographic marker anchored at the patient's birth timestamp;
-    # it shouldn't count toward predicate matches or the implicit _ANY_EVENT
-    # column. Static rows (null timestamp) are already excluded; this extends
-    # the same treatment to MEDS_BIRTH. See issue #168.
-    data = data.filter(pl.col("code") != meds.birth_code)
-
     # generate plain predicate columns
     logger.info("Generating plain predicate columns...")
-    data = data.with_columns(
-        [p.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name) for name, p in predicates.items()]
-    )
+    count_exprs = [p.MEDS_eval_expr().cast(PRED_CNT_TYPE).alias(name) for name, p in predicates.items()]
+    count_cols = list(predicate_cols)
+    if count_events:
+        # MEDS_BIRTH rows stay in the record (they are its first timestamp and can be matched by predicates,
+        # e.g. for age criteria), but they are not events, so _ANY_EVENT must not count them (issue #168).
+        # Evaluated together with the predicates, as a predicate may be named `code` and replace that column.
+        count_exprs.append(
+            (pl.col("code") != meds.birth_code).cast(PRED_CNT_TYPE).alias(NON_BIRTH_EVENTS_COLUMN)
+        )
+        count_cols.append(NON_BIRTH_EVENTS_COLUMN)
+    data = data.with_columns(count_exprs)
 
     if prune:
-        # After the birth-row filter, so the record bounds are the same as without pruning.
         logger.info("Dropping events that match no predicate (other than static events and record bounds)...")
         ts = pl.col("timestamp")
         keep = ts.is_null() | (ts == ts.min().over("subject_id")) | (ts == ts.max().over("subject_id"))
@@ -442,9 +452,9 @@ def generate_plain_predicates_from_meds(
     # clean up predicates_df
     logger.info("Cleaning up predicates dataframe...")
     return (
-        data.select(["subject_id", "timestamp", *predicate_cols])
+        data.select(["subject_id", "timestamp", *count_cols])
         .group_by(["subject_id", "timestamp"], maintain_order=True)
-        .agg(*(pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols))
+        .agg(*(pl.col(c).sum().cast(PRED_CNT_TYPE).alias(c) for c in count_cols))
         .collect()
     )
 
@@ -962,7 +972,12 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
                     "that match no plain predicate (e.g. 'or(male, admission)')."
                 )
                 prune = False
-            data = generate_plain_predicates_from_meds(data_path, plain_predicates, prune=prune)
+            data = generate_plain_predicates_from_meds(
+                data_path,
+                plain_predicates,
+                prune=prune,
+                count_events=ANY_EVENT_COLUMN in special_predicates,
+            )
         case "esgpt":
             data = generate_plain_predicates_from_esgpt(data_path, plain_predicates)
         case _:
@@ -995,13 +1010,17 @@ def get_predicates_df(cfg: TaskExtractorConfig, data_config: DictConfig) -> pl.D
     # a column of 0s with 1 in the last event of each subject_id representing the end of record
     logger.info("Generating special predicate columns...")
     if ANY_EVENT_COLUMN in special_predicates:
+        # For MEDS data, a timestamp with only a MEDS_BIRTH row is not an event (issue #168).
+        is_event = (
+            (pl.col(NON_BIRTH_EVENTS_COLUMN) > 0) if NON_BIRTH_EVENTS_COLUMN in data.columns else pl.lit(True)
+        )
         data = data.with_columns(
             pl.when(pl.col("timestamp").is_not_null())
-            .then(pl.lit(1))
+            .then(is_event.cast(PRED_CNT_TYPE))
             .otherwise(pl.lit(None))
             .alias(ANY_EVENT_COLUMN)
             .cast(PRED_CNT_TYPE)
-        )
+        ).drop(NON_BIRTH_EVENTS_COLUMN, strict=False)
         logger.info(f"Added predicate column '{ANY_EVENT_COLUMN}'.")
         predicate_cols.append(ANY_EVENT_COLUMN)
     if START_OF_RECORD_KEY in special_predicates:
