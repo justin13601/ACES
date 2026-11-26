@@ -123,6 +123,89 @@ def _aggregate_singleton_temporal(
         return possible_out.with_columns(*[pl.lit(0).cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols])
 
 
+def _aggregate_zero_length_temporal(
+    predicates_df: pl.DataFrame, endpoint_expr: TemporalWindowBounds
+) -> pl.DataFrame:
+    """A version of aggregate_temporal_window for windows of size zero, which polars cannot roll over.
+
+    The window of a row at ``timestamp`` is the single instant ``timestamp + offset``. If both ends are
+    inclusive, it holds the events at exactly that instant; otherwise it holds no events.
+
+    Args:
+        predicates_df: The dataframe containing the predicates, with at most one row per subject and
+            timestamp.
+        endpoint_expr: The temporal window bounds expression, with a ``window_size`` of zero.
+
+    Returns:
+        A dataframe in the format returned by ``aggregate_temporal_window``.
+
+    Examples:
+        >>> df = pl.DataFrame({
+        ...     "subject_id": [1, 1, 2],
+        ...     "timestamp": [datetime(2020, 1, 1), datetime(2020, 1, 2), datetime(2020, 1, 1)],
+        ...     "is_A": [1, 0, 1],
+        ...     "is_B": [0, 1, 0],
+        ... })
+        >>> _aggregate_zero_length_temporal(df, TemporalWindowBounds(True, timedelta(0), True, None))
+        shape: (3, 6)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╡
+        │ 1          ┆ 2020-01-01 00:00:00 ┆ 2020-01-01 00:00:00 ┆ 2020-01-01 00:00:00 ┆ 1    ┆ 0    │
+        │ 1          ┆ 2020-01-02 00:00:00 ┆ 2020-01-02 00:00:00 ┆ 2020-01-02 00:00:00 ┆ 0    ┆ 1    │
+        │ 2          ┆ 2020-01-01 00:00:00 ┆ 2020-01-01 00:00:00 ┆ 2020-01-01 00:00:00 ┆ 1    ┆ 0    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┘
+
+        With an offset, each row counts the events at ``timestamp + offset``:
+
+        >>> one_day_later = TemporalWindowBounds(True, timedelta(0), True, timedelta(days=1))
+        >>> _aggregate_zero_length_temporal(df, one_day_later)
+        shape: (3, 6)
+        ┌────────────┬─────────────────────┬─────────────────────┬─────────────────────┬──────┬──────┐
+        │ subject_id ┆ timestamp           ┆ timestamp_at_start  ┆ timestamp_at_end    ┆ is_A ┆ is_B │
+        │ ---        ┆ ---                 ┆ ---                 ┆ ---                 ┆ ---  ┆ ---  │
+        │ i64        ┆ datetime[μs]        ┆ datetime[μs]        ┆ datetime[μs]        ┆ i64  ┆ i64  │
+        ╞════════════╪═════════════════════╪═════════════════════╪═════════════════════╪══════╪══════╡
+        │ 1          ┆ 2020-01-01 00:00:00 ┆ 2020-01-02 00:00:00 ┆ 2020-01-02 00:00:00 ┆ 0    ┆ 1    │
+        │ 1          ┆ 2020-01-02 00:00:00 ┆ 2020-01-03 00:00:00 ┆ 2020-01-03 00:00:00 ┆ 0    ┆ 0    │
+        │ 2          ┆ 2020-01-01 00:00:00 ┆ 2020-01-02 00:00:00 ┆ 2020-01-02 00:00:00 ┆ 0    ┆ 0    │
+        └────────────┴─────────────────────┴─────────────────────┴─────────────────────┴──────┴──────┘
+
+        An exclusive end leaves the window empty:
+
+        >>> _aggregate_zero_length_temporal(
+        ...     df, TemporalWindowBounds(False, timedelta(0), True, None)
+        ... )[["is_A", "is_B"]].sum().row(0)
+        (0, 0)
+    """
+    predicate_cols = [
+        c for c in predicates_df.collect_schema().names() if c not in {"subject_id", "timestamp"}
+    ]
+
+    out = predicates_df.select(
+        "subject_id",
+        "timestamp",
+        (pl.col("timestamp") + endpoint_expr.offset).alias("timestamp_at_start"),
+        (pl.col("timestamp") + endpoint_expr.offset).alias("timestamp_at_end"),
+    )
+
+    if not (endpoint_expr.left_inclusive and endpoint_expr.right_inclusive):
+        return out.with_columns(*[pl.lit(0).cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols])
+
+    counts_at = predicates_df.select(
+        "subject_id",
+        pl.col("timestamp").alias("timestamp_at_start"),
+        *[pl.col(c).cast(PRED_CNT_TYPE).alias(c) for c in predicate_cols],
+    )
+    return (
+        out.join(counts_at, on=["subject_id", "timestamp_at_start"], how="left")
+        .sort(by=["subject_id", "timestamp"])
+        .fill_null(0)
+    )
+
+
 def aggregate_temporal_window(
     predicates_df: pl.DataFrame,
     endpoint_expr: TemporalWindowBounds | tuple[bool, timedelta, bool, timedelta | None],
@@ -358,7 +441,9 @@ def aggregate_temporal_window(
         c for c in predicates_df.collect_schema().names() if c not in {"subject_id", "timestamp"}
     ]
 
-    if predicates_df.shape[0] <= 1:
+    if endpoint_expr.window_size == timedelta(0):
+        return _aggregate_zero_length_temporal(predicates_df, endpoint_expr)
+    elif predicates_df.shape[0] <= 1:
         return _aggregate_singleton_temporal(predicates_df, endpoint_expr)
     else:
         return (
