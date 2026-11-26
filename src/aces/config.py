@@ -470,8 +470,11 @@ class WindowConfig:
         ['death', 'discharge']
         >>> gap_window.start_endpoint_expr is None
         True
-        >>> gap_window.end_endpoint_expr is None
-        True
+        >>> gap_window.end_endpoint_expr
+        TemporalWindowBounds(left_inclusive=False,
+                             window_size=datetime.timedelta(0),
+                             right_inclusive=True,
+                             offset=datetime.timedelta(0))
         >>> gap_window.root_node
         'start'
         >>> target_window = WindowConfig(
@@ -505,8 +508,11 @@ class WindowConfig:
         ('gap', 'end')
         >>> sorted(target_window.referenced_predicates)
         ['discharge_or_death']
-        >>> target_window.start_endpoint_expr is None
-        True
+        >>> target_window.start_endpoint_expr
+        TemporalWindowBounds(left_inclusive=False,
+                             window_size=datetime.timedelta(0),
+                             right_inclusive=True,
+                             offset=datetime.timedelta(0))
         >>> target_window.end_endpoint_expr
         ToEventWindowBounds(left_inclusive=False,
                             end_event='-discharge_or_death',
@@ -826,6 +832,14 @@ class WindowConfig:
                 left_inclusive=left_inclusive,
                 right_inclusive=right_inclusive,
             )
+        elif self._start_references_end:
+            # `start: end` or `start: end - 0h`: a zero-length window. It keeps its own node so that its
+            # constraints and summary are not dropped with it (#212).
+            return TemporalWindowBounds(
+                window_size=timedelta(0),
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
         else:
             return None
 
@@ -852,6 +866,13 @@ class WindowConfig:
         elif self._parsed_end["offset"]:
             return TemporalWindowBounds(
                 window_size=parse_timedelta(self._parsed_end["offset"]),
+                left_inclusive=left_inclusive,
+                right_inclusive=right_inclusive,
+            )
+        elif not self._start_references_end:
+            # `end: start` or `end: start + 0h`: a zero-length window (see `start_endpoint_expr`).
+            return TemporalWindowBounds(
+                window_size=timedelta(0),
                 left_inclusive=left_inclusive,
                 right_inclusive=right_inclusive,
             )
